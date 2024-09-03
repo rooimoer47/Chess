@@ -10,13 +10,19 @@ public class Board extends JPanel{
     private static final int HEIGHT = WIDTH;
     private static final int BOARD_SIZE = 8;
 
-    private static int [][] BOARD = new int[BOARD_SIZE][BOARD_SIZE];
+    private static final APiece [][] BOARD = new APiece[BOARD_SIZE][BOARD_SIZE];
 
     public void init() {
         SwingUtilities.invokeLater(this::createBoard);
         for (int row = 0; row < BOARD_SIZE; row++) {
             for (int col = 0 ; col < BOARD_SIZE; col++) {
-                BOARD[row][col] = 0;
+                if (row == 1) {
+                    BOARD[row][col] = new Pawn(Color.WHITE);
+                } else if (row == 7) {
+                    BOARD[row][col] = new Pawn(Color.BLACK);
+                } else {
+                    BOARD[row][col] = null;
+                }
             }
         }
     }
@@ -28,21 +34,22 @@ public class Board extends JPanel{
         g.drawRect(X, Y, WIDTH, HEIGHT);
         int curX = X;
         int curY = Y;
-        int colorFlip = 2;
         for (int row = 0; row < BOARD_SIZE; row++) {
             for (int col = 0 ; col < BOARD_SIZE; col++) {
-                if (colorFlip == 1) {
-                    g.setColor(Color.BLACK);
-                } else {
+                if ((row + col) % 2 == 0) {
                     g.setColor(Color.WHITE);
                 }
-                colorFlip = 3 - colorFlip;
+                else {
+                    g.setColor(Color.BLACK);
+                }
                 g.fillRect(curX, curY, WIDTH, HEIGHT);
+                if (BOARD[row][col] != null) {
+                    g.drawImage(BOARD[row][col].getImage(), curX, curY, WIDTH, HEIGHT, this);
+                }
                 curX += WIDTH;
             }
             curY += HEIGHT;
             curX = X;
-            colorFlip = 3 - colorFlip;
         }
     }
 
