@@ -1,6 +1,6 @@
 package main.java.pvt.phgg.chess;
 
-import java.awt.*;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 
 abstract class APiece {

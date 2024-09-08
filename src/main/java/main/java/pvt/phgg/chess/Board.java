@@ -1,9 +1,17 @@
 package main.java.pvt.phgg.chess;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class Board extends JPanel{
+public class Board extends JPanel {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Board.class);
     private static final int X = 20;
     private static final int Y = X;
     private static final int WIDTH = 50;
@@ -13,6 +21,7 @@ public class Board extends JPanel{
     private static final APiece [][] BOARD = new APiece[BOARD_SIZE][BOARD_SIZE];
 
     public void init() {
+        LOGGER.trace("Initializing board");
         SwingUtilities.invokeLater(this::createBoard);
         for (int row = 0; row < BOARD_SIZE; row++) {
             for (int col = 0 ; col < BOARD_SIZE; col++) {
@@ -60,6 +69,7 @@ public class Board extends JPanel{
     }
 
     private void createBoard() {
+        LOGGER.trace("Creating board");
         JFrame frameBoard = new JFrame("Chess");
         Board panelBoard = new Board();
         frameBoard.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
