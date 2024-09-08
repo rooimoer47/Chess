@@ -27,7 +27,7 @@ public class Board extends JPanel {
             for (int col = 0 ; col < BOARD_SIZE; col++) {
                 if (row == 1) {
                     BOARD[row][col] = new Pawn(Color.WHITE);
-                } else if (row == 7) {
+                } else if (row == 6) {
                     BOARD[row][col] = new Pawn(Color.BLACK);
                 } else {
                     BOARD[row][col] = null;

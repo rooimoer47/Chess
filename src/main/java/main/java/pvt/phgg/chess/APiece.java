@@ -4,7 +4,7 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 
 abstract class APiece {
-    private final Color color;
+    final Color color;
     static final String ROOT = "src/main/resources";
 
     public APiece(Color color) {

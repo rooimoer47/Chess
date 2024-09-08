@@ -14,7 +14,13 @@ public class Pawn extends APiece{
     @Override
     public BufferedImage getImage() {
         try {
-            return ImageIO.read(new File(ROOT+"/images/pawn_white.png"));
+            if (this.getColor().equals(Color.WHITE)) {
+                return ImageIO.read(new File(ROOT+"/images/pawn_white.png"));
+            }
+            else {
+                return ImageIO.read(new File(ROOT+"/images/pawn_black.png"));
+            }
+
         } catch (IOException e) {
             e.printStackTrace();
             return null;
@@ -28,6 +34,6 @@ public class Pawn extends APiece{
 
     @Override
     public Color getColor() {
-        return null;
+        return this.color;
     }
 }
