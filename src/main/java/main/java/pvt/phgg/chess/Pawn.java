@@ -1,7 +1,7 @@
 package main.java.pvt.phgg.chess;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -14,7 +14,7 @@ public class Pawn extends APiece{
     @Override
     public BufferedImage getImage() {
         try {
-            return ImageIO.read(new File(ROOT+"/images/pawn.png"));
+            return ImageIO.read(new File(ROOT+"/images/pawn_white.png"));
         } catch (IOException e) {
             e.printStackTrace();
             return null;
