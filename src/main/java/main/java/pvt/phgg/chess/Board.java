@@ -15,8 +15,7 @@ import java.awt.event.MouseEvent;
 public class Board extends JFrame {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Board.class);
-    private static final int WIDTH = 50;
-    private static final int HEIGHT = WIDTH;
+    private static final int SQUARE_SIZE_PIXELS = 50;
     private static final int BOARD_SIZE = 8;
 
     private static final APiece [][] BOARD = new APiece[BOARD_SIZE][BOARD_SIZE];
@@ -60,7 +59,7 @@ public class Board extends JFrame {
                         System.out.println("i am a clicky boi");
                     }
                 });
-                square.setPreferredSize(new Dimension(WIDTH, HEIGHT));
+                square.setPreferredSize(new Dimension(SQUARE_SIZE_PIXELS, SQUARE_SIZE_PIXELS));
                 add(square);
             }
         }
@@ -72,6 +71,6 @@ public class Board extends JFrame {
     @Override
     public Dimension getPreferredSize() {
         // make gui big enough
-        return new Dimension(WIDTH * 9, HEIGHT * 9);
+        return new Dimension(SQUARE_SIZE_PIXELS * 9, HEIGHT * 9);
     }
 }
