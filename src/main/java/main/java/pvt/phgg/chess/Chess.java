@@ -1,12 +1,16 @@
 package main.java.pvt.phgg.chess;
 
+import javax.swing.SwingUtilities;
+import javax.swing.WindowConstants;
+
 public class Chess {
-    Chess () {
-        Board board = new Board();
-        board.init();
-    }
 
     public static void main(String [] args) {
-        new Chess();
+        SwingUtilities.invokeLater(() -> {
+            Board board = new Board("Chess");
+            board.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+            board.setVisible(true);
+            System.out.println("Window size after setVisible: " + board.getWidth() + "x" + board.getHeight());
+        });
     }
 }
