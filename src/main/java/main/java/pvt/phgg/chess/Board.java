@@ -20,10 +20,17 @@ public class Board extends JFrame {
 
     private static final APiece [][] BOARD = new APiece[BOARD_SIZE][BOARD_SIZE];
 
+    private static boolean PIECE_SELECTED = false;
+    private static int PIECE_SELECTED_ROW = -1;
+    private static int PIECE_SELECTED_COL = -1;
+
     public Board(String title) {
         super(title);
         LOGGER.trace("Initializing board");
         setLayout(new GridLayout(BOARD_SIZE, BOARD_SIZE));
+        int frameSize = BOARD_SIZE * SQUARE_SIZE_PIXELS;
+        setSize(frameSize, frameSize);
+        setResizable(false);
         for (int row = 0; row < BOARD_SIZE; row++) {
             for (int col = 0 ; col < BOARD_SIZE; col++) {
                 if (row == 1) {
@@ -56,14 +63,29 @@ public class Board extends JFrame {
                 square.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mouseClicked(MouseEvent e) {
-                        System.out.println("i am a clicky boi");
+                        System.out.println("clicked row " + finalRow + " col " + finalCol);
+                        if (PIECE_SELECTED) {
+                            // a piece was selected, so move it
+                            BOARD[finalRow][finalCol] = BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL];
+                            BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL] = null;
+                            repaint();
+                            PIECE_SELECTED_ROW = -1;
+                            PIECE_SELECTED_COL = -1;
+                            PIECE_SELECTED = false;
+                        } else {
+                            // no piece selected before click, so select it if it is a piece
+                            if (BOARD[finalRow][finalCol] != null) {
+                                PIECE_SELECTED_ROW = finalRow;
+                                PIECE_SELECTED_COL = finalCol;
+                                PIECE_SELECTED = true;
+                            }
+                        }
                     }
                 });
                 square.setPreferredSize(new Dimension(SQUARE_SIZE_PIXELS, SQUARE_SIZE_PIXELS));
                 add(square);
             }
         }
-        pack();
         setLocationRelativeTo(null);
         System.out.println("Window size after pack: " + getWidth() + "x" + getHeight());
     }
