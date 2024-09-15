@@ -1,19 +1,18 @@
 package main.java.pvt.phgg.chess;
 
-import java.awt.Color;
 import java.awt.image.BufferedImage;
 
 abstract class APiece {
-    final Color color;
+    final boolean white;
     static final String ROOT = "src/main/resources";
 
-    public APiece(Color color) {
-        this.color = color;
+    public APiece(boolean white) {
+        this.white = white;
     }
 
     public abstract BufferedImage getImage();
     public abstract Type getType();
-    public abstract Color getColor();
+    public abstract boolean isWhite();
 //    TODO
 //    getRow
 //    getCol

@@ -1,20 +1,19 @@
 package main.java.pvt.phgg.chess;
 
 import javax.imageio.ImageIO;
-import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
 public class Pawn extends APiece{
-    public Pawn(Color color) {
-        super(color);
+    public Pawn(boolean white) {
+        super(white);
     }
 
     @Override
     public BufferedImage getImage() {
         try {
-            if (this.getColor().equals(Color.WHITE)) {
+            if (this.isWhite()) {
                 return ImageIO.read(new File(ROOT+"/images/pawn_white.png"));
             }
             else {
@@ -33,7 +32,7 @@ public class Pawn extends APiece{
     }
 
     @Override
-    public Color getColor() {
-        return this.color;
+    public boolean isWhite() {
+        return this.white;
     }
 }

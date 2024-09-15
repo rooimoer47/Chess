@@ -34,9 +34,9 @@ public class Board extends JFrame {
         for (int row = 0; row < BOARD_SIZE; row++) {
             for (int col = 0 ; col < BOARD_SIZE; col++) {
                 if (row == 1) {
-                    BOARD[row][col] = new Pawn(Color.WHITE);
+                    BOARD[row][col] = new Pawn(true);
                 } else if (row == 6) {
-                    BOARD[row][col] = new Pawn(Color.BLACK);
+                    BOARD[row][col] = new Pawn(false);
                 } else {
                     BOARD[row][col] = null;
                 }
