@@ -4,10 +4,12 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Pawn extends APiece{
-    public Pawn(boolean white) {
-        super(white);
+    public Pawn(Position position, boolean white) {
+        super(position, white);
     }
 
     @Override
@@ -27,12 +29,26 @@ public class Pawn extends APiece{
     }
 
     @Override
-    public Type getType() {
-        return Type.PAWN;
+    public boolean isWhite() {
+        return this.white;
     }
 
     @Override
-    public boolean isWhite() {
-        return this.white;
+    public List<Position> getValidPositions(APiece [][] board) {
+        List<Position> moves = new ArrayList<>();
+        Position newPos = getCurrentPosition();
+
+        if (isWhite()) {
+            newPos.incRow();
+        } else {
+            newPos.decRow();
+        }
+//        TODO take, extra forward, promote, en passant
+
+        if (isOnBoard(newPos) && !isOccupied(board, newPos)) {
+            moves.add(newPos);
+        }
+
+        return moves;
     }
 }

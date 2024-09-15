@@ -11,6 +11,7 @@ import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
 
 public class Board extends JFrame {
 
@@ -34,9 +35,9 @@ public class Board extends JFrame {
         for (int row = 0; row < BOARD_SIZE; row++) {
             for (int col = 0 ; col < BOARD_SIZE; col++) {
                 if (row == 1) {
-                    BOARD[row][col] = new Pawn(true);
+                    BOARD[row][col] = new Pawn(new Position(row, col), true);
                 } else if (row == 6) {
-                    BOARD[row][col] = new Pawn(false);
+                    BOARD[row][col] = new Pawn(new Position(row, col), false);
                 } else {
                     BOARD[row][col] = null;
                 }
@@ -66,9 +67,20 @@ public class Board extends JFrame {
                         System.out.println("clicked row " + finalRow + " col " + finalCol);
                         if (PIECE_SELECTED) {
                             // a piece was selected, so move it
-                            BOARD[finalRow][finalCol] = BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL];
-                            BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL] = null;
-                            repaint();
+                            APiece selectedPiece = BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL];
+                            List<Position> moves = selectedPiece.getValidPositions(BOARD);
+                            Position selectedPosition = new Position(finalRow, finalCol);
+
+                            for (Position pos : moves) {
+                                if (pos.equals(selectedPosition)) {
+                                    // found valid move
+                                    BOARD[finalRow][finalCol] = selectedPiece;
+                                    BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL] = null;
+                                    repaint();
+                                    selectedPiece.setCurrentPosition(selectedPosition);
+                                    break;
+                                }
+                            }
                             PIECE_SELECTED_ROW = -1;
                             PIECE_SELECTED_COL = -1;
                             PIECE_SELECTED = false;
