@@ -5,7 +5,8 @@ import java.util.List;
 
 abstract class APiece {
     private Position position;
-    final boolean white;
+    private final boolean white;
+    private boolean selected = false;
     static final String ROOT = "src/main/resources";
 
     public APiece(Position position, boolean white) {
@@ -14,13 +15,24 @@ abstract class APiece {
     }
 
     public abstract BufferedImage getImage();
-    public abstract boolean isWhite();
     public abstract List<Position> getValidPositions(APiece [][] board);
     public Position getCurrentPosition() {
         return this.position;
     }
     public void setCurrentPosition(Position position) {
         this.position = position;
+    }
+
+    public boolean isWhite() {
+        return white;
+    }
+
+    public boolean isSelected() {
+        return selected;
+    }
+
+    public void toggleSelected() {
+        selected = !selected;
     }
 
     boolean isOnBoard(Position pos) {

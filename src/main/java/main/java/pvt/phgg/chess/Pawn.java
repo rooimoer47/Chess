@@ -16,21 +16,26 @@ public class Pawn extends APiece{
     public BufferedImage getImage() {
         try {
             if (this.isWhite()) {
-                return ImageIO.read(new File(ROOT+"/images/pawn_white.png"));
+                if (this.isSelected()) {
+                    return ImageIO.read(new File(ROOT+"/images/pawn_white_selected.png"));
+                }
+                else {
+                    return ImageIO.read(new File(ROOT+"/images/pawn_white.png"));
+                }
             }
             else {
-                return ImageIO.read(new File(ROOT+"/images/pawn_black.png"));
+                if (this.isSelected()) {
+                    return ImageIO.read(new File(ROOT+"/images/pawn_black_selected.png"));
+                }
+                else {
+                    return ImageIO.read(new File(ROOT+"/images/pawn_black.png"));
+                }
             }
 
         } catch (IOException e) {
             e.printStackTrace();
             return null;
         }
-    }
-
-    @Override
-    public boolean isWhite() {
-        return this.white;
     }
 
     @Override

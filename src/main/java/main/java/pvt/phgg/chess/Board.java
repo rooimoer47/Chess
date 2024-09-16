@@ -81,12 +81,16 @@ public class Board extends JFrame {
                                     break;
                                 }
                             }
+                            selectedPiece.toggleSelected();
+                            repaint();
                             PIECE_SELECTED_ROW = -1;
                             PIECE_SELECTED_COL = -1;
                             PIECE_SELECTED = false;
                         } else {
                             // no piece selected before click, so select it if it is a piece
                             if (BOARD[finalRow][finalCol] != null) {
+                                BOARD[finalRow][finalCol].toggleSelected();
+                                repaint();
                                 PIECE_SELECTED_ROW = finalRow;
                                 PIECE_SELECTED_COL = finalCol;
                                 PIECE_SELECTED = true;
