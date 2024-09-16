@@ -11,6 +11,7 @@ import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import java.util.List;
 
 public class Board extends JFrame {
@@ -39,7 +40,17 @@ public class Board extends JFrame {
                 } else if (row == 6) {
                     BOARD[row][col] = new Pawn(new Position(row, col), false);
                 } else {
-                    BOARD[row][col] = null;
+                    BOARD[row][col] = new APiece() {
+                        @Override
+                        public BufferedImage getImage() {
+                            return null;
+                        }
+
+                        @Override
+                        public List<Position> getValidPositions(APiece[][] board) {
+                            return null;
+                        }
+                    };
                 }
                 // paint
                 int finalRow = row;
@@ -56,8 +67,13 @@ public class Board extends JFrame {
                         }
                         g.fillRect(0, 0, getWidth(), getHeight());
 
-                        if (BOARD[finalRow][finalCol] != null) {
+                        if (BOARD[finalRow][finalCol].getImage() != null) {
                             g.drawImage(BOARD[finalRow][finalCol].getImage(), 0, 0, getWidth(), getHeight(), this);
+                        }
+
+                        if (BOARD[finalRow][finalCol].isMarked()) {
+                            g.setColor(Color.BLUE);
+                            g.fillOval(getWidth()/2, getWidth()/2, getWidth()/10, getHeight()/10);
                         }
                     }
                 };
@@ -75,21 +91,42 @@ public class Board extends JFrame {
                                 if (pos.equals(selectedPosition)) {
                                     // found valid move
                                     BOARD[finalRow][finalCol] = selectedPiece;
-                                    BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL] = null;
+                                    BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL] = new APiece() {
+                                        @Override
+                                        public BufferedImage getImage() {
+                                            return null;
+                                        }
+
+                                        @Override
+                                        public List<Position> getValidPositions(APiece[][] board) {
+                                            return null;
+                                        }
+                                    };
                                     repaint();
                                     BOARD[finalRow][finalCol].setCurrentPosition(selectedPosition);
                                     break;
                                 }
                             }
                             selectedPiece.toggleSelected();
+                            for (int row = 0; row < BOARD_SIZE; row++) {
+                                for (int col = 0; col < BOARD_SIZE; col++) {
+                                    BOARD[row][col].unMark();
+                                }
+                            }
                             repaint();
                             PIECE_SELECTED_ROW = -1;
                             PIECE_SELECTED_COL = -1;
                             PIECE_SELECTED = false;
-                        } else {
+                        }
+                        else {
                             // no piece selected before click, so select it if it is a piece
-                            if (BOARD[finalRow][finalCol] != null) {
+                            if (BOARD[finalRow][finalCol].getImage() != null) {
                                 BOARD[finalRow][finalCol].toggleSelected();
+                                List<Position> moves = BOARD[finalRow][finalCol].getValidPositions(BOARD);
+                                for (Position pos : moves) {
+                                    System.out.println("mark row " + pos.getRow() + " col " + pos.getCol());
+                                    BOARD[pos.getRow()][pos.getCol()].mark();
+                                }
                                 repaint();
                                 PIECE_SELECTED_ROW = finalRow;
                                 PIECE_SELECTED_COL = finalCol;

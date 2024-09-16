@@ -7,7 +7,12 @@ abstract class APiece {
     private Position position;
     private final boolean white;
     private boolean selected = false;
+    private boolean marked = false;
     static final String ROOT = "src/main/resources";
+
+    public APiece() {
+        this.white = false;
+    }
 
     public APiece(Position position, boolean white) {
         this.position = position;
@@ -35,11 +40,23 @@ abstract class APiece {
         selected = !selected;
     }
 
+    public boolean isMarked() {
+        return marked;
+    }
+
+    public void mark() {
+        marked = true;
+    }
+
+    public void unMark() {
+        marked = false;
+    }
+
     boolean isOnBoard(Position pos) {
         return pos.getRow() >= 0 && pos.getRow() < 8 && pos.getCol() >= 0 && pos.getCol() < 8;
     }
 
     public boolean isOccupied(APiece [][] board, Position position) {
-        return board[position.getRow()][position.getCol()] != null;
+        return board[position.getRow()][position.getCol()].getImage() != null;
     }
 }
