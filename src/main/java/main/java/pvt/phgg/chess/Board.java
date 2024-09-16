@@ -124,7 +124,6 @@ public class Board extends JFrame {
                                 BOARD[finalRow][finalCol].toggleSelected();
                                 List<Position> moves = BOARD[finalRow][finalCol].getValidPositions(BOARD);
                                 for (Position pos : moves) {
-                                    System.out.println("mark row " + pos.getRow() + " col " + pos.getCol());
                                     BOARD[pos.getRow()][pos.getCol()].mark();
                                 }
                                 repaint();
