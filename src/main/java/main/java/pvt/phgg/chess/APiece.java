@@ -8,6 +8,7 @@ abstract class APiece {
     private final boolean white;
     private boolean selected = false;
     private boolean marked = false;
+    private boolean originalPosition = true;
     static final String ROOT = "src/main/resources";
 
     public APiece() {
@@ -58,5 +59,13 @@ abstract class APiece {
 
     public boolean isOccupied(APiece [][] board, Position position) {
         return board[position.getRow()][position.getCol()].getImage() != null;
+    }
+
+    public boolean isOriginalPosition() {
+        return originalPosition;
+    }
+
+    public void moved() {
+        originalPosition = false;
     }
 }

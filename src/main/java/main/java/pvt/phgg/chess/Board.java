@@ -91,6 +91,7 @@ public class Board extends JFrame {
                                 if (pos.equals(selectedPosition)) {
                                     // found valid move
                                     BOARD[finalRow][finalCol] = selectedPiece;
+                                    BOARD[finalRow][finalCol].moved();
                                     BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL] = new APiece() {
                                         @Override
                                         public BufferedImage getImage() {

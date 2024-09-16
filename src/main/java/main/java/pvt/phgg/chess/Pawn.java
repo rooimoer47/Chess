@@ -43,15 +43,29 @@ public class Pawn extends APiece{
         List<Position> moves = new ArrayList<>();
         Position newPos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
 
+        // march
         if (isWhite()) {
             newPos.incRow();
         } else {
             newPos.decRow();
         }
-//        TODO take, extra forward, promote, en passant
+//        TODO take, promote, en passant
 
         if (isOnBoard(newPos) && !isOccupied(board, newPos)) {
-            moves.add(newPos);
+            moves.add(new Position(newPos.getRow(), newPos.getCol()));
+        }
+
+        // initial extra jump
+        if (isOriginalPosition()) {
+            if (isWhite()) {
+                newPos.incRow();
+            } else {
+                newPos.decRow();
+            }
+
+            if (isOnBoard(newPos) && !isOccupied(board, newPos)) {
+                moves.add(new Position(newPos.getRow(), newPos.getCol()));
+            }
         }
 
         return moves;
