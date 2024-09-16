@@ -77,7 +77,7 @@ public class Board extends JFrame {
                                     BOARD[finalRow][finalCol] = selectedPiece;
                                     BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL] = null;
                                     repaint();
-                                    selectedPiece.setCurrentPosition(selectedPosition);
+                                    BOARD[finalRow][finalCol].setCurrentPosition(selectedPosition);
                                     break;
                                 }
                             }

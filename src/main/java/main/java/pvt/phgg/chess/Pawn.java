@@ -41,7 +41,7 @@ public class Pawn extends APiece{
     @Override
     public List<Position> getValidPositions(APiece [][] board) {
         List<Position> moves = new ArrayList<>();
-        Position newPos = getCurrentPosition();
+        Position newPos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
 
         if (isWhite()) {
             newPos.incRow();
