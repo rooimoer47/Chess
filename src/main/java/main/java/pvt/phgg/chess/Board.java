@@ -39,6 +39,8 @@ public class Board extends JFrame {
                     BOARD[row][col] = new Rook(new Position(row, col), true);
                 } else if (row == 0 && (col == 2 || col == 5)) {
                     BOARD[row][col] = new Bishop(new Position(row, col), true);
+                } else if (row == 0 && col == 3) {
+                    BOARD[row][col] = new Queen(new Position(row, col), true);
                 } else if (row == 1) {
                     BOARD[row][col] = new Pawn(new Position(row, col), true);
                 } else if (row == 6) {
@@ -47,6 +49,8 @@ public class Board extends JFrame {
                     BOARD[row][col] = new Rook(new Position(row, col), false);
                 } else if (row == 7 && (col == 2 || col == 5)) {
                     BOARD[row][col] = new Bishop(new Position(row, col), false);
+                } else if (row == 7 && col == 3) {
+                    BOARD[row][col] = new Queen(new Position(row, col), false);
                 } else {
                     BOARD[row][col] = new APiece() {
                         @Override
