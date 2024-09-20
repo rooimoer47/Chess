@@ -17,6 +17,10 @@ public class Position {
         this.row++;
     }
 
+    public void incRow(int n) {
+        this.row+=n;
+    }
+
     public void decRow() {
         this.row--;
     }
@@ -31,6 +35,10 @@ public class Position {
 
     public void decCol(int n) {
         this.col = this.getCol() - n;
+    }
+
+    public void incCol(int n) {
+        this.col+=n;
     }
 
     @Override

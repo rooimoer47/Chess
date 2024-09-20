@@ -35,10 +35,14 @@ public class Board extends JFrame {
         setResizable(false);
         for (int row = 0; row < BOARD_SIZE; row++) {
             for (int col = 0 ; col < BOARD_SIZE; col++) {
-                if (row == 1) {
+                if (row == 0 && (col == 0 || col == 7)) {
+                    BOARD[row][col] = new Rook(new Position(row, col), true);
+                } else if (row == 1) {
                     BOARD[row][col] = new Pawn(new Position(row, col), true);
                 } else if (row == 6) {
                     BOARD[row][col] = new Pawn(new Position(row, col), false);
+                } else if (row == 7 && (col == 0 || col == 7)) {
+                    BOARD[row][col] = new Rook(new Position(row, col), false);
                 } else {
                     BOARD[row][col] = new APiece() {
                         @Override
