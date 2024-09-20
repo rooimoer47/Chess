@@ -2,7 +2,7 @@ package main.java.pvt.phgg.chess;
 
 public class Position {
     private int row;
-    private final int col;
+    private int col;
 
     public Position (int row, int col) {
         this.row = row;
@@ -13,16 +13,24 @@ public class Position {
         return row;
     }
 
-    public int getCol() {
-        return col;
-    }
-
     public void incRow() {
         this.row++;
     }
 
     public void decRow() {
         this.row--;
+    }
+
+    public int getCol() {
+        return col;
+    }
+
+    public void incCol() {
+        this.col++;
+    }
+
+    public void decCol(int n) {
+        this.col = this.getCol() - n;
     }
 
     @Override

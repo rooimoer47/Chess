@@ -42,12 +42,15 @@ public class Pawn extends APiece{
     public List<Position> getValidPositions(APiece [][] board) {
         List<Position> moves = new ArrayList<>();
         Position newPos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
+        Position takePos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
 
-        // march
+        // moving
         if (isWhite()) {
             newPos.incRow();
+            takePos.incRow();
         } else {
             newPos.decRow();
+            takePos.decRow();
         }
 //        TODO take, promote, en passant
 
@@ -66,6 +69,16 @@ public class Pawn extends APiece{
             if (isOnBoard(newPos) && !isOccupied(board, newPos)) {
                 moves.add(new Position(newPos.getRow(), newPos.getCol()));
             }
+        }
+
+        // take
+        takePos.incCol();
+        if (isOnBoard(takePos) && isOccupied(board, takePos)) {
+            moves.add((new Position(takePos.getRow(), takePos.getCol())));
+        }
+        takePos.decCol(2);
+        if (isOnBoard(takePos) && isOccupied(board, takePos)) {
+            moves.add((new Position(takePos.getRow(), takePos.getCol())));
         }
 
         return moves;
