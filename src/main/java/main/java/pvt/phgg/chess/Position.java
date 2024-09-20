@@ -33,10 +33,6 @@ public class Position {
         this.col++;
     }
 
-    public void decCol(int n) {
-        this.col = this.getCol() - n;
-    }
-
     public void incCol(int n) {
         this.col+=n;
     }
