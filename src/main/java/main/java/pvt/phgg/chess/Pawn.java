@@ -73,11 +73,11 @@ public class Pawn extends APiece{
 
         // take
         takePos.incCol();
-        if (isOnBoard(takePos) && isOccupied(board, takePos)) {
+        if (isOnBoard(takePos) && isOccupied(board, takePos) && board[takePos.getRow()][takePos.getCol()].isWhite() != this.isWhite()) {
             moves.add((new Position(takePos.getRow(), takePos.getCol())));
         }
         takePos.decCol(2);
-        if (isOnBoard(takePos) && isOccupied(board, takePos)) {
+        if (isOnBoard(takePos) && isOccupied(board, takePos) && board[takePos.getRow()][takePos.getCol()].isWhite() != this.isWhite()) {
             moves.add((new Position(takePos.getRow(), takePos.getCol())));
         }
 
