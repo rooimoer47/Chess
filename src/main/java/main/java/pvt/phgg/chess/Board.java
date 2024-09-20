@@ -37,12 +37,16 @@ public class Board extends JFrame {
             for (int col = 0 ; col < BOARD_SIZE; col++) {
                 if (row == 0 && (col == 0 || col == 7)) {
                     BOARD[row][col] = new Rook(new Position(row, col), true);
+                } else if (row == 0 && (col == 2 || col == 5)) {
+                    BOARD[row][col] = new Bishop(new Position(row, col), true);
                 } else if (row == 1) {
                     BOARD[row][col] = new Pawn(new Position(row, col), true);
                 } else if (row == 6) {
                     BOARD[row][col] = new Pawn(new Position(row, col), false);
                 } else if (row == 7 && (col == 0 || col == 7)) {
                     BOARD[row][col] = new Rook(new Position(row, col), false);
+                } else if (row == 7 && (col == 2 || col == 5)) {
+                    BOARD[row][col] = new Bishop(new Position(row, col), false);
                 } else {
                     BOARD[row][col] = new APiece() {
                         @Override
