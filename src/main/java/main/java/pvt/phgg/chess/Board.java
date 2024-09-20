@@ -147,6 +147,14 @@ public class Board extends JFrame {
         System.out.println("Window size after pack: " + getWidth() + "x" + getHeight());
     }
 
+    public static boolean isOccupied(Position position) {
+        return BOARD[position.getRow()][position.getCol()].getImage() != null;
+    }
+
+    public static boolean isOnBoard(Position pos) {
+        return pos.getRow() >= 0 && pos.getRow() < 8 && pos.getCol() >= 0 && pos.getCol() < 8;
+    }
+
     @Override
     public Dimension getPreferredSize() {
         // make gui big enough

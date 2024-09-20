@@ -53,14 +53,6 @@ abstract class APiece {
         marked = false;
     }
 
-    boolean isOnBoard(Position pos) {
-        return pos.getRow() >= 0 && pos.getRow() < 8 && pos.getCol() >= 0 && pos.getCol() < 8;
-    }
-
-    public boolean isOccupied(APiece [][] board, Position position) {
-        return board[position.getRow()][position.getCol()].getImage() != null;
-    }
-
     public boolean isOriginalPosition() {
         return originalPosition;
     }

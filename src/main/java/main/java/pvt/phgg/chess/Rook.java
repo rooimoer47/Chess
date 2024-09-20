@@ -47,8 +47,8 @@ public class Rook extends APiece{
             newPos.incRow(direction[0]);
             newPos.incCol(direction[1]);
 
-            while (isOnBoard(newPos)) {
-                if (isOccupied(board, newPos)) {
+            while (Board.isOnBoard(newPos)) {
+                if (Board.isOccupied(newPos)) {
                     if (board[newPos.getRow()][newPos.getCol()].isWhite() != this.isWhite()) {
                         moves.add(new Position(newPos.getRow(), newPos.getCol()));
                     }
