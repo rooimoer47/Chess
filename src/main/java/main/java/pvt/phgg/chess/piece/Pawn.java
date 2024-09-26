@@ -1,4 +1,7 @@
-package main.java.pvt.phgg.chess;
+package main.java.pvt.phgg.chess.piece;
+
+import main.java.pvt.phgg.chess.Board;
+import main.java.pvt.phgg.chess.Position;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;

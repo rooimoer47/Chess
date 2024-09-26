@@ -1,5 +1,6 @@
 package main.java.pvt.phgg.chess;
 
+import main.java.pvt.phgg.chess.piece.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +21,7 @@ public class Board extends JFrame {
     private static final int SQUARE_SIZE_PIXELS = 50;
     private static final int BOARD_SIZE = 8;
 
-    private static final APiece [][] BOARD = new APiece[BOARD_SIZE][BOARD_SIZE];
+    private static final APiece[][] BOARD = new APiece[BOARD_SIZE][BOARD_SIZE];
 
     private static boolean PIECE_SELECTED = false;
     private static int PIECE_SELECTED_ROW = -1;

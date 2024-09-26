@@ -1,9 +1,11 @@
-package main.java.pvt.phgg.chess;
+package main.java.pvt.phgg.chess.piece;
+
+import main.java.pvt.phgg.chess.Position;
 
 import java.awt.image.BufferedImage;
 import java.util.List;
 
-abstract class APiece {
+public abstract class APiece {
     private Position position;
     private final boolean white;
     private boolean selected = false;
