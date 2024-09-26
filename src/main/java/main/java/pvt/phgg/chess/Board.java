@@ -37,11 +37,13 @@ public class Board extends JFrame {
             for (int col = 0 ; col < BOARD_SIZE; col++) {
                 if (row == 0 && (col == 0 || col == 7)) {
                     BOARD[row][col] = new Rook(new Position(row, col), true);
+                } else if (row == 0 && (col == 1 || col == 6)) {
+                    BOARD[row][col] = new Knight(new Position(row, col), true);
                 } else if (row == 0 && (col == 2 || col == 5)) {
                     BOARD[row][col] = new Bishop(new Position(row, col), true);
                 } else if (row == 0 && col == 3) {
                     BOARD[row][col] = new Queen(new Position(row, col), true);
-                } else if (row == 0 && col == 4) {
+                } else if (row == 0) {
                     BOARD[row][col] = new King(new Position(row, col), true);
                 } else if (row == 1) {
                     BOARD[row][col] = new Pawn(new Position(row, col), true);
@@ -49,11 +51,13 @@ public class Board extends JFrame {
                     BOARD[row][col] = new Pawn(new Position(row, col), false);
                 } else if (row == 7 && (col == 0 || col == 7)) {
                     BOARD[row][col] = new Rook(new Position(row, col), false);
+                } else if (row == 7 && (col == 1 || col == 6)) {
+                    BOARD[row][col] = new Knight(new Position(row, col), false);
                 } else if (row == 7 && (col == 2 || col == 5)) {
                     BOARD[row][col] = new Bishop(new Position(row, col), false);
                 } else if (row == 7 && col == 3) {
                     BOARD[row][col] = new Queen(new Position(row, col), false);
-                } else if (row == 7 && col == 4) {
+                } else if (row == 7) {
                     BOARD[row][col] = new King(new Position(row, col), false);
                 } else {
                     BOARD[row][col] = new APiece() {
