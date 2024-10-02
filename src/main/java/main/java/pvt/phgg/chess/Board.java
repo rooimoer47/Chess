@@ -34,7 +34,7 @@ public class Board extends JFrame {
         int frameSize = BOARD_SIZE * SQUARE_SIZE_PIXELS;
         setSize(frameSize, frameSize);
         setResizable(false);
-        for (int row = 0; row < BOARD_SIZE; row++) {
+        for (int row = BOARD_SIZE - 1; row >= 0; row--) {
             for (int col = 0 ; col < BOARD_SIZE; col++) {
                 if (row == 0 && (col == 0 || col == 7)) {
                     BOARD[row][col] = new Rook(new Position(row, col), true);
