@@ -27,9 +27,12 @@ public class Board extends JFrame {
     private static int PIECE_SELECTED_ROW = -1;
     private static int PIECE_SELECTED_COL = -1;
 
-    public Board(String title) {
+    private Player currentPlayer;
+
+    public Board(String title, Player whitePlayer, Player blackPlayer) {
         super(title);
         LOGGER.trace("Initializing board");
+        this.currentPlayer = whitePlayer;
         setLayout(new GridLayout(BOARD_SIZE, BOARD_SIZE));
         int frameSize = BOARD_SIZE * SQUARE_SIZE_PIXELS;
         setSize(frameSize, frameSize);
@@ -103,7 +106,7 @@ public class Board extends JFrame {
                     public void mouseClicked(MouseEvent e) {
                         System.out.println("clicked row " + finalRow + " col " + finalCol);
                         if (PIECE_SELECTED) {
-                            // a piece was selected, so move it
+                            // second click: a piece was selected, so move it
                             APiece selectedPiece = BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL];
                             List<Position> moves = selectedPiece.getValidPositions(BOARD);
                             Position selectedPosition = new Position(finalRow, finalCol);
@@ -126,6 +129,7 @@ public class Board extends JFrame {
                                     };
                                     repaint();
                                     BOARD[finalRow][finalCol].setCurrentPosition(selectedPosition);
+                                    currentPlayer = currentPlayer.isWhite() ? blackPlayer : whitePlayer;
                                     break;
                                 }
                             }
@@ -141,8 +145,8 @@ public class Board extends JFrame {
                             PIECE_SELECTED = false;
                         }
                         else {
-                            // no piece selected before click, so select it if it is a piece
-                            if (BOARD[finalRow][finalCol].getImage() != null) {
+                            // first click: no piece selected before click, so select it if it is a piece
+                            if (BOARD[finalRow][finalCol].getImage() != null && BOARD[finalRow][finalCol].isWhite() == currentPlayer.isWhite()) {
                                 BOARD[finalRow][finalCol].toggleSelected();
                                 List<Position> moves = BOARD[finalRow][finalCol].getValidPositions(BOARD);
                                 for (Position pos : moves) {
