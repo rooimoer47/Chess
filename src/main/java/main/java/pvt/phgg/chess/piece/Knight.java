@@ -51,9 +51,9 @@ public class Knight extends APiece{
             newPos.incCol(direction[1]);
 
             if (Board.isOnBoard(newPos)) {
-                if (Board.isOccupied(newPos) && (board[newPos.getRow()][newPos.getCol()].isWhite() != this.isWhite())) {
+                if (Board.isOccupied(board, newPos) && (board[newPos.getRow()][newPos.getCol()].isWhite() != this.isWhite())) {
                     moves.add(new Position(newPos.getRow(), newPos.getCol()));
-                } else if (!Board.isOccupied(newPos)) {
+                } else if (!Board.isOccupied(board, newPos)) {
                     moves.add(new Position(newPos.getRow(), newPos.getCol()));
                 }
             }

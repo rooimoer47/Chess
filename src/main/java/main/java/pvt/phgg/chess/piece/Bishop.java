@@ -51,7 +51,7 @@ public class Bishop extends APiece{
             newPos.incCol(direction[1]);
 
             while (Board.isOnBoard(newPos)) {
-                if (Board.isOccupied(newPos)) {
+                if (Board.isOccupied(board, newPos)) {
                     if (board[newPos.getRow()][newPos.getCol()].isWhite() != this.isWhite()) {
                         moves.add(new Position(newPos.getRow(), newPos.getCol()));
                     }

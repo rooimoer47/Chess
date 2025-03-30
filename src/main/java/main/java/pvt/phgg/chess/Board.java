@@ -64,7 +64,7 @@ public class Board extends JFrame {
                 } else if (row == 7) {
                     BOARD[row][col] = new King(new Position(row, col), false);
                 } else {
-                    BOARD[row][col] = new APiece() {
+                    BOARD[row][col] = new APiece(new Position(row, col)) {
                         @Override
                         public BufferedImage getImage() {
                             return null;
@@ -108,27 +108,14 @@ public class Board extends JFrame {
                         if (PIECE_SELECTED) {
                             // second click: a piece was selected, so move it
                             APiece selectedPiece = BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL];
-                            List<Position> moves = selectedPiece.getValidPositions(BOARD);
+                            List<Position> moves = selectedPiece.getRealPositions(BOARD);
                             Position selectedPosition = new Position(finalRow, finalCol);
 
                             for (Position pos : moves) {
                                 if (pos.equals(selectedPosition)) {
                                     // found valid move
-                                    BOARD[finalRow][finalCol] = selectedPiece;
-                                    BOARD[finalRow][finalCol].moved();
-                                    BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL] = new APiece() {
-                                        @Override
-                                        public BufferedImage getImage() {
-                                            return null;
-                                        }
-
-                                        @Override
-                                        public List<Position> getValidPositions(APiece[][] board) {
-                                            return null;
-                                        }
-                                    };
+                                    move(selectedPiece, selectedPiece.getCurrentPosition(), selectedPosition);
                                     repaint();
-                                    BOARD[finalRow][finalCol].setCurrentPosition(selectedPosition);
                                     currentPlayer = currentPlayer.isWhite() ? blackPlayer : whitePlayer;
                                     break;
                                 }
@@ -148,7 +135,7 @@ public class Board extends JFrame {
                             // first click: no piece selected before click, so select it if it is a piece
                             if (BOARD[finalRow][finalCol].getImage() != null && BOARD[finalRow][finalCol].isWhite() == currentPlayer.isWhite()) {
                                 BOARD[finalRow][finalCol].toggleSelected();
-                                List<Position> moves = BOARD[finalRow][finalCol].getValidPositions(BOARD);
+                                List<Position> moves = BOARD[finalRow][finalCol].getRealPositions(BOARD);
                                 for (Position pos : moves) {
                                     BOARD[pos.getRow()][pos.getCol()].mark();
                                 }
@@ -168,8 +155,8 @@ public class Board extends JFrame {
         System.out.println("Window size after pack: " + getWidth() + "x" + getHeight());
     }
 
-    public static boolean isOccupied(Position position) {
-        return BOARD[position.getRow()][position.getCol()].getImage() != null;
+    public static boolean isOccupied(APiece[][] board, Position position) {
+        return board[position.getRow()][position.getCol()].getImage() != null;
     }
 
     public static boolean isOnBoard(Position pos) {
@@ -180,5 +167,36 @@ public class Board extends JFrame {
     public Dimension getPreferredSize() {
         // make gui big enough
         return new Dimension(SQUARE_SIZE_PIXELS * 9, HEIGHT * 9);
+    }
+
+    public static void move(APiece piece, Position from, Position to) {
+        BOARD[to.getRow()][to.getCol()] = piece;
+        BOARD[to.getRow()][to.getCol()].moved();
+        BOARD[from.getRow()][from.getCol()] = new APiece(new Position(from.getRow(), from.getCol())) {
+            @Override
+            public BufferedImage getImage() {
+                return null;
+            }
+
+            @Override
+            public List<Position> getValidPositions(APiece[][] board) {
+                return null;
+            }
+
+        };
+        BOARD[to.getRow()][to.getCol()].setCurrentPosition(to);
+    }
+
+    public static APiece[][] deepCopy() {
+        APiece[][] copy = new APiece[BOARD.length][];
+
+        for (int i = 0; i < BOARD.length; i++) {
+            copy[i] = new APiece[BOARD[i].length];
+            for (int j = 0; j < BOARD[i].length; j++) {
+                copy[i][j] = BOARD[i][j].clone();
+            }
+        }
+
+        return copy;
     }
 }

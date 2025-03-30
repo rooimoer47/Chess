@@ -57,7 +57,7 @@ public class Pawn extends APiece{
         }
 //        TODO promote, en passant
 
-        if (Board.isOnBoard(newPos) && !Board.isOccupied(newPos)) {
+        if (Board.isOnBoard(newPos) && !Board.isOccupied(board, newPos)) {
             moves.add(new Position(newPos.getRow(), newPos.getCol()));
         }
 
@@ -69,18 +69,18 @@ public class Pawn extends APiece{
                 newPos.decRow();
             }
 
-            if (Board.isOnBoard(newPos) && !Board.isOccupied(newPos)) {
+            if (Board.isOnBoard(newPos) && !Board.isOccupied(board, newPos)) {
                 moves.add(new Position(newPos.getRow(), newPos.getCol()));
             }
         }
 
         // take
         takePos.incCol();
-        if (Board.isOnBoard(takePos) && Board.isOccupied(takePos) && board[takePos.getRow()][takePos.getCol()].isWhite() != this.isWhite()) {
+        if (Board.isOnBoard(takePos) && Board.isOccupied(board, takePos) && board[takePos.getRow()][takePos.getCol()].isWhite() != this.isWhite()) {
             moves.add((new Position(takePos.getRow(), takePos.getCol())));
         }
         takePos.incCol(-2);
-        if (Board.isOnBoard(takePos) && Board.isOccupied(takePos) && board[takePos.getRow()][takePos.getCol()].isWhite() != this.isWhite()) {
+        if (Board.isOnBoard(takePos) && Board.isOccupied(board, takePos) && board[takePos.getRow()][takePos.getCol()].isWhite() != this.isWhite()) {
             moves.add((new Position(takePos.getRow(), takePos.getCol())));
         }
 
