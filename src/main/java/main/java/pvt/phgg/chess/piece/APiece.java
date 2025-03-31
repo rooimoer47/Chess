@@ -92,30 +92,27 @@ public abstract class APiece implements Cloneable{
     public List<Position> getRealPositions(APiece[][] board) {
         List<Position> validPositions = this.getValidPositions(board);
         List<Position> realPositions = new ArrayList<>();
-        if (isInCheck(board)) {
-            for (Position pos : validPositions) {
-                APiece[][] nepBoard = Board.deepCopy();
-                nepBoard[pos.getRow()][pos.getCol()] = this.clone();
-                nepBoard[this.position.getRow()][this.position.getCol()] = new APiece(new Position(this.position.getRow(), this.position.getCol())) {
-                    @Override
-                    public BufferedImage getImage() {
-                        return null;
-                    }
-
-                    @Override
-                    public List<Position> getValidPositions(APiece[][] board) {
-                        return null;
-                    }
-
-                };
-                nepBoard[pos.getRow()][pos.getCol()].setCurrentPosition(pos);
-                if (!this.isInCheck(nepBoard)) {
-                    realPositions.add(new Position(pos.getRow(), pos.getCol()));
+        for (Position pos : validPositions) {
+            APiece[][] nepBoard = Board.deepCopy();
+            nepBoard[pos.getRow()][pos.getCol()] = this.clone();
+            nepBoard[this.position.getRow()][this.position.getCol()] = new APiece(new Position(this.position.getRow(), this.position.getCol())) {
+                @Override
+                public BufferedImage getImage() {
+                    return null;
                 }
+
+                @Override
+                public List<Position> getValidPositions(APiece[][] board) {
+                    return null;
+                }
+
+            };
+            nepBoard[pos.getRow()][pos.getCol()].setCurrentPosition(pos);
+            if (!this.isInCheck(nepBoard)) {
+                realPositions.add(new Position(pos.getRow(), pos.getCol()));
             }
-            return realPositions;
         }
-        return validPositions;
+        return realPositions;
     }
 
     @Override
