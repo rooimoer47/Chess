@@ -73,6 +73,10 @@ public abstract class APiece implements Cloneable{
         return false;
     }
 
+    public boolean isPawn() {
+        return false;
+    }
+
     public boolean isInCheck(APiece [][] board) {
         for (APiece [] row : board) {
             for (APiece square : row) {
@@ -109,7 +113,7 @@ public abstract class APiece implements Cloneable{
             };
             nepBoard[pos.getRow()][pos.getCol()].setCurrentPosition(pos);
             if (!this.isInCheck(nepBoard)) {
-                realPositions.add(new Position(pos.getRow(), pos.getCol()));
+                realPositions.add(pos);
             }
         }
         return realPositions;

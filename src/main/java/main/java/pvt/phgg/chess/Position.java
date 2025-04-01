@@ -3,10 +3,18 @@ package main.java.pvt.phgg.chess;
 public class Position {
     private int row;
     private int col;
+    private boolean enPassant;
 
     public Position (int row, int col) {
         this.row = row;
         this.col = col;
+        this.enPassant = false;
+    }
+
+    public Position (int row, int col, boolean enPassant) {
+        this.row = row;
+        this.col = col;
+        this.enPassant = enPassant;
     }
 
     public int getRow() {
@@ -35,6 +43,10 @@ public class Position {
 
     public void incCol(int n) {
         this.col+=n;
+    }
+
+    public boolean isEnPassant() {
+        return this.enPassant;
     }
 
     @Override

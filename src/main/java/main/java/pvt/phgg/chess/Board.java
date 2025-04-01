@@ -114,7 +114,7 @@ public class Board extends JFrame {
                             for (Position pos : moves) {
                                 if (pos.equals(selectedPosition)) {
                                     // found valid move
-                                    move(selectedPiece, selectedPiece.getCurrentPosition(), selectedPosition);
+                                    move(selectedPiece, selectedPiece.getCurrentPosition(), pos);
                                     repaint();
                                     currentPlayer = currentPlayer.isWhite() ? blackPlayer : whitePlayer;
                                     break;
@@ -172,7 +172,25 @@ public class Board extends JFrame {
     public static void move(APiece piece, Position from, Position to) {
         BOARD[to.getRow()][to.getCol()] = piece;
         BOARD[to.getRow()][to.getCol()].moved();
-        BOARD[from.getRow()][from.getCol()] = new APiece(new Position(from.getRow(), from.getCol())) {
+        clear(from);
+        if (to.isEnPassant()) {
+            if (to.getRow() == 2) {
+                clear(new Position(to.getRow()+1, to.getCol()));
+            } else {
+                clear(new Position(to.getRow()-1, to.getCol()));
+            }
+        }
+        BOARD[to.getRow()][to.getCol()].setCurrentPosition(to);
+        if (piece.isPawn() && Math.abs(from.getRow() - to.getRow()) == 2) {
+            ((Pawn) piece).setJumped();
+        } else if (piece.isPawn()) {
+            ((Pawn) piece).unsetJumped();
+        }
+    }
+
+    public static void clear(Position pos) {
+        System.out.println("clearing row " + pos.getRow() + " col " + pos.getCol());
+        BOARD[pos.getRow()][pos.getCol()] = new APiece(new Position(pos.getRow(), pos.getCol())) {
             @Override
             public BufferedImage getImage() {
                 return null;
@@ -182,9 +200,7 @@ public class Board extends JFrame {
             public List<Position> getValidPositions(APiece[][] board) {
                 return null;
             }
-
         };
-        BOARD[to.getRow()][to.getCol()].setCurrentPosition(to);
     }
 
     public static APiece[][] deepCopy() {

@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Pawn extends APiece{
+    private boolean jumped = false;
+
     public Pawn(Position position, boolean white) {
         super(position, white);
     }
@@ -46,6 +48,7 @@ public class Pawn extends APiece{
         List<Position> moves = new ArrayList<>();
         Position newPos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
         Position takePos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
+        Position enPassantPos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
 
         // moving
         if (isWhite()) {
@@ -55,7 +58,7 @@ public class Pawn extends APiece{
             newPos.decRow();
             takePos.decRow();
         }
-//        TODO promote, en passant
+//        TODO promote
 
         if (Board.isOnBoard(newPos) && !Board.isOccupied(board, newPos)) {
             moves.add(new Position(newPos.getRow(), newPos.getCol()));
@@ -84,6 +87,52 @@ public class Pawn extends APiece{
             moves.add((new Position(takePos.getRow(), takePos.getCol())));
         }
 
+        // en passant
+        enPassantPos.incCol();
+        if (Board.isOnBoard(enPassantPos) &&
+            Board.isOccupied(board, enPassantPos) &&
+            board[enPassantPos.getRow()][enPassantPos.getCol()].isWhite() != this.isWhite() &&
+            board[enPassantPos.getRow()][enPassantPos.getCol()].isPawn() &&
+            ((Pawn)board[enPassantPos.getRow()][enPassantPos.getCol()]).isJumped()) {
+            Position move = new Position(enPassantPos.getRow(), enPassantPos.getCol(), true);
+            if (isWhite()) {
+                move.incRow();
+            } else {
+                move.decRow();
+            }
+            moves.add(move);
+        }
+        enPassantPos.incCol(-2);
+        if (Board.isOnBoard(enPassantPos) &&
+                Board.isOccupied(board, enPassantPos) &&
+                board[enPassantPos.getRow()][enPassantPos.getCol()].isWhite() != this.isWhite() &&
+                board[enPassantPos.getRow()][enPassantPos.getCol()].isPawn() &&
+                ((Pawn)board[enPassantPos.getRow()][enPassantPos.getCol()]).isJumped()) {
+            Position move = new Position(enPassantPos.getRow(), enPassantPos.getCol(), true);
+            if (isWhite()) {
+                move.incRow();
+            } else {
+                move.decRow();
+            }
+            moves.add(move);
+        }
+
         return moves;
+    }
+
+    public boolean isPawn() {
+        return true;
+    }
+
+    public void setJumped() {
+        jumped = true;
+    }
+
+    public void unsetJumped() {
+        jumped = false;
+    }
+
+    public boolean isJumped() {
+        return jumped;
     }
 }
