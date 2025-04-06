@@ -58,7 +58,6 @@ public class Pawn extends APiece{
             newPos.decRow();
             takePos.decRow();
         }
-//        TODO promote
 
         if (Board.isOnBoard(newPos) && !Board.isOccupied(board, newPos)) {
             moves.add(new Position(newPos.getRow(), newPos.getCol()));

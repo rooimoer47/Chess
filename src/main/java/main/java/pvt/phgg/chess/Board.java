@@ -12,6 +12,8 @@ import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
@@ -120,6 +122,18 @@ public class Board extends JFrame {
                                     break;
                                 }
                             }
+
+                            if (selectedPiece.isPawn() && ((selectedPiece.isWhite() && finalRow == 7) || (!selectedPiece.isWhite() && finalRow == 0))) {
+                                Promo promo = new Promo(selectedPosition, selectedPiece.isWhite());
+                                promo.addWindowListener(new WindowAdapter() {
+                                    @Override
+                                    public void windowClosed(WindowEvent e) {
+                                        repaint();
+                                    }
+                                });
+                                promo.setVisible(true);
+                            }
+
                             selectedPiece.toggleSelected();
                             for (int row = 0; row < BOARD_SIZE; row++) {
                                 for (int col = 0; col < BOARD_SIZE; col++) {
@@ -232,5 +246,40 @@ public class Board extends JFrame {
         }
 
         return copy;
+    }
+
+    static class Promo extends JFrame {
+        private static final APiece[] OPTIONS = new APiece[4];
+        public Promo(Position pos, boolean isWhite) {
+            super();
+            this.setLayout(new GridLayout(1, 4));
+            setSize(200, 100);
+            setResizable(false);
+            OPTIONS[0] = new Knight(pos, isWhite);
+            OPTIONS[1] = new Bishop(pos, isWhite);
+            OPTIONS[2] = new Rook(pos, isWhite);
+            OPTIONS[3] = new Queen(pos, isWhite);
+            for (APiece option : OPTIONS) {
+                JPanel square = new JPanel() {
+                    @Override
+                    protected void paintComponent(Graphics g) {
+                        super.paintComponent(g);
+                        g.setColor(Color.GRAY);
+                        g.fillRect(0, 0, getWidth(), getHeight());
+                        g.drawImage(option.getImage(), 0, 0, getWidth(), getHeight(), this);
+                    }
+                };
+                square.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        BOARD[pos.getRow()][pos.getCol()] = option;
+                        dispose();
+                    }
+                });
+                square.setPreferredSize(new Dimension(SQUARE_SIZE_PIXELS, SQUARE_SIZE_PIXELS));
+                add(square);
+            }
+            setLocationRelativeTo(null);
+        }
     }
 }
