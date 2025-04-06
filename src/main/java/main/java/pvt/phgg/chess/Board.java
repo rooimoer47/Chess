@@ -155,8 +155,17 @@ public class Board extends JFrame {
         System.out.println("Window size after pack: " + getWidth() + "x" + getHeight());
     }
 
-    public static boolean isOccupied(APiece[][] board, Position position) {
-        return board[position.getRow()][position.getCol()].getImage() != null;
+    public static boolean isOccupied(APiece[][] board, Position pos) {
+        return board[pos.getRow()][pos.getCol()].getImage() != null;
+    }
+
+    public static boolean isUnOccupied(List<Position> positions) {
+        for (Position pos : positions) {
+            if (isOccupied(BOARD, pos)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static boolean isOnBoard(Position pos) {
@@ -178,6 +187,15 @@ public class Board extends JFrame {
                 clear(new Position(to.getRow()+1, to.getCol()));
             } else {
                 clear(new Position(to.getRow()-1, to.getCol()));
+            }
+        }
+        if (to.isCastle()) {
+            if (to.getCol() > 4) {
+                APiece rook = BOARD[to.getRow()][7];
+                move(rook, rook.getCurrentPosition(), new Position(to.getRow(), to.getCol()-1));
+            } else {
+                APiece rook = BOARD[to.getRow()][0];
+                move(rook, rook.getCurrentPosition(), new Position(to.getRow(), to.getCol()+1));
             }
         }
         BOARD[to.getRow()][to.getCol()].setCurrentPosition(to);

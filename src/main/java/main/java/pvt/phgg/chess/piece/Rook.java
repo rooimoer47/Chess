@@ -65,4 +65,8 @@ public class Rook extends APiece{
 
         return moves;
     }
+
+    public boolean isRook() {
+        return true;
+    }
 }

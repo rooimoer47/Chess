@@ -73,6 +73,10 @@ public abstract class APiece implements Cloneable{
         return false;
     }
 
+    public boolean isRook() {
+        return false;
+    }
+
     public boolean isPawn() {
         return false;
     }
@@ -80,7 +84,7 @@ public abstract class APiece implements Cloneable{
     public boolean isInCheck(APiece [][] board) {
         for (APiece [] row : board) {
             for (APiece square : row) {
-                if (square.isPositionOccupied() && (square.isWhite() != this.isWhite())) {
+                if (square.isPositionOccupied() && (square.isWhite() != this.isWhite()) && !square.isKing()) {
                     List<Position> opponentPositions = square.getValidPositions(board);
                     for (Position position : opponentPositions) {
                         if (board[position.getRow()][position.getCol()].isPositionOccupied() && board[position.getRow()][position.getCol()].isKing()) {
@@ -91,6 +95,30 @@ public abstract class APiece implements Cloneable{
             }
         }
         return false;
+    }
+
+    public boolean arePositionsSafe(APiece [][] board, List<Position> posList, boolean KingCastleWhite) {
+        for (APiece [] row : board) {
+            for (APiece square : row) {
+                if (square.isPositionOccupied() && (square.isWhite() != KingCastleWhite)) {
+                    List<Position> opponentPositions;
+                    if (square.isKing()) {
+                        opponentPositions = ((King)square).getKingMovements(board);
+                    } else {
+                        opponentPositions = square.getRealPositions(board);
+                    }
+
+                    for (Position position : opponentPositions) {
+                        for (Position castlePos : posList) {
+                            if (position.equals(castlePos)) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     public List<Position> getRealPositions(APiece[][] board) {

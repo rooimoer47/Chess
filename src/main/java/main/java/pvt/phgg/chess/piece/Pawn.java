@@ -94,7 +94,7 @@ public class Pawn extends APiece{
             board[enPassantPos.getRow()][enPassantPos.getCol()].isWhite() != this.isWhite() &&
             board[enPassantPos.getRow()][enPassantPos.getCol()].isPawn() &&
             ((Pawn)board[enPassantPos.getRow()][enPassantPos.getCol()]).isJumped()) {
-            Position move = new Position(enPassantPos.getRow(), enPassantPos.getCol(), true);
+            Position move = new Position(enPassantPos.getRow(), enPassantPos.getCol(), Position.SpecialMove.ENPASSANT);
             if (isWhite()) {
                 move.incRow();
             } else {
@@ -108,7 +108,7 @@ public class Pawn extends APiece{
                 board[enPassantPos.getRow()][enPassantPos.getCol()].isWhite() != this.isWhite() &&
                 board[enPassantPos.getRow()][enPassantPos.getCol()].isPawn() &&
                 ((Pawn)board[enPassantPos.getRow()][enPassantPos.getCol()]).isJumped()) {
-            Position move = new Position(enPassantPos.getRow(), enPassantPos.getCol(), true);
+            Position move = new Position(enPassantPos.getRow(), enPassantPos.getCol(), Position.SpecialMove.ENPASSANT);
             if (isWhite()) {
                 move.incRow();
             } else {

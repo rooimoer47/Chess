@@ -3,18 +3,33 @@ package main.java.pvt.phgg.chess;
 public class Position {
     private int row;
     private int col;
-    private boolean enPassant;
+    private final boolean enPassant;
+    private final boolean castle;
 
     public Position (int row, int col) {
         this.row = row;
         this.col = col;
         this.enPassant = false;
+        this.castle = false;
     }
 
-    public Position (int row, int col, boolean enPassant) {
+    public Position (int row, int col, SpecialMove move) {
         this.row = row;
         this.col = col;
-        this.enPassant = enPassant;
+        switch (move) {
+            case ENPASSANT -> {
+                this.enPassant = true;
+                this.castle = false;
+            }
+            case CASTLE -> {
+                this.enPassant = false;
+                this.castle = true;
+            }
+            default -> {
+                this.enPassant = false;
+                this.castle = false;
+            }
+        }
     }
 
     public int getRow() {
@@ -49,11 +64,20 @@ public class Position {
         return this.enPassant;
     }
 
+    public boolean isCastle() {
+        return this.castle;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Position position = (Position) o;
         return row == position.row && col == position.col;
+    }
+
+    public enum SpecialMove {
+        ENPASSANT,
+        CASTLE
     }
 }

@@ -41,8 +41,7 @@ public class King extends APiece{
         }
     }
 
-    @Override
-    public List<Position> getValidPositions(APiece[][] board) {
+    public List<Position> getKingMovements(APiece[][] board) {
         List<Position> moves = new ArrayList<>();
         int[][] directions = {{1, 1}, {1, 0}, {1, -1}, {0, 1}, {0, -1}, {-1, 1}, {-1, 0}, {-1, -1}};
         for (int[] direction : directions) {
@@ -51,11 +50,57 @@ public class King extends APiece{
             newPos.incCol(direction[1]);
 
             if (Board.isOnBoard(newPos)) {
-                if (Board.isOccupied(board, newPos) && (board[newPos.getRow()][newPos.getCol()].isWhite() != this.isWhite())) {
+                if (Board.isOccupied(board, newPos) &&
+                        (board[newPos.getRow()][newPos.getCol()].isWhite() != this.isWhite())) {
                     moves.add(new Position(newPos.getRow(), newPos.getCol()));
                 } else if (!Board.isOccupied(board, newPos)) {
                     moves.add(new Position(newPos.getRow(), newPos.getCol()));
                 }
+            }
+        }
+        return moves;
+    }
+
+    @Override
+    public List<Position> getValidPositions(APiece[][] board) {
+        List<Position> moves = getKingMovements(board);
+
+        // castle
+        if (this.isOriginalPosition()) {
+            int kingRow = this.getCurrentPosition().getRow();
+            int kingCol = this.getCurrentPosition().getCol();
+            Position rookPos = new Position(kingRow, 0);
+            List<Position> betweenSquares = new ArrayList<>();
+            List<Position> kingSquares = List.of(
+                    this.getCurrentPosition(),
+                    new Position(kingRow, kingCol-1),
+                    new Position(kingRow, kingCol-2));
+            for (int col=1; col<kingCol; col++) {
+                betweenSquares.add(new Position(kingRow, col));
+            }
+            if (Board.isOccupied(board, rookPos) &&
+                    board[rookPos.getRow()][rookPos.getCol()].isRook() &&
+                    board[rookPos.getRow()][rookPos.getCol()].isOriginalPosition() &&
+                    Board.isUnOccupied(betweenSquares) &&
+                    arePositionsSafe(board, kingSquares , this.isWhite())) {
+                moves.add(new Position(kingRow, kingCol-2, Position.SpecialMove.CASTLE));
+            }
+
+            rookPos = new Position(kingRow, 7);
+            kingSquares = List.of(
+                    this.getCurrentPosition(),
+                    new Position(kingRow, kingCol+1),
+                    new Position(kingRow, kingCol+2));
+            betweenSquares.clear();
+            for (int col=6; col>kingCol; col--) {
+                betweenSquares.add(new Position(kingRow, col));
+            }
+            if (Board.isOccupied(board, rookPos) &&
+                    board[rookPos.getRow()][rookPos.getCol()].isRook() &&
+                    board[rookPos.getRow()][rookPos.getCol()].isOriginalPosition() &&
+                    Board.isUnOccupied(betweenSquares) &&
+                    arePositionsSafe(board, kingSquares , this.isWhite())) {
+                moves.add(new Position(kingRow, kingCol+2, Position.SpecialMove.CASTLE));
             }
         }
 
