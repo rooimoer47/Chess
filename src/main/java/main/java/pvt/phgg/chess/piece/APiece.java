@@ -81,22 +81,6 @@ public abstract class APiece implements Cloneable{
         return false;
     }
 
-    public boolean isInCheck(APiece [][] board) {
-        for (APiece [] row : board) {
-            for (APiece square : row) {
-                if (square.isPositionOccupied() && (square.isWhite() != this.isWhite()) && !square.isKing()) {
-                    List<Position> opponentPositions = square.getValidPositions(board);
-                    for (Position position : opponentPositions) {
-                        if (board[position.getRow()][position.getCol()].isPositionOccupied() && board[position.getRow()][position.getCol()].isKing()) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
     public boolean arePositionsSafe(APiece [][] board, List<Position> posList, boolean KingCastleWhite) {
         for (APiece [] row : board) {
             for (APiece square : row) {
@@ -140,7 +124,7 @@ public abstract class APiece implements Cloneable{
 
             };
             nepBoard[pos.getRow()][pos.getCol()].setCurrentPosition(pos);
-            if (!this.isInCheck(nepBoard)) {
+            if (!Board.isInCheck(nepBoard)) {
                 realPositions.add(pos);
             }
         }

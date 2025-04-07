@@ -29,12 +29,12 @@ public class Board extends JFrame {
     private static int PIECE_SELECTED_ROW = -1;
     private static int PIECE_SELECTED_COL = -1;
 
-    private Player currentPlayer;
+    private static Player currentPlayer;
 
     public Board(String title, Player whitePlayer, Player blackPlayer) {
         super(title);
         LOGGER.trace("Initializing board");
-        this.currentPlayer = whitePlayer;
+        currentPlayer = whitePlayer;
         setLayout(new GridLayout(BOARD_SIZE, BOARD_SIZE));
         int frameSize = BOARD_SIZE * SQUARE_SIZE_PIXELS;
         setSize(frameSize, frameSize);
@@ -119,7 +119,16 @@ public class Board extends JFrame {
                                     move(selectedPiece, selectedPiece.getCurrentPosition(), pos);
                                     repaint();
                                     currentPlayer = currentPlayer.isWhite() ? blackPlayer : whitePlayer;
-                                    break;
+                                    if (canMove()) {
+                                        break;
+                                    } else {
+                                        if (isInCheck()) {
+                                            System.out.println("Check Mate");
+                                        } else {
+                                            System.out.println("Draw");
+                                        }
+                                        System.exit(0);
+                                    }
                                 }
                             }
 
@@ -180,6 +189,37 @@ public class Board extends JFrame {
             }
         }
         return true;
+    }
+
+    private boolean canMove() {
+        for (APiece[] row : BOARD) {
+            for (APiece square : row) {
+                if (isOccupied(BOARD, square.getCurrentPosition()) && square.isWhite() == currentPlayer.isWhite() && !square.getRealPositions(BOARD).isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean isInCheck() {
+        return isInCheck(BOARD);
+    }
+
+    public static boolean isInCheck(APiece [][] board) {
+        for (APiece [] row : board) {
+            for (APiece square : row) {
+                if (square.isPositionOccupied() && square.isWhite() != currentPlayer.isWhite() && !square.isKing()) {
+                    List<Position> opponentPositions = square.getValidPositions(board);
+                    for (Position position : opponentPositions) {
+                        if (board[position.getRow()][position.getCol()].isPositionOccupied() && board[position.getRow()][position.getCol()].isKing()) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     public static boolean isOnBoard(Position pos) {
