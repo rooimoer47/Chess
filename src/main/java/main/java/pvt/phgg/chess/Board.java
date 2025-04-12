@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -196,12 +197,24 @@ public class Board extends JFrame {
 
         // Check if game is over
         if (!boardState.canMove(board, currentPlayer.isWhite())) {
+            String message;
+            String title = "Game Over";
             if (boardState.isInCheck(board, currentPlayer.isWhite())) {
-                LOGGER.info("Checkmate! {} player wins", currentPlayer.isWhite() ? "Black" : "White");
-                // TODO: Show game over dialog instead of exiting
+                String winner = currentPlayer.isWhite() ? "Black" : "White";
+                message = String.format("Checkmate! %s player wins.", winner);
+                LOGGER.info(message);
+                repaint();
+                JOptionPane.showMessageDialog(this,
+                        message,
+                        title,
+                        JOptionPane.INFORMATION_MESSAGE);
             } else {
-                LOGGER.info("Draw - stalemate");
-                // TODO: Show game over dialog instead of exiting
+                message = "Draw - Stalemate!";
+                LOGGER.info(message);
+                JOptionPane.showMessageDialog(this,
+                        message,
+                        title,
+                        JOptionPane.INFORMATION_MESSAGE);
             }
         }
     }
