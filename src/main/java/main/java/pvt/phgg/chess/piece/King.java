@@ -1,6 +1,6 @@
 package main.java.pvt.phgg.chess.piece;
 
-import main.java.pvt.phgg.chess.Board;
+import main.java.pvt.phgg.chess.BoardState;
 import main.java.pvt.phgg.chess.Position;
 
 import javax.imageio.ImageIO;
@@ -41,7 +41,7 @@ public class King extends APiece{
         }
     }
 
-    public List<Position> getKingMovements(APiece[][] board) {
+    public List<Position> getKingMovements(APiece[][] board, BoardState boardState) {
         List<Position> moves = new ArrayList<>();
         int[][] directions = {{1, 1}, {1, 0}, {1, -1}, {0, 1}, {0, -1}, {-1, 1}, {-1, 0}, {-1, -1}};
         for (int[] direction : directions) {
@@ -49,11 +49,11 @@ public class King extends APiece{
             newPos.incRow(direction[0]);
             newPos.incCol(direction[1]);
 
-            if (Board.isOnBoard(newPos)) {
-                if (Board.isOccupied(board, newPos) &&
+            if (boardState.isOnBoard(newPos)) {
+                if (boardState.isOccupied(board, newPos) &&
                         (board[newPos.getRow()][newPos.getCol()].isWhite() != this.isWhite())) {
                     moves.add(new Position(newPos.getRow(), newPos.getCol()));
-                } else if (!Board.isOccupied(board, newPos)) {
+                } else if (!boardState.isOccupied(board, newPos)) {
                     moves.add(new Position(newPos.getRow(), newPos.getCol()));
                 }
             }
@@ -62,8 +62,8 @@ public class King extends APiece{
     }
 
     @Override
-    public List<Position> getValidPositions(APiece[][] board) {
-        List<Position> moves = getKingMovements(board);
+    public List<Position> getValidPositions(APiece[][] board, BoardState boardState) {
+        List<Position> moves = getKingMovements(board, boardState);
 
         // castle
         if (this.isOriginalPosition()) {
@@ -78,11 +78,11 @@ public class King extends APiece{
             for (int col=1; col<kingCol; col++) {
                 betweenSquares.add(new Position(kingRow, col));
             }
-            if (Board.isOccupied(board, rookPos) &&
+            if (boardState.isOccupied(board, rookPos) &&
                     board[rookPos.getRow()][rookPos.getCol()].isRook() &&
                     board[rookPos.getRow()][rookPos.getCol()].isOriginalPosition() &&
-                    Board.isUnOccupied(betweenSquares) &&
-                    arePositionsSafe(board, kingSquares , this.isWhite())) {
+                    boardState.isUnOccupied(board, betweenSquares) &&
+                    boardState.arePositionsSafe(board, kingSquares , this.isWhite())) {
                 moves.add(new Position(kingRow, kingCol-2, Position.SpecialMove.CASTLE));
             }
 
@@ -95,11 +95,11 @@ public class King extends APiece{
             for (int col=6; col>kingCol; col--) {
                 betweenSquares.add(new Position(kingRow, col));
             }
-            if (Board.isOccupied(board, rookPos) &&
+            if (boardState.isOccupied(board, rookPos) &&
                     board[rookPos.getRow()][rookPos.getCol()].isRook() &&
                     board[rookPos.getRow()][rookPos.getCol()].isOriginalPosition() &&
-                    Board.isUnOccupied(betweenSquares) &&
-                    arePositionsSafe(board, kingSquares , this.isWhite())) {
+                    boardState.isUnOccupied(board, betweenSquares) &&
+                    boardState.arePositionsSafe(board, kingSquares , this.isWhite())) {
                 moves.add(new Position(kingRow, kingCol+2, Position.SpecialMove.CASTLE));
             }
         }

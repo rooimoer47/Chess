@@ -1,6 +1,7 @@
 package main.java.pvt.phgg.chess;
 
 import main.java.pvt.phgg.chess.piece.*;
+import main.java.pvt.phgg.chess.player.Player;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +16,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Board extends JFrame {
@@ -22,237 +24,240 @@ public class Board extends JFrame {
     private static final Logger LOGGER = LoggerFactory.getLogger(Board.class);
     private static final int SQUARE_SIZE_PIXELS = 50;
     private static final int BOARD_SIZE = 8;
+    private static final Color LIGHT_SQUARE_COLOR = Color.WHITE;
+    private static final Color DARK_SQUARE_COLOR = Color.BLACK;
+    private static final Color MARKER_COLOR = Color.BLUE;
 
-    private static final APiece[][] BOARD = new APiece[BOARD_SIZE][BOARD_SIZE];
+    private final APiece[][] board = new APiece[BOARD_SIZE][BOARD_SIZE];
+    private final BoardState boardState = new BoardState();
 
-    private static boolean PIECE_SELECTED = false;
-    private static int PIECE_SELECTED_ROW = -1;
-    private static int PIECE_SELECTED_COL = -1;
+    private boolean pieceSelected = false;
+    private int selectedRow = -1;
+    private int selectedCol = -1;
 
-    private static Player currentPlayer;
+    private Player currentPlayer;
+    private final Player whitePlayer;
+    private final Player blackPlayer;
 
     public Board(String title, Player whitePlayer, Player blackPlayer) {
         super(title);
         LOGGER.trace("Initializing board");
+        this.whitePlayer = whitePlayer;
+        this.blackPlayer = blackPlayer;
         currentPlayer = whitePlayer;
-        setLayout(new GridLayout(BOARD_SIZE, BOARD_SIZE));
-        int frameSize = BOARD_SIZE * SQUARE_SIZE_PIXELS;
-        setSize(frameSize, frameSize);
-        setResizable(false);
-        for (int row = BOARD_SIZE - 1; row >= 0; row--) {
-            for (int col = 0 ; col < BOARD_SIZE; col++) {
-                if (row == 0 && (col == 0 || col == 7)) {
-                    BOARD[row][col] = new Rook(new Position(row, col), true);
-                } else if (row == 0 && (col == 1 || col == 6)) {
-                    BOARD[row][col] = new Knight(new Position(row, col), true);
-                } else if (row == 0 && (col == 2 || col == 5)) {
-                    BOARD[row][col] = new Bishop(new Position(row, col), true);
-                } else if (row == 0 && col == 3) {
-                    BOARD[row][col] = new Queen(new Position(row, col), true);
-                } else if (row == 0) {
-                    BOARD[row][col] = new King(new Position(row, col), true);
-                } else if (row == 1) {
-                    BOARD[row][col] = new Pawn(new Position(row, col), true);
-                } else if (row == 6) {
-                    BOARD[row][col] = new Pawn(new Position(row, col), false);
-                } else if (row == 7 && (col == 0 || col == 7)) {
-                    BOARD[row][col] = new Rook(new Position(row, col), false);
-                } else if (row == 7 && (col == 1 || col == 6)) {
-                    BOARD[row][col] = new Knight(new Position(row, col), false);
-                } else if (row == 7 && (col == 2 || col == 5)) {
-                    BOARD[row][col] = new Bishop(new Position(row, col), false);
-                } else if (row == 7 && col == 3) {
-                    BOARD[row][col] = new Queen(new Position(row, col), false);
-                } else if (row == 7) {
-                    BOARD[row][col] = new King(new Position(row, col), false);
-                } else {
-                    BOARD[row][col] = new APiece(new Position(row, col)) {
-                        @Override
-                        public BufferedImage getImage() {
-                            return null;
-                        }
 
-                        @Override
-                        public List<Position> getValidPositions(APiece[][] board) {
-                            return null;
-                        }
-                    };
-                }
-                // paint
-                int finalRow = row;
-                int finalCol = col;
-                JPanel square = new JPanel() {
-                    @Override
-                    protected void paintComponent(Graphics g) {
-                        super.paintComponent(g);
-                        if ((finalRow + finalCol) % 2 == 0) {
-                            g.setColor(Color.WHITE);
-                        }
-                        else {
-                            g.setColor(Color.BLACK);
-                        }
-                        g.fillRect(0, 0, getWidth(), getHeight());
+        initializeBoard();
+        createBoardUI();
 
-                        if (BOARD[finalRow][finalCol].getImage() != null) {
-                            g.drawImage(BOARD[finalRow][finalCol].getImage(), 0, 0, getWidth(), getHeight(), this);
-                        }
-
-                        if (BOARD[finalRow][finalCol].isMarked()) {
-                            g.setColor(Color.BLUE);
-                            g.fillOval(getWidth()/2, getWidth()/2, getWidth()/10, getHeight()/10);
-                        }
-                    }
-                };
-                square.addMouseListener(new MouseAdapter() {
-                    @Override
-                    public void mouseClicked(MouseEvent e) {
-                        System.out.println("clicked row " + finalRow + " col " + finalCol);
-                        if (PIECE_SELECTED) {
-                            // second click: a piece was selected, so move it
-                            APiece selectedPiece = BOARD[PIECE_SELECTED_ROW][PIECE_SELECTED_COL];
-                            List<Position> moves = selectedPiece.getRealPositions(BOARD);
-                            Position selectedPosition = new Position(finalRow, finalCol);
-
-                            for (Position pos : moves) {
-                                if (pos.equals(selectedPosition)) {
-                                    // found valid move
-                                    move(selectedPiece, selectedPiece.getCurrentPosition(), pos);
-                                    repaint();
-                                    currentPlayer = currentPlayer.isWhite() ? blackPlayer : whitePlayer;
-                                    if (canMove()) {
-                                        break;
-                                    } else {
-                                        if (isInCheck()) {
-                                            System.out.println("Check Mate");
-                                        } else {
-                                            System.out.println("Draw");
-                                        }
-                                        System.exit(0);
-                                    }
-                                }
-                            }
-
-                            if (selectedPiece.isPawn() && ((selectedPiece.isWhite() && finalRow == 7) || (!selectedPiece.isWhite() && finalRow == 0))) {
-                                Promo promo = new Promo(selectedPosition, selectedPiece.isWhite());
-                                promo.addWindowListener(new WindowAdapter() {
-                                    @Override
-                                    public void windowClosed(WindowEvent e) {
-                                        repaint();
-                                    }
-                                });
-                                promo.setVisible(true);
-                            }
-
-                            selectedPiece.toggleSelected();
-                            for (int row = 0; row < BOARD_SIZE; row++) {
-                                for (int col = 0; col < BOARD_SIZE; col++) {
-                                    BOARD[row][col].unMark();
-                                }
-                            }
-                            repaint();
-                            PIECE_SELECTED_ROW = -1;
-                            PIECE_SELECTED_COL = -1;
-                            PIECE_SELECTED = false;
-                        }
-                        else {
-                            // first click: no piece selected before click, so select it if it is a piece
-                            if (BOARD[finalRow][finalCol].getImage() != null && BOARD[finalRow][finalCol].isWhite() == currentPlayer.isWhite()) {
-                                BOARD[finalRow][finalCol].toggleSelected();
-                                List<Position> moves = BOARD[finalRow][finalCol].getRealPositions(BOARD);
-                                for (Position pos : moves) {
-                                    BOARD[pos.getRow()][pos.getCol()].mark();
-                                }
-                                repaint();
-                                PIECE_SELECTED_ROW = finalRow;
-                                PIECE_SELECTED_COL = finalCol;
-                                PIECE_SELECTED = true;
-                            }
-                        }
-                    }
-                });
-                square.setPreferredSize(new Dimension(SQUARE_SIZE_PIXELS, SQUARE_SIZE_PIXELS));
-                add(square);
-            }
-        }
         setLocationRelativeTo(null);
         System.out.println("Window size after pack: " + getWidth() + "x" + getHeight());
     }
 
-    public static boolean isOccupied(APiece[][] board, Position pos) {
-        return board[pos.getRow()][pos.getCol()].getImage() != null;
-    }
+    private void initializeBoard() {
+        board[0][0] = new Rook(new Position(0, 0), true);
+        board[0][7] = new Rook(new Position(0, 7), true);
+        board[0][1] = new Knight(new Position(0, 1), true);
+        board[0][6] = new Knight(new Position(0, 6), true);
+        board[0][2] = new Bishop(new Position(0, 2), true);
+        board[0][5] = new Bishop(new Position(0, 5), true);
+        board[0][3] = new Queen(new Position(0, 3), true);
+        board[0][4] = new King(new Position(0, 4), true);
 
-    public static boolean isUnOccupied(List<Position> positions) {
-        for (Position pos : positions) {
-            if (isOccupied(BOARD, pos)) {
-                return false;
+        for (int col = 0; col < BOARD_SIZE; col++) {
+            board[1][col] = new Pawn(new Position(1, col), true);
+        }
+
+        for (int row = 2; row < 6; row++) {
+            for (int col = 0; col < BOARD_SIZE; col++) {
+                board[row][col] = createEmptyPiece(row, col);
             }
         }
-        return true;
+
+        for (int col = 0; col < BOARD_SIZE; col++) {
+            board[6][col] = new Pawn(new Position(6, col), false);
+        }
+
+        board[7][0] = new Rook(new Position(7, 0), false);
+        board[7][7] = new Rook(new Position(7, 7), false);
+        board[7][1] = new Knight(new Position(7, 1), false);
+        board[7][6] = new Knight(new Position(7, 6), false);
+        board[7][2] = new Bishop(new Position(7, 2), false);
+        board[7][5] = new Bishop(new Position(7, 5), false);
+        board[7][3] = new Queen(new Position(7, 3), false);
+        board[7][4] = new King(new Position(7, 4), false);
     }
 
-    private boolean canMove() {
-        for (APiece[] row : BOARD) {
-            for (APiece square : row) {
-                if (isOccupied(BOARD, square.getCurrentPosition()) && square.isWhite() == currentPlayer.isWhite() && !square.getRealPositions(BOARD).isEmpty()) {
-                    return true;
+    private void createBoardUI() {
+        setLayout(new GridLayout(BOARD_SIZE, BOARD_SIZE));
+        int frameSize = BOARD_SIZE * SQUARE_SIZE_PIXELS;
+        setSize(frameSize, frameSize);
+        setResizable(false);
+
+        for (int row = BOARD_SIZE - 1; row >= 0; row--) {
+            for (int col = 0; col < BOARD_SIZE; col++) {
+                add(createSquarePanel(row, col));
+            }
+        }
+    }
+
+    private JPanel createSquarePanel(int row, int col) {
+        JPanel square = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+
+                g.setColor((row + col) % 2 == 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
+                g.fillRect(0, 0, getWidth(), getHeight());
+
+                BufferedImage image = board[row][col].getImage();
+                if (image != null) {
+                    g.drawImage(image, 0, 0, getWidth(), getHeight(), this);
+                }
+
+                if (board[row][col].isMarked()) {
+                    g.setColor(MARKER_COLOR);
+                    g.fillOval(getWidth()/2, getHeight()/2, getWidth()/10, getHeight()/10);
                 }
             }
+        };
+
+        square.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                handleSquareClick(row, col);
+            }
+        });
+
+        square.setPreferredSize(new Dimension(SQUARE_SIZE_PIXELS, SQUARE_SIZE_PIXELS));
+        return square;
+    }
+
+    private void handleSquareClick(int row, int col) {
+        LOGGER.debug("Clicked row {} col {}", row, col);
+
+        if (pieceSelected) {
+            handleMoveAttempt(row, col);
+        } else {
+            handlePieceSelection(row, col);
         }
-        return false;
     }
 
-    public boolean isInCheck() {
-        return isInCheck(BOARD);
+    private void handlePieceSelection(int row, int col) {
+        // First click: no piece selected before click, so select it if it is a piece
+        APiece clickedPiece = board[row][col];
+
+        if (clickedPiece.getImage() != null && clickedPiece.isWhite() == currentPlayer.isWhite()) {
+            clickedPiece.toggleSelected();
+
+            List<Position> moves = clickedPiece.getRealPositions(board, boardState);
+            for (Position pos : moves) {
+                board[pos.getRow()][pos.getCol()].mark();
+            }
+
+            repaint();
+            selectedRow = row;
+            selectedCol = col;
+            pieceSelected = true;
+        }
     }
 
-    public static boolean isInCheck(APiece [][] board) {
-        for (APiece [] row : board) {
-            for (APiece square : row) {
-                if (square.isPositionOccupied() && square.isWhite() != currentPlayer.isWhite() && !square.isKing()) {
-                    List<Position> opponentPositions = square.getValidPositions(board);
-                    for (Position position : opponentPositions) {
-                        if (board[position.getRow()][position.getCol()].isPositionOccupied() && board[position.getRow()][position.getCol()].isKing()) {
-                            return true;
-                        }
-                    }
+    private void handleMoveAttempt(int row, int col) {
+        // Second click: a piece was selected, so move it if valid
+        APiece selectedPiece = board[selectedRow][selectedCol];
+        List<Position> moves = selectedPiece.getRealPositions(board);
+        Position targetPosition = new Position(row, col);
+
+        for (Position pos : moves) {
+            if (pos.equals(targetPosition)) {
+                // Found valid move
+                move(selectedPiece, selectedPiece.getCurrentPosition(), pos);
+
+                // Check for pawn promotion
+                if (selectedPiece.isPawn() &&
+                        ((selectedPiece.isWhite() && row == 7) || (!selectedPiece.isWhite() && row == 0))) {
+                    showPromotionDialog(targetPosition, selectedPiece.isWhite());
                 }
+
+                switchPlayers();
+                break;
             }
         }
-        return false;
+        selectedPiece.toggleSelected();
+        clearAllMarkers();
+        repaint();
+
+        selectedRow = -1;
+        selectedCol = -1;
+        pieceSelected = false;
     }
 
-    public static boolean isOnBoard(Position pos) {
-        return pos.getRow() >= 0 && pos.getRow() < 8 && pos.getCol() >= 0 && pos.getCol() < 8;
+    private void switchPlayers() {
+        currentPlayer = currentPlayer.isWhite() ? blackPlayer : whitePlayer;
+
+        // Check if game is over
+        if (!boardState.canMove(board, currentPlayer.isWhite())) {
+            if (boardState.isInCheck(board, currentPlayer.isWhite())) {
+                LOGGER.info("Checkmate! {} player wins", currentPlayer.isWhite() ? "Black" : "White");
+                // TODO: Show game over dialog instead of exiting
+            } else {
+                LOGGER.info("Draw - stalemate");
+                // TODO: Show game over dialog instead of exiting
+            }
+        }
+    }
+
+    private void showPromotionDialog(Position pos, boolean isWhite) {
+        Promo promo = new Promo(pos, isWhite);
+        promo.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                repaint();
+            }
+        });
+        promo.setVisible(true);
+    }
+
+    private void clearAllMarkers() {
+        for (int r = 0; r < BOARD_SIZE; r++) {
+            for (int c = 0; c < BOARD_SIZE; c++) {
+                board[r][c].unMark();
+            }
+        }
+    }
+
+    private APiece createEmptyPiece(int row, int col) {
+        return new APiece(new Position(row, col)) {
+            @Override
+            public BufferedImage getImage() {
+                return null;
+            }
+
+            @Override
+            public List<Position> getValidPositions(APiece[][] board, BoardState boardState) {
+                return new ArrayList<>();
+            }
+        };
     }
 
     @Override
     public Dimension getPreferredSize() {
-        // make gui big enough
-        return new Dimension(SQUARE_SIZE_PIXELS * 9, HEIGHT * 9);
+        return new Dimension(SQUARE_SIZE_PIXELS * BOARD_SIZE, HEIGHT * BOARD_SIZE);
     }
 
-    public static void move(APiece piece, Position from, Position to) {
-        BOARD[to.getRow()][to.getCol()] = piece;
-        BOARD[to.getRow()][to.getCol()].moved();
+    public void move(APiece piece, Position from, Position to) {
+        board[to.getRow()][to.getCol()] = piece;
+        board[to.getRow()][to.getCol()].moved();
         clear(from);
         if (to.isEnPassant()) {
-            if (to.getRow() == 2) {
-                clear(new Position(to.getRow()+1, to.getCol()));
-            } else {
-                clear(new Position(to.getRow()-1, to.getCol()));
-            }
+            int capturedPawnRow = to.getRow() + (piece.isWhite() ? -1 : 1);
+            clear(new Position(capturedPawnRow, to.getCol()));
         }
         if (to.isCastle()) {
-            if (to.getCol() > 4) {
-                APiece rook = BOARD[to.getRow()][7];
-                move(rook, rook.getCurrentPosition(), new Position(to.getRow(), to.getCol()-1));
-            } else {
-                APiece rook = BOARD[to.getRow()][0];
-                move(rook, rook.getCurrentPosition(), new Position(to.getRow(), to.getCol()+1));
-            }
+            handleCastling(to);
         }
-        BOARD[to.getRow()][to.getCol()].setCurrentPosition(to);
+
+        board[to.getRow()][to.getCol()].setCurrentPosition(to);
+
         if (piece.isPawn() && Math.abs(from.getRow() - to.getRow()) == 2) {
             ((Pawn) piece).setJumped();
         } else if (piece.isPawn()) {
@@ -260,66 +265,69 @@ public class Board extends JFrame {
         }
     }
 
-    public static void clear(Position pos) {
-        System.out.println("clearing row " + pos.getRow() + " col " + pos.getCol());
-        BOARD[pos.getRow()][pos.getCol()] = new APiece(new Position(pos.getRow(), pos.getCol())) {
-            @Override
-            public BufferedImage getImage() {
-                return null;
-            }
-
-            @Override
-            public List<Position> getValidPositions(APiece[][] board) {
-                return null;
-            }
-        };
+    private void handleCastling(Position kingPosition) {
+        int row = kingPosition.getRow();
+        int col = kingPosition.getCol();
+        if (col > 4) {
+            APiece rook = board[row][7];
+            move(rook, rook.getCurrentPosition(), new Position(row, col - 1));
+        }
+        else {
+            APiece rook = board[row][0];
+            move(rook, rook.getCurrentPosition(), new Position(row, col + 1));
+        }
     }
 
-    public static APiece[][] deepCopy() {
-        APiece[][] copy = new APiece[BOARD.length][];
+    public void clear(Position pos) {
+        LOGGER.debug("Clearing row {} col {}", pos.getRow(), pos.getCol());
+        board[pos.getRow()][pos.getCol()] = createEmptyPiece(pos.getRow(), pos.getCol());
+    }
 
-        for (int i = 0; i < BOARD.length; i++) {
-            copy[i] = new APiece[BOARD[i].length];
-            for (int j = 0; j < BOARD[i].length; j++) {
-                copy[i][j] = BOARD[i][j].clone();
+    class Promo extends JFrame {
+        private static final int PROMOTION_WIDTH = 200;
+        private static final int PROMOTION_HEIGHT = 100;
+
+        public Promo(Position pos, boolean isWhite) {
+            super("Promote Pawn");
+            this.setLayout(new GridLayout(1, 4));
+            setSize(PROMOTION_WIDTH, PROMOTION_HEIGHT);
+            setResizable(false);
+
+            APiece[] options = {
+                    new Knight(pos, isWhite),
+                    new Bishop(pos, isWhite),
+                    new Rook(pos, isWhite),
+                    new Queen(pos, isWhite)
+            };
+
+            for (APiece option : options) {
+                add(createPromotionOption(option, pos));
             }
+
+            setLocationRelativeTo(Board.this);
         }
 
-        return copy;
-    }
+        private JPanel createPromotionOption(APiece piece, Position pos) {
+            JPanel square = new JPanel() {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    g.setColor(Color.GRAY);
+                    g.fillRect(0, 0, getWidth(), getHeight());
+                    g.drawImage(piece.getImage(), 0, 0, getWidth(), getHeight(), this);
+                }
+            };
 
-    static class Promo extends JFrame {
-        private static final APiece[] OPTIONS = new APiece[4];
-        public Promo(Position pos, boolean isWhite) {
-            super();
-            this.setLayout(new GridLayout(1, 4));
-            setSize(200, 100);
-            setResizable(false);
-            OPTIONS[0] = new Knight(pos, isWhite);
-            OPTIONS[1] = new Bishop(pos, isWhite);
-            OPTIONS[2] = new Rook(pos, isWhite);
-            OPTIONS[3] = new Queen(pos, isWhite);
-            for (APiece option : OPTIONS) {
-                JPanel square = new JPanel() {
-                    @Override
-                    protected void paintComponent(Graphics g) {
-                        super.paintComponent(g);
-                        g.setColor(Color.GRAY);
-                        g.fillRect(0, 0, getWidth(), getHeight());
-                        g.drawImage(option.getImage(), 0, 0, getWidth(), getHeight(), this);
-                    }
-                };
-                square.addMouseListener(new MouseAdapter() {
-                    @Override
-                    public void mouseClicked(MouseEvent e) {
-                        BOARD[pos.getRow()][pos.getCol()] = option;
-                        dispose();
-                    }
-                });
-                square.setPreferredSize(new Dimension(SQUARE_SIZE_PIXELS, SQUARE_SIZE_PIXELS));
-                add(square);
-            }
-            setLocationRelativeTo(null);
+            square.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    board[pos.getRow()][pos.getCol()] = piece;
+                    dispose();
+                }
+            });
+
+            square.setPreferredSize(new Dimension(SQUARE_SIZE_PIXELS, SQUARE_SIZE_PIXELS));
+            return square;
         }
     }
 }

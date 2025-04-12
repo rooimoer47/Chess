@@ -1,27 +1,35 @@
 package main.java.pvt.phgg.chess;
 
+import main.java.pvt.phgg.chess.player.HumanPlayer;
+import main.java.pvt.phgg.chess.player.Player;
+
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 
 public class Chess {
 
-    Player whitePlayer;
-    Player blackPlayer;
+    private final Board board;
 
-    public Chess() {
-        SwingUtilities.invokeLater(this::initializeBoard);
+    private Chess() {
+        Player whitePlayer = new HumanPlayer(true);
+        Player blackPlayer = new HumanPlayer(false);
+        board = new Board("Chess", whitePlayer, blackPlayer);
+        board.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     }
 
-    private void initializeBoard() {
-        whitePlayer = new HumanPlayer(true);
-        blackPlayer = new HumanPlayer(false);
-        Board board = new Board("Chess", whitePlayer, blackPlayer);
-        board.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+    private void start() {
         board.setVisible(true);
-        System.out.println("Window size after setVisible: " + board.getWidth() + "x" + board.getHeight());
     }
 
     public static void main(String [] args) {
-        SwingUtilities.invokeLater(Chess::new);
+        SwingUtilities.invokeLater(() -> {
+            try {
+                Chess chess = new Chess();
+                chess.start();
+            } catch (Exception e) {
+                System.err.println("Error initializing chess game: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
     }
 }

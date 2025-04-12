@@ -1,6 +1,6 @@
 package main.java.pvt.phgg.chess.piece;
 
-import main.java.pvt.phgg.chess.Board;
+import main.java.pvt.phgg.chess.BoardState;
 import main.java.pvt.phgg.chess.Position;
 
 import javax.imageio.ImageIO;
@@ -42,7 +42,7 @@ public class Bishop extends APiece{
     }
 
     @Override
-    public List<Position> getValidPositions(APiece[][] board) {
+    public List<Position> getValidPositions(APiece[][] board, BoardState boardState) {
         List<Position> moves = new ArrayList<>();
         int[][] directions = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
         for (int[] direction : directions) {
@@ -50,8 +50,8 @@ public class Bishop extends APiece{
             newPos.incRow(direction[0]);
             newPos.incCol(direction[1]);
 
-            while (Board.isOnBoard(newPos)) {
-                if (Board.isOccupied(board, newPos)) {
+            while (boardState.isOnBoard(newPos)) {
+                if (boardState.isOccupied(board, newPos)) {
                     if (board[newPos.getRow()][newPos.getCol()].isWhite() != this.isWhite()) {
                         moves.add(new Position(newPos.getRow(), newPos.getCol()));
                     }

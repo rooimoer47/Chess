@@ -1,6 +1,6 @@
 package main.java.pvt.phgg.chess.piece;
 
-import main.java.pvt.phgg.chess.Board;
+import main.java.pvt.phgg.chess.BoardState;
 import main.java.pvt.phgg.chess.Position;
 
 import javax.imageio.ImageIO;
@@ -44,7 +44,7 @@ public class Pawn extends APiece{
     }
 
     @Override
-    public List<Position> getValidPositions(APiece [][] board) {
+    public List<Position> getValidPositions(APiece [][] board, BoardState boardState) {
         List<Position> moves = new ArrayList<>();
         Position newPos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
         Position takePos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
@@ -59,7 +59,7 @@ public class Pawn extends APiece{
             takePos.decRow();
         }
 
-        if (Board.isOnBoard(newPos) && !Board.isOccupied(board, newPos)) {
+        if (boardState.isOnBoard(newPos) && !boardState.isOccupied(board, newPos)) {
             moves.add(new Position(newPos.getRow(), newPos.getCol()));
         }
 
@@ -71,25 +71,25 @@ public class Pawn extends APiece{
                 newPos.decRow();
             }
 
-            if (Board.isOnBoard(newPos) && !Board.isOccupied(board, newPos)) {
+            if (boardState.isOnBoard(newPos) && !boardState.isOccupied(board, newPos)) {
                 moves.add(new Position(newPos.getRow(), newPos.getCol()));
             }
         }
 
         // take
         takePos.incCol();
-        if (Board.isOnBoard(takePos) && Board.isOccupied(board, takePos) && board[takePos.getRow()][takePos.getCol()].isWhite() != this.isWhite()) {
+        if (boardState.isOnBoard(takePos) && boardState.isOccupied(board, takePos) && board[takePos.getRow()][takePos.getCol()].isWhite() != this.isWhite()) {
             moves.add((new Position(takePos.getRow(), takePos.getCol())));
         }
         takePos.incCol(-2);
-        if (Board.isOnBoard(takePos) && Board.isOccupied(board, takePos) && board[takePos.getRow()][takePos.getCol()].isWhite() != this.isWhite()) {
+        if (boardState.isOnBoard(takePos) && boardState.isOccupied(board, takePos) && board[takePos.getRow()][takePos.getCol()].isWhite() != this.isWhite()) {
             moves.add((new Position(takePos.getRow(), takePos.getCol())));
         }
 
         // en passant
         enPassantPos.incCol();
-        if (Board.isOnBoard(enPassantPos) &&
-            Board.isOccupied(board, enPassantPos) &&
+        if (boardState.isOnBoard(enPassantPos) &&
+            boardState.isOccupied(board, enPassantPos) &&
             board[enPassantPos.getRow()][enPassantPos.getCol()].isWhite() != this.isWhite() &&
             board[enPassantPos.getRow()][enPassantPos.getCol()].isPawn() &&
             ((Pawn)board[enPassantPos.getRow()][enPassantPos.getCol()]).isJumped()) {
@@ -102,8 +102,8 @@ public class Pawn extends APiece{
             moves.add(move);
         }
         enPassantPos.incCol(-2);
-        if (Board.isOnBoard(enPassantPos) &&
-                Board.isOccupied(board, enPassantPos) &&
+        if (boardState.isOnBoard(enPassantPos) &&
+                boardState.isOccupied(board, enPassantPos) &&
                 board[enPassantPos.getRow()][enPassantPos.getCol()].isWhite() != this.isWhite() &&
                 board[enPassantPos.getRow()][enPassantPos.getCol()].isPawn() &&
                 ((Pawn)board[enPassantPos.getRow()][enPassantPos.getCol()]).isJumped()) {

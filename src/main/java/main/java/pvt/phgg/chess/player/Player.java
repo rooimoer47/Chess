@@ -1,4 +1,4 @@
-package main.java.pvt.phgg.chess;
+package main.java.pvt.phgg.chess.player;
 
 public abstract class Player {
     private final boolean white;

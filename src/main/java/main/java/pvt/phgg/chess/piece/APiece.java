@@ -1,6 +1,6 @@
 package main.java.pvt.phgg.chess.piece;
 
-import main.java.pvt.phgg.chess.Board;
+import main.java.pvt.phgg.chess.BoardState;
 import main.java.pvt.phgg.chess.Position;
 
 import java.awt.image.BufferedImage;
@@ -8,33 +8,37 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class APiece implements Cloneable{
-    private Position position;
+    private Position pos;
     private final boolean white;
     private boolean selected = false;
     private boolean marked = false;
     private boolean originalPosition = true;
-    static final String ROOT = "src/main/resources";
+    protected static final String ROOT = "src/main/resources";
 
-    public APiece(Position position) {
-        this.position = position;
+    public APiece(Position pos) {
+        this.pos = pos;
         this.white = false;
     }
 
     public APiece(Position position, boolean white) {
-        this.position = position;
+        this.pos = position;
         this.white = white;
     }
 
     public abstract BufferedImage getImage();
+
     public boolean isPositionOccupied() {
         return this.getImage() != null;
     }
-    public abstract List<Position> getValidPositions(APiece [][] board);
+
+    public abstract List<Position> getValidPositions(APiece [][] board, BoardState boardState);
+
     public Position getCurrentPosition() {
-        return this.position;
+        return this.pos;
     }
+
     public void setCurrentPosition(Position position) {
-        this.position = position;
+        this.pos = position;
     }
 
     public boolean isWhite() {
@@ -81,61 +85,47 @@ public abstract class APiece implements Cloneable{
         return false;
     }
 
-    public boolean arePositionsSafe(APiece [][] board, List<Position> posList, boolean KingCastleWhite) {
-        for (APiece [] row : board) {
-            for (APiece square : row) {
-                if (square.isPositionOccupied() && (square.isWhite() != KingCastleWhite)) {
-                    List<Position> opponentPositions;
-                    if (square.isKing()) {
-                        opponentPositions = ((King)square).getKingMovements(board);
-                    } else {
-                        opponentPositions = square.getRealPositions(board);
-                    }
+    public List<Position> getRealPositions(APiece[][] board, BoardState boardState) {
+        List<Position> validPositions = this.getValidPositions(board, boardState);
+        List<Position> legalPositions = new ArrayList<>();
 
-                    for (Position position : opponentPositions) {
-                        for (Position castlePos : posList) {
-                            if (position.equals(castlePos)) {
-                                return false;
-                            }
-                        }
-                    }
-                }
+        for (Position pos : validPositions) {
+            APiece[][] tempBoard = boardState.deepCopy(board);
+
+            tempBoard[pos.getRow()][pos.getCol()] = this.clone();
+            tempBoard[this.pos.getRow()][this.pos.getCol()] = createEmptyPiece(this.pos);
+            tempBoard[pos.getRow()][pos.getCol()].setCurrentPosition(pos);
+            if (!boardState.isInCheck(tempBoard, this.isWhite())) {
+                legalPositions.add(pos);
             }
         }
-        return true;
+        return legalPositions;
     }
 
     public List<Position> getRealPositions(APiece[][] board) {
-        List<Position> validPositions = this.getValidPositions(board);
-        List<Position> realPositions = new ArrayList<>();
-        for (Position pos : validPositions) {
-            APiece[][] nepBoard = Board.deepCopy();
-            nepBoard[pos.getRow()][pos.getCol()] = this.clone();
-            nepBoard[this.position.getRow()][this.position.getCol()] = new APiece(new Position(this.position.getRow(), this.position.getCol())) {
-                @Override
-                public BufferedImage getImage() {
-                    return null;
-                }
+        BoardState tempState = new BoardState();
+        return getRealPositions(board, tempState);
+    }
 
-                @Override
-                public List<Position> getValidPositions(APiece[][] board) {
-                    return null;
-                }
-
-            };
-            nepBoard[pos.getRow()][pos.getCol()].setCurrentPosition(pos);
-            if (!Board.isInCheck(nepBoard)) {
-                realPositions.add(pos);
+    private APiece createEmptyPiece(Position pos) {
+        return new APiece(new Position(pos.getRow(), pos.getCol())) {
+            @Override
+            public BufferedImage getImage() {
+                return null;
             }
-        }
-        return realPositions;
+
+            @Override
+            public List<Position> getValidPositions(APiece[][] board, BoardState boardState) {
+                return new ArrayList<>();
+            }
+        };
     }
 
     @Override
     public APiece clone() {
         try {
             APiece clone = (APiece) super.clone();
-            clone.position = new Position(this.position.getRow(), this.position.getCol());
+            clone.pos = new Position(this.pos.getRow(), this.pos.getCol());
             return clone;
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();

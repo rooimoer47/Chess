@@ -1,6 +1,6 @@
 package main.java.pvt.phgg.chess.piece;
 
-import main.java.pvt.phgg.chess.Board;
+import main.java.pvt.phgg.chess.BoardState;
 import main.java.pvt.phgg.chess.Position;
 
 import javax.imageio.ImageIO;
@@ -42,7 +42,7 @@ public class Knight extends APiece{
     }
 
     @Override
-    public List<Position> getValidPositions(APiece[][] board) {
+    public List<Position> getValidPositions(APiece[][] board, BoardState boardState) {
         List<Position> moves = new ArrayList<>();
         int[][] directions = {{1, 2}, {2, 1}, {2, -1}, {1, -2}, {-1, 2}, {-2, 1}, {-2, -1}, {-1, -2}};
         for (int[] direction : directions) {
@@ -50,10 +50,10 @@ public class Knight extends APiece{
             newPos.incRow(direction[0]);
             newPos.incCol(direction[1]);
 
-            if (Board.isOnBoard(newPos)) {
-                if (Board.isOccupied(board, newPos) && (board[newPos.getRow()][newPos.getCol()].isWhite() != this.isWhite())) {
+            if (boardState.isOnBoard(newPos)) {
+                if (boardState.isOccupied(board, newPos) && (board[newPos.getRow()][newPos.getCol()].isWhite() != this.isWhite())) {
                     moves.add(new Position(newPos.getRow(), newPos.getCol()));
-                } else if (!Board.isOccupied(board, newPos)) {
+                } else if (!boardState.isOccupied(board, newPos)) {
                     moves.add(new Position(newPos.getRow(), newPos.getCol()));
                 }
             }
