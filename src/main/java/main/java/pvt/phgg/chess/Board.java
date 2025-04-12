@@ -40,12 +40,15 @@ public class Board extends JFrame {
     private final Player whitePlayer;
     private final Player blackPlayer;
 
+    private final Metrics metrics;
+
     public Board(String title, Player whitePlayer, Player blackPlayer) {
         super(title);
         LOGGER.trace("Initializing board");
         this.whitePlayer = whitePlayer;
         this.blackPlayer = blackPlayer;
         currentPlayer = whitePlayer;
+        this.metrics = new Metrics();
 
         initializeBoard();
         createBoardUI();
@@ -134,7 +137,7 @@ public class Board extends JFrame {
     }
 
     private void handleSquareClick(int row, int col) {
-        LOGGER.debug("Clicked row {} col {}", row, col);
+        LOGGER.trace("Clicked row {} col {}", row, col);
 
         if (pieceSelected) {
             handleMoveAttempt(row, col);
@@ -150,7 +153,7 @@ public class Board extends JFrame {
         if (clickedPiece.getImage() != null && clickedPiece.isWhite() == currentPlayer.isWhite()) {
             clickedPiece.toggleSelected();
 
-            List<Position> moves = clickedPiece.getRealPositions(board, boardState);
+            List<Position> moves = clickedPiece.getLegalPositions(board, boardState);
             for (Position pos : moves) {
                 board[pos.getRow()][pos.getCol()].mark();
             }
@@ -159,18 +162,20 @@ public class Board extends JFrame {
             selectedRow = row;
             selectedCol = col;
             pieceSelected = true;
+            metrics.recordSelection();
         }
     }
 
     private void handleMoveAttempt(int row, int col) {
         // Second click: a piece was selected, so move it if valid
         APiece selectedPiece = board[selectedRow][selectedCol];
-        List<Position> moves = selectedPiece.getRealPositions(board);
+        List<Position> moves = selectedPiece.getLegalPositions(board);
         Position targetPosition = new Position(row, col);
 
         for (Position pos : moves) {
             if (pos.equals(targetPosition)) {
                 // Found valid move
+                metrics.recordMove(currentPlayer.isWhite(), boardState.isOccupied(board, pos));
                 move(selectedPiece, selectedPiece.getCurrentPosition(), pos);
 
                 // Check for pawn promotion
@@ -202,20 +207,19 @@ public class Board extends JFrame {
             if (boardState.isInCheck(board, currentPlayer.isWhite())) {
                 String winner = currentPlayer.isWhite() ? "Black" : "White";
                 message = String.format("Checkmate! %s player wins.", winner);
-                LOGGER.info(message);
-                repaint();
-                JOptionPane.showMessageDialog(this,
-                        message,
-                        title,
-                        JOptionPane.INFORMATION_MESSAGE);
             } else {
                 message = "Draw - Stalemate!";
-                LOGGER.info(message);
-                JOptionPane.showMessageDialog(this,
-                        message,
-                        title,
-                        JOptionPane.INFORMATION_MESSAGE);
             }
+            LOGGER.info(message);
+            repaint();
+            JOptionPane.showMessageDialog(this,
+                    message,
+                    title,
+                    JOptionPane.INFORMATION_MESSAGE);
+            LOGGER.info("Total move count: " + metrics.getTotalMoveCount());
+            LOGGER.info("Total white pieces captured: " + metrics.getWhitePiecesCaptured());
+            LOGGER.info("Total black pieces captured: " + metrics.getBlackPiecesCaptured());
+
         }
     }
 
@@ -292,7 +296,7 @@ public class Board extends JFrame {
     }
 
     public void clear(Position pos) {
-        LOGGER.debug("Clearing row {} col {}", pos.getRow(), pos.getCol());
+        LOGGER.trace("Clearing row {} col {}", pos.getRow(), pos.getCol());
         board[pos.getRow()][pos.getCol()] = createEmptyPiece(pos.getRow(), pos.getCol());
     }
 
@@ -341,6 +345,76 @@ public class Board extends JFrame {
 
             square.setPreferredSize(new Dimension(SQUARE_SIZE_PIXELS, SQUARE_SIZE_PIXELS));
             return square;
+        }
+    }
+
+    private static class Metrics {
+        private final long gameStartTimeMillis;
+        private long lastMoveTimestampMillis;
+
+        private int totalMoveCount;
+        private int whiteMoveCount;
+        private int blackMoveCount;
+
+        private int whitePiecesCaptured;
+        private int blackPiecesCaptured;
+
+        private int selectionsMade;
+
+        public Metrics() {
+            this.gameStartTimeMillis = System.currentTimeMillis();
+            this.lastMoveTimestampMillis = this.gameStartTimeMillis;
+            this.totalMoveCount = 0;
+            this.whiteMoveCount = 0;
+            this.blackMoveCount = 0;
+            this.whitePiecesCaptured = 0;
+            this.blackPiecesCaptured = 0;
+            this.selectionsMade = 0;
+        }
+
+        public void recordMove(boolean isWhite, boolean captureOccurred) {
+            long now = System.currentTimeMillis();
+            long moveDuration = now - lastMoveTimestampMillis;
+            lastMoveTimestampMillis = now;
+
+            totalMoveCount++;
+            if (isWhite) {
+                whiteMoveCount++;
+                if (captureOccurred) blackPiecesCaptured++; // White captured a black piece
+            } else {
+                blackMoveCount++;
+                if (captureOccurred) whitePiecesCaptured++; // Black captured a white piece
+            }
+             LOGGER.debug("Move #{} ({}): {}ms. Capture: {}", totalMoveCount, isWhite ? "W" : "B", moveDuration, captureOccurred);
+        }
+
+        public void recordSelection() {
+            this.selectionsMade++;
+        }
+
+        public long getGameElapsedTimeMillis() {
+            return System.currentTimeMillis() - gameStartTimeMillis;
+        }
+
+        public int getTotalMoveCount() { return totalMoveCount; }
+        public int getWhitePiecesCaptured() { return whitePiecesCaptured; }
+        public int getBlackPiecesCaptured() { return blackPiecesCaptured; }
+
+        public String getCurrentStatus() {
+            long elapsedSeconds = getGameElapsedTimeMillis() / 1000;
+            return String.format(
+                    "Time: %ds | Moves: %d (W:%d B:%d) | Captures by W:%d, by B:%d | Selections: %d",
+                    elapsedSeconds,
+                    totalMoveCount, whiteMoveCount, blackMoveCount,
+                    blackPiecesCaptured, // # of black pieces captured by white
+                    whitePiecesCaptured, // # of white pieces captured by black
+                    selectionsMade
+            );
+        }
+
+        @Override
+        public String toString() {
+            return getCurrentStatus();
         }
     }
 }

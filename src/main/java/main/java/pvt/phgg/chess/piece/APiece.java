@@ -85,7 +85,7 @@ public abstract class APiece implements Cloneable{
         return false;
     }
 
-    public List<Position> getRealPositions(APiece[][] board, BoardState boardState) {
+    public List<Position> getLegalPositions(APiece[][] board, BoardState boardState) {
         List<Position> validPositions = this.getValidPositions(board, boardState);
         List<Position> legalPositions = new ArrayList<>();
 
@@ -102,9 +102,9 @@ public abstract class APiece implements Cloneable{
         return legalPositions;
     }
 
-    public List<Position> getRealPositions(APiece[][] board) {
+    public List<Position> getLegalPositions(APiece[][] board) {
         BoardState tempState = new BoardState();
-        return getRealPositions(board, tempState);
+        return getLegalPositions(board, tempState);
     }
 
     private APiece createEmptyPiece(Position pos) {

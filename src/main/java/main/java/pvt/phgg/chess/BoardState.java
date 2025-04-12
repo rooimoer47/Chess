@@ -69,7 +69,7 @@ public class BoardState {
             for (APiece piece : row) {
                 if (piece.isPositionOccupied() &&
                         piece.isWhite() == playerColor &&
-                        !piece.getRealPositions(board).isEmpty()) {
+                        !piece.getLegalPositions(board).isEmpty()) {
                     return true;
                 }
             }
