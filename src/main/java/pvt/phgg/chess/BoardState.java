@@ -1,9 +1,9 @@
-package main.java.pvt.phgg.chess;
+package pvt.phgg.chess;
 
-import main.java.pvt.phgg.chess.piece.APiece;
-import main.java.pvt.phgg.chess.piece.King;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pvt.phgg.chess.piece.APiece;
+import pvt.phgg.chess.piece.King;
 
 import java.util.List;
 

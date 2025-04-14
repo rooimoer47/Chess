@@ -1,3 +1,5 @@
 /target/*
 /.idea/*
 /Chess.iml
+/app.log
+/dependency-reduced-pom.xml

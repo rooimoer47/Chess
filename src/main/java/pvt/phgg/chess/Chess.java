@@ -1,7 +1,7 @@
-package main.java.pvt.phgg.chess;
+package pvt.phgg.chess;
 
-import main.java.pvt.phgg.chess.player.HumanPlayer;
-import main.java.pvt.phgg.chess.player.Player;
+import pvt.phgg.chess.player.HumanPlayer;
+import pvt.phgg.chess.player.Player;
 
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;

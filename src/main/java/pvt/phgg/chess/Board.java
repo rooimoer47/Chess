@@ -1,9 +1,9 @@
-package main.java.pvt.phgg.chess;
+package pvt.phgg.chess;
 
-import main.java.pvt.phgg.chess.piece.*;
-import main.java.pvt.phgg.chess.player.Player;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pvt.phgg.chess.piece.*;
+import pvt.phgg.chess.player.Player;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;

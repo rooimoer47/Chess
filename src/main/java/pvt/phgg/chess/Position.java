@@ -1,4 +1,4 @@
-package main.java.pvt.phgg.chess;
+package pvt.phgg.chess;
 
 public class Position {
     private int row;

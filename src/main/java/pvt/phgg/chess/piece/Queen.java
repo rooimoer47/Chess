@@ -1,7 +1,7 @@
-package main.java.pvt.phgg.chess.piece;
+package pvt.phgg.chess.piece;
 
-import main.java.pvt.phgg.chess.BoardState;
-import main.java.pvt.phgg.chess.Position;
+import pvt.phgg.chess.BoardState;
+import pvt.phgg.chess.Position;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -10,8 +10,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Rook extends APiece{
-    public Rook(Position position, boolean white) {
+public class Queen extends APiece{
+    public Queen(Position position, boolean white) {
         super(position, white);
     }
 
@@ -20,18 +20,18 @@ public class Rook extends APiece{
         try {
             if (this.isWhite()) {
                 if (this.isSelected()) {
-                    return ImageIO.read(new File(ROOT+"/images/rook_white_selected.png"));
+                    return ImageIO.read(new File(ROOT+"/images/queen_white_selected.png"));
                 }
                 else {
-                    return ImageIO.read(new File(ROOT+"/images/rook_white.png"));
+                    return ImageIO.read(new File(ROOT+"/images/queen_white.png"));
                 }
             }
             else {
                 if (this.isSelected()) {
-                    return ImageIO.read(new File(ROOT+"/images/rook_black_selected.png"));
+                    return ImageIO.read(new File(ROOT+"/images/queen_black_selected.png"));
                 }
                 else {
-                    return ImageIO.read(new File(ROOT+"/images/rook_black.png"));
+                    return ImageIO.read(new File(ROOT+"/images/queen_black.png"));
                 }
             }
 
@@ -44,7 +44,7 @@ public class Rook extends APiece{
     @Override
     public List<Position> getValidPositions(APiece[][] board, BoardState boardState) {
         List<Position> moves = new ArrayList<>();
-        int[][] directions = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        int[][] directions = {{1, 1}, {1, 0}, {1, -1}, {0, 1}, {0, -1}, {-1, 1}, {-1, 0}, {-1, -1}};
         for (int[] direction : directions) {
             Position newPos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
             newPos.incRow(direction[0]);
@@ -64,9 +64,5 @@ public class Rook extends APiece{
         }
 
         return moves;
-    }
-
-    public boolean isRook() {
-        return true;
     }
 }
