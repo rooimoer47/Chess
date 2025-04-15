@@ -1,8 +1,8 @@
 package pvt.phgg.chess;
 
 public class Position {
-    private int row;
-    private int col;
+    private final int row;
+    private final int col;
     private final boolean enPassant;
     private final boolean castle;
 
@@ -16,48 +16,24 @@ public class Position {
     public Position (int row, int col, SpecialMove move) {
         this.row = row;
         this.col = col;
-        switch (move) {
-            case ENPASSANT -> {
-                this.enPassant = true;
-                this.castle = false;
-            }
-            case CASTLE -> {
-                this.enPassant = false;
-                this.castle = true;
-            }
-            default -> {
-                this.enPassant = false;
-                this.castle = false;
-            }
-        }
+        this.enPassant = move == SpecialMove.ENPASSANT;
+        this.castle = move == SpecialMove.CASTLE;
+    }
+
+    public Position withRowOffset(int offset) {
+        return new Position(this.row + offset, this.col, this.getSpecialMove());
+    }
+
+    public Position withColOffset(int offset) {
+        return new Position(this.row, this.col + offset, this.getSpecialMove());
     }
 
     public int getRow() {
         return row;
     }
 
-    public void incRow() {
-        this.row++;
-    }
-
-    public void incRow(int n) {
-        this.row+=n;
-    }
-
-    public void decRow() {
-        this.row--;
-    }
-
     public int getCol() {
         return col;
-    }
-
-    public void incCol() {
-        this.col++;
-    }
-
-    public void incCol(int n) {
-        this.col+=n;
     }
 
     public boolean isEnPassant() {
@@ -66,6 +42,12 @@ public class Position {
 
     public boolean isCastle() {
         return this.castle;
+    }
+
+    private SpecialMove getSpecialMove() {
+        if (this.enPassant) return SpecialMove.ENPASSANT;
+        if (this.castle) return SpecialMove.CASTLE;
+        return null;
     }
 
     @Override

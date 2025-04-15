@@ -46,9 +46,7 @@ public class Knight extends APiece{
         List<Position> moves = new ArrayList<>();
         int[][] directions = {{1, 2}, {2, 1}, {2, -1}, {1, -2}, {-1, 2}, {-2, 1}, {-2, -1}, {-1, -2}};
         for (int[] direction : directions) {
-            Position newPos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
-            newPos.incRow(direction[0]);
-            newPos.incCol(direction[1]);
+            Position newPos = getCurrentPosition().withRowOffset(direction[0]).withColOffset(direction[1]);
 
             if (boardState.isOnBoard(newPos)) {
                 if (boardState.isOccupied(board, newPos) && (board[newPos.getRow()][newPos.getCol()].isWhite() != this.isWhite())) {

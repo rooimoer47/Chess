@@ -45,9 +45,7 @@ public class King extends APiece{
         List<Position> moves = new ArrayList<>();
         int[][] directions = {{1, 1}, {1, 0}, {1, -1}, {0, 1}, {0, -1}, {-1, 1}, {-1, 0}, {-1, -1}};
         for (int[] direction : directions) {
-            Position newPos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
-            newPos.incRow(direction[0]);
-            newPos.incCol(direction[1]);
+            Position newPos = getCurrentPosition().withRowOffset(direction[0]).withColOffset(direction[1]);
 
             if (boardState.isOnBoard(newPos)) {
                 if (boardState.isOccupied(board, newPos) &&

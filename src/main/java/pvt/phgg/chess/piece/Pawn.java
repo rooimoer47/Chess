@@ -46,73 +46,61 @@ public class Pawn extends APiece{
     @Override
     public List<Position> getValidPositions(APiece [][] board, BoardState boardState) {
         List<Position> moves = new ArrayList<>();
-        Position newPos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
-        Position takePos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
-        Position enPassantPos = new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol());
+        Position currentPos = getCurrentPosition();
 
-        // moving
-        if (isWhite()) {
-            newPos.incRow();
-            takePos.incRow();
-        } else {
-            newPos.decRow();
-            takePos.decRow();
-        }
+        int rowDirection = isWhite() ? 1 : -1;
+        Position forwardPos = currentPos.withRowOffset(rowDirection);
 
-        if (boardState.isOnBoard(newPos) && !boardState.isOccupied(board, newPos)) {
-            moves.add(new Position(newPos.getRow(), newPos.getCol()));
+        if (boardState.isOnBoard(forwardPos) && !boardState.isOccupied(board, forwardPos)) {
+            moves.add(new Position(forwardPos.getRow(), forwardPos.getCol()));
         }
 
         // initial extra jump
         if (isOriginalPosition()) {
-            if (isWhite()) {
-                newPos.incRow();
-            } else {
-                newPos.decRow();
-            }
-
-            if (boardState.isOnBoard(newPos) && !boardState.isOccupied(board, newPos)) {
-                moves.add(new Position(newPos.getRow(), newPos.getCol()));
+            Position doubleForwardPos = forwardPos.withRowOffset(rowDirection);
+            if (boardState.isOnBoard(doubleForwardPos) && !boardState.isOccupied(board, doubleForwardPos)) {
+                moves.add(new Position(doubleForwardPos.getRow(), doubleForwardPos.getCol()));
             }
         }
 
         // take
-        takePos.incCol();
-        if (boardState.isOnBoard(takePos) && boardState.isOccupied(board, takePos) && board[takePos.getRow()][takePos.getCol()].isWhite() != this.isWhite()) {
-            moves.add((new Position(takePos.getRow(), takePos.getCol())));
+        Position rightCapturePos = currentPos.withRowOffset(rowDirection).withColOffset(1);
+        if (boardState.isOnBoard(rightCapturePos) &&
+            boardState.isOccupied(board, rightCapturePos) &&
+            board[rightCapturePos.getRow()][rightCapturePos.getCol()].isWhite() != this.isWhite()) {
+            moves.add((new Position(rightCapturePos.getRow(), rightCapturePos.getCol())));
         }
-        takePos.incCol(-2);
-        if (boardState.isOnBoard(takePos) && boardState.isOccupied(board, takePos) && board[takePos.getRow()][takePos.getCol()].isWhite() != this.isWhite()) {
-            moves.add((new Position(takePos.getRow(), takePos.getCol())));
+        Position leftCapturePos = currentPos.withRowOffset(rowDirection).withColOffset(-1);
+        if (boardState.isOnBoard(leftCapturePos) &&
+            boardState.isOccupied(board, leftCapturePos) &&
+            board[leftCapturePos.getRow()][leftCapturePos.getCol()].isWhite() != this.isWhite()) {
+            moves.add((new Position(leftCapturePos.getRow(), leftCapturePos.getCol())));
         }
 
         // en passant
-        enPassantPos.incCol();
-        if (boardState.isOnBoard(enPassantPos) &&
-            boardState.isOccupied(board, enPassantPos) &&
-            board[enPassantPos.getRow()][enPassantPos.getCol()].isWhite() != this.isWhite() &&
-            board[enPassantPos.getRow()][enPassantPos.getCol()].isPawn() &&
-            ((Pawn)board[enPassantPos.getRow()][enPassantPos.getCol()]).isJumped()) {
-            Position move = new Position(enPassantPos.getRow(), enPassantPos.getCol(), Position.SpecialMove.ENPASSANT);
-            if (isWhite()) {
-                move.incRow();
-            } else {
-                move.decRow();
-            }
+        Position rightEnPassantTarget = currentPos.withColOffset(1);
+        if (boardState.isOnBoard(rightEnPassantTarget) &&
+            boardState.isOccupied(board, rightEnPassantTarget) &&
+            board[rightEnPassantTarget.getRow()][rightEnPassantTarget.getCol()].isWhite() != this.isWhite() &&
+            board[rightEnPassantTarget.getRow()][rightEnPassantTarget.getCol()].isPawn() &&
+            ((Pawn)board[rightEnPassantTarget.getRow()][rightEnPassantTarget.getCol()]).isJumped()) {
+            Position move = new Position(
+                rightEnPassantTarget.getRow() + rowDirection,
+                rightEnPassantTarget.getCol(),
+                Position.SpecialMove.ENPASSANT);
             moves.add(move);
         }
-        enPassantPos.incCol(-2);
-        if (boardState.isOnBoard(enPassantPos) &&
-                boardState.isOccupied(board, enPassantPos) &&
-                board[enPassantPos.getRow()][enPassantPos.getCol()].isWhite() != this.isWhite() &&
-                board[enPassantPos.getRow()][enPassantPos.getCol()].isPawn() &&
-                ((Pawn)board[enPassantPos.getRow()][enPassantPos.getCol()]).isJumped()) {
-            Position move = new Position(enPassantPos.getRow(), enPassantPos.getCol(), Position.SpecialMove.ENPASSANT);
-            if (isWhite()) {
-                move.incRow();
-            } else {
-                move.decRow();
-            }
+
+        Position leftEnPassantTarget = currentPos.withColOffset(-1);
+        if (boardState.isOnBoard(leftEnPassantTarget) &&
+            boardState.isOccupied(board, leftEnPassantTarget) &&
+            board[leftEnPassantTarget.getRow()][leftEnPassantTarget.getCol()].isWhite() != this.isWhite() &&
+            board[leftEnPassantTarget.getRow()][leftEnPassantTarget.getCol()].isPawn() &&
+            ((Pawn)board[leftEnPassantTarget.getRow()][leftEnPassantTarget.getCol()]).isJumped()) {
+            Position move = new Position(
+                leftEnPassantTarget.getRow() + rowDirection,
+                leftEnPassantTarget.getCol(),
+                Position.SpecialMove.ENPASSANT);
             moves.add(move);
         }
 
