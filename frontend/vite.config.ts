@@ -1,0 +1,19 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    proxy: {
+      '/ws': {
+        target: 'ws://localhost:8080',
+        ws: true,
+      },
+    },
+  },
+  build: {
+    // Production build output goes into Spring Boot's static resources
+    outDir: '../src/main/resources/static',
+    emptyOutDir: true,
+  },
+});
