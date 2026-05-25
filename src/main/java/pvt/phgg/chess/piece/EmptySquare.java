@@ -14,6 +14,11 @@ public class EmptySquare extends APiece {
     }
 
     @Override
+    public PieceType getPieceType() {
+        return null;
+    }
+
+    @Override
     public boolean isPositionOccupied() {
         return false;
     }

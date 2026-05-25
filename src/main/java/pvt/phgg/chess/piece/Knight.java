@@ -42,6 +42,11 @@ public class Knight extends APiece{
     }
 
     @Override
+    public PieceType getPieceType() {
+        return PieceType.KNIGHT;
+    }
+
+    @Override
     public List<Position> getValidPositions(APiece[][] board, BoardState boardState) {
         List<Position> moves = new ArrayList<>();
         int[][] directions = {{1, 2}, {2, 1}, {2, -1}, {1, -2}, {-1, 2}, {-2, 1}, {-2, -1}, {-1, -2}};

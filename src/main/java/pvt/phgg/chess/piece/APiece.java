@@ -26,6 +26,8 @@ public abstract class APiece implements Cloneable {
 
     public abstract BufferedImage getImage(boolean selected);
 
+    public abstract PieceType getPieceType();
+
     public boolean isPositionOccupied() {
         return true;
     }

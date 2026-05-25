@@ -63,6 +63,11 @@ public class Rook extends APiece{
         return moves;
     }
 
+    @Override
+    public PieceType getPieceType() {
+        return PieceType.ROOK;
+    }
+
     public boolean isRook() {
         return true;
     }

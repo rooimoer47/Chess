@@ -107,6 +107,11 @@ public class Pawn extends APiece{
         return moves;
     }
 
+    @Override
+    public PieceType getPieceType() {
+        return PieceType.PAWN;
+    }
+
     public boolean isPawn() {
         return true;
     }

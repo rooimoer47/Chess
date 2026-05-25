@@ -42,6 +42,11 @@ public class Bishop extends APiece{
     }
 
     @Override
+    public PieceType getPieceType() {
+        return PieceType.BISHOP;
+    }
+
+    @Override
     public List<Position> getValidPositions(APiece[][] board, BoardState boardState) {
         List<Position> moves = new ArrayList<>();
         int[][] directions = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
