@@ -7,11 +7,10 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class APiece implements Cloneable{
+public abstract class APiece implements Cloneable {
+
     private Position pos;
     private final boolean white;
-    private boolean selected = false;
-    private boolean marked = false;
     private boolean originalPosition = true;
     protected static final String ROOT = "src/main/resources";
 
@@ -25,13 +24,13 @@ public abstract class APiece implements Cloneable{
         this.white = white;
     }
 
-    public abstract BufferedImage getImage();
+    public abstract BufferedImage getImage(boolean selected);
 
     public boolean isPositionOccupied() {
-        return this.getImage() != null;
+        return true;
     }
 
-    public abstract List<Position> getValidPositions(APiece [][] board, BoardState boardState);
+    public abstract List<Position> getValidPositions(APiece[][] board, BoardState boardState);
 
     public Position getCurrentPosition() {
         return this.pos;
@@ -43,26 +42,6 @@ public abstract class APiece implements Cloneable{
 
     public boolean isWhite() {
         return white;
-    }
-
-    public boolean isSelected() {
-        return selected;
-    }
-
-    public void toggleSelected() {
-        selected = !selected;
-    }
-
-    public boolean isMarked() {
-        return marked;
-    }
-
-    public void mark() {
-        marked = true;
-    }
-
-    public void unMark() {
-        marked = false;
     }
 
     public boolean isOriginalPosition() {
@@ -89,36 +68,20 @@ public abstract class APiece implements Cloneable{
         List<Position> validPositions = this.getValidPositions(board, boardState);
         List<Position> legalPositions = new ArrayList<>();
 
-        for (Position pos : validPositions) {
+        for (Position candidate : validPositions) {
             APiece[][] tempBoard = boardState.deepCopy(board);
-
-            tempBoard[pos.getRow()][pos.getCol()] = this.clone();
-            tempBoard[this.pos.getRow()][this.pos.getCol()] = createEmptyPiece(this.pos);
-            tempBoard[pos.getRow()][pos.getCol()].setCurrentPosition(pos);
+            tempBoard[candidate.getRow()][candidate.getCol()] = this.clone();
+            tempBoard[this.pos.getRow()][this.pos.getCol()] = new EmptySquare(this.pos);
+            tempBoard[candidate.getRow()][candidate.getCol()].setCurrentPosition(candidate);
             if (!boardState.isInCheck(tempBoard, this.isWhite())) {
-                legalPositions.add(pos);
+                legalPositions.add(candidate);
             }
         }
         return legalPositions;
     }
 
     public List<Position> getLegalPositions(APiece[][] board) {
-        BoardState tempState = new BoardState();
-        return getLegalPositions(board, tempState);
-    }
-
-    private APiece createEmptyPiece(Position pos) {
-        return new APiece(new Position(pos.getRow(), pos.getCol())) {
-            @Override
-            public BufferedImage getImage() {
-                return null;
-            }
-
-            @Override
-            public List<Position> getValidPositions(APiece[][] board, BoardState boardState) {
-                return new ArrayList<>();
-            }
-        };
+        return getLegalPositions(board, new BoardState());
     }
 
     @Override

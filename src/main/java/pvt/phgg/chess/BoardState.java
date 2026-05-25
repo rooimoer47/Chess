@@ -17,7 +17,7 @@ public class BoardState {
     }
 
     public boolean isOccupied(APiece[][] board, Position pos) {
-        return board[pos.getRow()][pos.getCol()].getImage() != null;
+        return board[pos.getRow()][pos.getCol()].isPositionOccupied();
     }
 
     public boolean isUnOccupied(APiece[][] board, List<Position> positions) {

@@ -16,10 +16,10 @@ public class Bishop extends APiece{
     }
 
     @Override
-    public BufferedImage getImage() {
+    public BufferedImage getImage(boolean selected) {
         try {
             if (this.isWhite()) {
-                if (this.isSelected()) {
+                if (selected) {
                     return ImageIO.read(new File(ROOT+"/images/bishop_white_selected.png"));
                 }
                 else {
@@ -27,7 +27,7 @@ public class Bishop extends APiece{
                 }
             }
             else {
-                if (this.isSelected()) {
+                if (selected) {
                     return ImageIO.read(new File(ROOT+"/images/bishop_black_selected.png"));
                 }
                 else {

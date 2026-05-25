@@ -18,10 +18,10 @@ public class Pawn extends APiece{
     }
 
     @Override
-    public BufferedImage getImage() {
+    public BufferedImage getImage(boolean selected) {
         try {
             if (this.isWhite()) {
-                if (this.isSelected()) {
+                if (selected) {
                     return ImageIO.read(new File(ROOT+"/images/pawn_white_selected.png"));
                 }
                 else {
@@ -29,7 +29,7 @@ public class Pawn extends APiece{
                 }
             }
             else {
-                if (this.isSelected()) {
+                if (selected) {
                     return ImageIO.read(new File(ROOT+"/images/pawn_black_selected.png"));
                 }
                 else {
