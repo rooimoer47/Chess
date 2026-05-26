@@ -4,10 +4,4 @@ services:
     ports:
       - "8080:8080"
     restart: unless-stopped
-    environment:
-      - CHESS_PLAYER1_USERNAME=player1
-      - CHESS_PLAYER1_PASSWORD=changeme1
-      - CHESS_PLAYER2_USERNAME=player2
-      - CHESS_PLAYER2_PASSWORD=changeme2
-      # Replace with a random base64-encoded 32+ byte value before deploying
-      - CHESS_JWT_SECRET=dGhpcy1pcy1hLXZlcnktbG9uZy1zZWNyZXQta2V5LWZvci1jaGVzcw==
+    env_file: .env
