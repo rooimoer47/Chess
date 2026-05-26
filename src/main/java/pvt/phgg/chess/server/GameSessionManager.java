@@ -21,11 +21,11 @@ public class GameSessionManager {
         return activeSession;
     }
 
-    public synchronized PlayerRole join(WebSocketSession ws) throws IOException {
+    public synchronized PlayerRole join(WebSocketSession ws, String username) throws IOException {
         if (activeSession.isFull()) {
             return null;
         }
-        return activeSession.join(ws);
+        return activeSession.join(ws, username);
     }
 
     public synchronized void disconnect(WebSocketSession ws) throws IOException {

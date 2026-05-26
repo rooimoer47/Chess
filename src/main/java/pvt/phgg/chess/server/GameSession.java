@@ -25,18 +25,25 @@ public class GameSession {
 
     private WebSocketSession whiteSession;
     private WebSocketSession blackSession;
+    private String whiteUsername;
+    private String blackUsername;
 
     public GameSession(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
-    public synchronized PlayerRole join(WebSocketSession ws) {
+    public synchronized PlayerRole join(WebSocketSession ws, String username) {
+        if (username.equals(whiteUsername) || username.equals(blackUsername)) {
+            return null;
+        }
         if (whiteSession == null) {
             whiteSession = ws;
+            whiteUsername = username;
             return PlayerRole.WHITE;
         }
         if (blackSession == null) {
             blackSession = ws;
+            blackUsername = username;
             return PlayerRole.BLACK;
         }
         return null;
@@ -60,9 +67,11 @@ public class GameSession {
         PlayerRole role = roleOf(ws);
         if (role == PlayerRole.WHITE) {
             whiteSession = null;
+            whiteUsername = null;
             sendTo(blackSession, ServerMessage.opponentDisconnected());
         } else if (role == PlayerRole.BLACK) {
             blackSession = null;
+            blackUsername = null;
             sendTo(whiteSession, ServerMessage.opponentDisconnected());
         }
     }

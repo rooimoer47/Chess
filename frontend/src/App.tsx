@@ -1,9 +1,21 @@
+import { useState } from 'react';
 import { useChessSocket } from './hooks/useChessSocket';
 import { Board } from './components/Board';
 import { PromotionDialog } from './components/PromotionDialog';
+import { LoginScreen } from './components/LoginScreen';
 import './App.css';
 
 export default function App() {
+  const [token, setToken] = useState<string | null>(null);
+
+  if (!token) {
+    return <LoginScreen onLogin={setToken} />;
+  }
+
+  return <ChessGame token={token} />;
+}
+
+function ChessGame({ token }: { token: string }) {
   const {
     connected,
     gameStarted,
@@ -16,7 +28,7 @@ export default function App() {
     statusMessage,
     sendMove,
     sendPromotion,
-  } = useChessSocket();
+  } = useChessSocket(token);
 
   if (!connected) {
     return <div className="screen"><p>Connecting to server…</p></div>;

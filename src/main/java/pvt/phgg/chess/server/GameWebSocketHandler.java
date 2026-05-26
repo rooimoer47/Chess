@@ -31,9 +31,10 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession ws) throws Exception {
-        PlayerRole role = sessionManager.join(ws);
+        String username = (String) ws.getAttributes().get("username");
+        PlayerRole role = sessionManager.join(ws, username);
         if (role == null) {
-            sendTo(ws, ServerMessage.error("Game is full. Try again later."));
+            sendTo(ws, ServerMessage.error("Game is full or you are already connected."));
             ws.close();
             return;
         }

@@ -138,3 +138,56 @@ body {
 .promotion-piece:hover {
   background: #666;
 }
+
+.login-title {
+  margin-bottom: 24px;
+  font-size: 2rem;
+  letter-spacing: 0.05em;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 260px;
+}
+
+.login-input {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background: #2e2e2e;
+  color: #eee;
+  font-size: 1rem;
+  outline: none;
+}
+
+.login-input:focus {
+  border-color: #7fc97f;
+}
+
+.login-button {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background: #7fc97f;
+  color: #111;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.login-button:hover:not(:disabled) {
+  background: #6ab56a;
+}
+
+.login-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.login-error {
+  color: #e06060;
+  font-size: 0.9rem;
+  text-align: center;
+}
