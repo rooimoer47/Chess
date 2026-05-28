@@ -71,8 +71,8 @@ public class GameEngine {
     // --- Internal ---
 
     private MoveResult finalizeTurn(boolean wasWhite, boolean captureOccurred) {
-        // Close the en passant window for the side that just moved
-        clearJumpedPawns(wasWhite);
+        // Close the en passant window opened by the opponent's previous double push
+        clearJumpedPawns(!wasWhite);
         whiteTurn = !wasWhite;
         GameStatus status = computeStatus(whiteTurn);
         MoveResult.Type type = switch (status) {
