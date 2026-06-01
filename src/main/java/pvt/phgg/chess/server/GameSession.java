@@ -30,8 +30,8 @@ public class GameSession {
     private static final Comparator<PieceType> PIECE_ORDER = Comparator.comparingInt(p -> switch (p) {
         case QUEEN  -> 0;
         case ROOK   -> 1;
-        case KNIGHT -> 2;
-        case BISHOP -> 3;
+        case BISHOP -> 2;
+        case KNIGHT -> 3;
         default     -> 4; // PAWN
     });
 
