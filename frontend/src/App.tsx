@@ -39,6 +39,7 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
     statusMessage,
     sendMove,
     sendPromotion,
+    sendResign,
   } = useChessSocket(token, botMode);
 
   if (!connected) {
@@ -54,7 +55,7 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
     );
   }
 
-  const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE';
+  const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE' || status === 'RESIGNED';
   const isMyTurn = currentTurn === playerColor;
 
   // Pieces of my color captured by opponent (shown at top)
@@ -70,6 +71,9 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
         <span className={`turn-indicator ${isMyTurn ? 'my-turn' : ''}`}>
           {isGameOver ? '—' : isMyTurn ? 'Your turn' : "Opponent's turn"}
         </span>
+        {!isGameOver && (
+          <button className="resign-btn" onClick={sendResign}>Resign</button>
+        )}
       </div>
 
       {statusMessage && (

@@ -140,6 +140,22 @@ body {
   background: #666;
 }
 
+.resign-btn {
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid #666;
+  background: transparent;
+  color: #aaa;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.resign-btn:hover {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+}
+
 .captured-pieces {
   display: flex;
   flex-wrap: wrap;

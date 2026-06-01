@@ -80,6 +80,7 @@ public class GameEngine {
             case CHECK       -> MoveResult.Type.CHECK;
             case CHECKMATE   -> MoveResult.Type.CHECKMATE;
             case STALEMATE   -> MoveResult.Type.STALEMATE;
+            case RESIGNED    -> MoveResult.Type.VALID;
         };
         return new MoveResult(type, wasWhite, captureOccurred);
     }

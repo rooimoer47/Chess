@@ -47,6 +47,8 @@ public class GameSession {
     private boolean botEnabled = false;
     private boolean botIsWhite;
     private BotStrategy botStrategy;
+    private boolean resigned = false;
+    private boolean resignedWhite;
 
     public GameSession(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -128,6 +130,13 @@ public class GameSession {
         }
     }
 
+    public synchronized void resign(boolean isWhite) {
+        if (!resigned) {
+            resigned = true;
+            resignedWhite = isWhite;
+        }
+    }
+
     public synchronized MoveResult applyMove(Position from, Position to) {
         APiece movingPiece = engine.getPiece(from.getRow(), from.getCol());
         APiece targetPiece = engine.getPiece(to.getRow(), to.getCol());
@@ -189,7 +198,7 @@ public class GameSession {
                 APiece piece = engine.getPiece(row, col);
                 board[row][col] = PieceDto.from(piece);
 
-                if (piece.isPositionOccupied() && piece.isWhite() == engine.isWhiteTurn()) {
+                if (!resigned && piece.isPositionOccupied() && piece.isWhite() == engine.isWhiteTurn()) {
                     Position pos = new Position(row, col);
                     for (Position target : engine.getLegalMoves(pos)) {
                         legalMoves.add(new LegalMove(row, col, target.getRow(), target.getCol()));
@@ -198,8 +207,8 @@ public class GameSession {
             }
         }
 
-        String turn = engine.isWhiteTurn() ? "WHITE" : "BLACK";
-        String status = engine.getStatus().name();
+        String turn = resigned ? (resignedWhite ? "WHITE" : "BLACK") : (engine.isWhiteTurn() ? "WHITE" : "BLACK");
+        String status = resigned ? GameStatus.RESIGNED.name() : engine.getStatus().name();
         List<String> capturedW = capturedByWhite.stream().map(Enum::name).toList();
         List<String> capturedB = capturedByBlack.stream().map(Enum::name).toList();
         return ServerMessage.boardUpdate(board, turn, status, legalMoves, lastMove, capturedW, capturedB);

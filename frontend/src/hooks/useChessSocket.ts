@@ -59,6 +59,7 @@ export function useChessSocket(token: string, botMode = false) {
           const message =
             msg.status === 'CHECKMATE' ? `Checkmate! ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
             : msg.status === 'STALEMATE' ? 'Draw — stalemate!'
+            : msg.status === 'RESIGNED' ? `${msg.currentTurn} resigned. ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
             : msg.status === 'CHECK' ? `${msg.currentTurn} is in check!`
             : null;
           setState(s => ({
@@ -67,7 +68,7 @@ export function useChessSocket(token: string, botMode = false) {
             board: msg.board,
             currentTurn: msg.currentTurn,
             status: msg.status,
-            legalMoves: msg.status === 'CHECKMATE' || msg.status === 'STALEMATE' ? [] : msg.legalMoves,
+            legalMoves: msg.status === 'CHECKMATE' || msg.status === 'STALEMATE' || msg.status === 'RESIGNED' ? [] : msg.legalMoves,
             lastMove: msg.lastMove ?? null,
             capturedByWhite: msg.capturedByWhite,
             capturedByBlack: msg.capturedByBlack,
@@ -106,5 +107,9 @@ export function useChessSocket(token: string, botMode = false) {
     wsRef.current?.send(JSON.stringify({ type: 'PROMOTE', choice }));
   }, []);
 
-  return { ...state, sendMove, sendPromotion };
+  const sendResign = useCallback(() => {
+    wsRef.current?.send(JSON.stringify({ type: 'RESIGN' }));
+  }, []);
+
+  return { ...state, sendMove, sendPromotion, sendResign };
 }

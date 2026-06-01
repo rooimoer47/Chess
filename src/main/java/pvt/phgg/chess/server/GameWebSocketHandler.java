@@ -68,6 +68,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         switch (msg.type()) {
             case "MOVE"    -> handleMove(ws, session, role, msg);
             case "PROMOTE" -> handlePromotion(ws, session, role, msg);
+            case "RESIGN"  -> handleResign(ws, session, role);
             default        -> sendTo(ws, ServerMessage.error("Unknown message type: " + msg.type()));
         }
     }
@@ -113,6 +114,15 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         if (session.isBotTurn() && session.makeBotMove()) {
             session.broadcastBoardState();
         }
+    }
+
+    private void handleResign(WebSocketSession ws, GameSession session, PlayerRole role) throws IOException {
+        if (!session.isFull()) {
+            session.sendError(ws, "Game not started.");
+            return;
+        }
+        session.resign(role == PlayerRole.WHITE);
+        session.broadcastBoardState();
     }
 
     private void handlePromotion(WebSocketSession ws, GameSession session, PlayerRole role, ClientMessage msg) throws IOException {
