@@ -12,6 +12,8 @@ export interface GameState {
   status: GameStatus;
   legalMoves: LegalMove[];
   lastMove: LastMove | null;
+  capturedByWhite: string[];
+  capturedByBlack: string[];
   promotionPending: { row: number; col: number } | null;
   statusMessage: string | null;
 }
@@ -26,6 +28,8 @@ export function useChessSocket(token: string) {
     status: 'IN_PROGRESS',
     legalMoves: [],
     lastMove: null,
+    capturedByWhite: [],
+    capturedByBlack: [],
     promotionPending: null,
     statusMessage: null,
   });
@@ -64,6 +68,8 @@ export function useChessSocket(token: string) {
             status: msg.status,
             legalMoves: msg.status === 'CHECKMATE' || msg.status === 'STALEMATE' ? [] : msg.legalMoves,
             lastMove: msg.lastMove ?? null,
+            capturedByWhite: msg.capturedByWhite,
+            capturedByBlack: msg.capturedByBlack,
             promotionPending: null,
             statusMessage: message,
           }));

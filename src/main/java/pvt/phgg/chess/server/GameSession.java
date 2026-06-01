@@ -7,6 +7,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import pvt.phgg.chess.*;
 import pvt.phgg.chess.piece.APiece;
+import pvt.phgg.chess.piece.PieceType;
 import pvt.phgg.chess.server.dto.LastMoveDto;
 import pvt.phgg.chess.server.dto.LegalMove;
 import pvt.phgg.chess.server.dto.PieceDto;
@@ -14,6 +15,7 @@ import pvt.phgg.chess.server.dto.ServerMessage;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class GameSession {
@@ -24,11 +26,22 @@ public class GameSession {
     private final ObjectMapper objectMapper;
     private final GameEngine engine = new GameEngine();
 
+    // Q > R > N > B > P, with Knight before Bishop at equal value
+    private static final Comparator<PieceType> PIECE_ORDER = Comparator.comparingInt(p -> switch (p) {
+        case QUEEN  -> 0;
+        case ROOK   -> 1;
+        case BISHOP -> 2;
+        case KNIGHT -> 3;
+        default     -> 4; // PAWN
+    });
+
     private WebSocketSession whiteSession;
     private WebSocketSession blackSession;
     private String whiteUsername;
     private String blackUsername;
     private LastMoveDto lastMove;
+    private final List<PieceType> capturedByWhite = new ArrayList<>();
+    private final List<PieceType> capturedByBlack = new ArrayList<>();
 
     public GameSession(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -79,11 +92,27 @@ public class GameSession {
     }
 
     public synchronized MoveResult applyMove(Position from, Position to) {
+        APiece movingPiece = engine.getPiece(from.getRow(), from.getCol());
+        APiece targetPiece = engine.getPiece(to.getRow(), to.getCol());
+
         MoveResult result = engine.applyMove(from, to);
+
         if (result.isValid()) {
             lastMove = new LastMoveDto(from.getRow(), from.getCol(), to.getRow(), to.getCol());
+            if (targetPiece.isPositionOccupied()) {
+                recordCapture(movingPiece.isWhite(), targetPiece.getPieceType());
+            } else if (movingPiece.isPawn() && from.getCol() != to.getCol()) {
+                // en passant — the passed-through square is empty but a pawn is captured
+                recordCapture(movingPiece.isWhite(), PieceType.PAWN);
+            }
         }
         return result;
+    }
+
+    private void recordCapture(boolean byWhite, PieceType pieceType) {
+        List<PieceType> list = byWhite ? capturedByWhite : capturedByBlack;
+        list.add(pieceType);
+        list.sort(PIECE_ORDER);
     }
 
     public synchronized MoveResult applyPromotion(Position pos, PromotionChoice choice) {
@@ -134,7 +163,9 @@ public class GameSession {
 
         String turn = engine.isWhiteTurn() ? "WHITE" : "BLACK";
         String status = engine.getStatus().name();
-        return ServerMessage.boardUpdate(board, turn, status, legalMoves, lastMove);
+        List<String> capturedW = capturedByWhite.stream().map(Enum::name).toList();
+        List<String> capturedB = capturedByBlack.stream().map(Enum::name).toList();
+        return ServerMessage.boardUpdate(board, turn, status, legalMoves, lastMove, capturedW, capturedB);
     }
 
     private void sendTo(WebSocketSession ws, ServerMessage message) throws IOException {

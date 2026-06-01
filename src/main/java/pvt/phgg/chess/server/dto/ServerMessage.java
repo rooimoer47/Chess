@@ -14,6 +14,8 @@ public class ServerMessage {
     private final String status;
     private final List<LegalMove> legalMoves;
     private final LastMoveDto lastMove;
+    private final List<String> capturedByWhite;
+    private final List<String> capturedByBlack;
     private final Integer promotionRow;
     private final Integer promotionCol;
     private final String message;
@@ -26,6 +28,8 @@ public class ServerMessage {
         this.status = b.status;
         this.legalMoves = b.legalMoves;
         this.lastMove = b.lastMove;
+        this.capturedByWhite = b.capturedByWhite;
+        this.capturedByBlack = b.capturedByBlack;
         this.promotionRow = b.promotionRow;
         this.promotionCol = b.promotionCol;
         this.message = b.message;
@@ -35,9 +39,12 @@ public class ServerMessage {
         return new Builder("WAITING").color(color).build();
     }
 
-    public static ServerMessage boardUpdate(PieceDto[][] board, String currentTurn, String status, List<LegalMove> legalMoves, LastMoveDto lastMove) {
+    public static ServerMessage boardUpdate(PieceDto[][] board, String currentTurn, String status,
+                                             List<LegalMove> legalMoves, LastMoveDto lastMove,
+                                             List<String> capturedByWhite, List<String> capturedByBlack) {
         return new Builder("BOARD_UPDATE")
                 .board(board).currentTurn(currentTurn).status(status).legalMoves(legalMoves).lastMove(lastMove)
+                .capturedByWhite(capturedByWhite).capturedByBlack(capturedByBlack)
                 .build();
     }
 
@@ -61,8 +68,10 @@ public class ServerMessage {
     public List<LegalMove> getLegalMoves() { return legalMoves; }
     public Integer getPromotionRow()    { return promotionRow; }
     public Integer getPromotionCol()    { return promotionCol; }
-    public String getMessage()          { return message; }
-    public LastMoveDto getLastMove()    { return lastMove; }
+    public String getMessage()             { return message; }
+    public LastMoveDto getLastMove()       { return lastMove; }
+    public List<String> getCapturedByWhite() { return capturedByWhite; }
+    public List<String> getCapturedByBlack() { return capturedByBlack; }
 
     private static class Builder {
         private final String type;
@@ -72,6 +81,8 @@ public class ServerMessage {
         private String status;
         private List<LegalMove> legalMoves;
         private LastMoveDto lastMove;
+        private List<String> capturedByWhite;
+        private List<String> capturedByBlack;
         private Integer promotionRow;
         private Integer promotionCol;
         private String message;
@@ -82,9 +93,11 @@ public class ServerMessage {
         Builder board(PieceDto[][] v)             { this.board = v; return this; }
         Builder currentTurn(String v)             { this.currentTurn = v; return this; }
         Builder status(String v)                  { this.status = v; return this; }
-        Builder legalMoves(List<LegalMove> v)     { this.legalMoves = v; return this; }
-        Builder lastMove(LastMoveDto v)           { this.lastMove = v; return this; }
-        Builder promotionRow(Integer v)           { this.promotionRow = v; return this; }
+        Builder legalMoves(List<LegalMove> v)        { this.legalMoves = v; return this; }
+        Builder lastMove(LastMoveDto v)              { this.lastMove = v; return this; }
+        Builder capturedByWhite(List<String> v)      { this.capturedByWhite = v; return this; }
+        Builder capturedByBlack(List<String> v)      { this.capturedByBlack = v; return this; }
+        Builder promotionRow(Integer v)              { this.promotionRow = v; return this; }
         Builder promotionCol(Integer v)           { this.promotionCol = v; return this; }
         Builder message(String v)                 { this.message = v; return this; }
 

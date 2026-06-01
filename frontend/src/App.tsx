@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useChessSocket } from './hooks/useChessSocket';
 import { Board } from './components/Board';
+import { CapturedPieces } from './components/CapturedPieces';
 import { PromotionDialog } from './components/PromotionDialog';
 import { LoginScreen } from './components/LoginScreen';
 import './App.css';
@@ -25,6 +26,8 @@ function ChessGame({ token }: { token: string }) {
     status,
     legalMoves,
     lastMove,
+    capturedByWhite,
+    capturedByBlack,
     promotionPending,
     statusMessage,
     sendMove,
@@ -47,6 +50,12 @@ function ChessGame({ token }: { token: string }) {
   const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE';
   const isMyTurn = currentTurn === playerColor;
 
+  // Pieces of my color captured by opponent (shown at top)
+  const myLost      = playerColor === 'WHITE' ? capturedByBlack : capturedByWhite;
+  // Opponent's pieces I captured (shown at bottom)
+  const opponentLost = playerColor === 'WHITE' ? capturedByWhite : capturedByBlack;
+  const opponentColor = playerColor === 'WHITE' ? 'BLACK' : 'WHITE';
+
   return (
     <div className="app">
       <div className="info-bar">
@@ -62,6 +71,8 @@ function ChessGame({ token }: { token: string }) {
         </div>
       )}
 
+      <CapturedPieces pieces={myLost} color={playerColor!} />
+
       <Board
         board={board}
         legalMoves={legalMoves}
@@ -70,6 +81,8 @@ function ChessGame({ token }: { token: string }) {
         isMyTurn={isMyTurn && !isGameOver}
         onMove={sendMove}
       />
+
+      <CapturedPieces pieces={opponentLost} color={opponentColor} />
 
       {promotionPending && playerColor && (
         <PromotionDialog color={playerColor} onChoice={sendPromotion} />
