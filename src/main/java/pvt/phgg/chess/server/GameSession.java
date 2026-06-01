@@ -26,7 +26,7 @@ public class GameSession {
     private final ObjectMapper objectMapper;
     private final GameEngine engine = new GameEngine();
 
-    // Q > R > N > B > P, with Knight before Bishop at equal value
+    // Q > R > B > N > P
     private static final Comparator<PieceType> PIECE_ORDER = Comparator.comparingInt(p -> switch (p) {
         case QUEEN  -> 0;
         case ROOK   -> 1;
