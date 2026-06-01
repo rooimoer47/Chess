@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { Piece, LegalMove, Color, GameStatus, ServerMessage } from '../types';
+import type { Piece, LegalMove, LastMove, Color, GameStatus, ServerMessage } from '../types';
 
 const EMPTY_BOARD: (Piece | null)[][] = Array(8).fill(null).map(() => Array(8).fill(null));
 
@@ -11,6 +11,7 @@ export interface GameState {
   currentTurn: Color;
   status: GameStatus;
   legalMoves: LegalMove[];
+  lastMove: LastMove | null;
   promotionPending: { row: number; col: number } | null;
   statusMessage: string | null;
 }
@@ -24,6 +25,7 @@ export function useChessSocket(token: string) {
     currentTurn: 'WHITE',
     status: 'IN_PROGRESS',
     legalMoves: [],
+    lastMove: null,
     promotionPending: null,
     statusMessage: null,
   });
@@ -61,6 +63,7 @@ export function useChessSocket(token: string) {
             currentTurn: msg.currentTurn,
             status: msg.status,
             legalMoves: msg.status === 'CHECKMATE' || msg.status === 'STALEMATE' ? [] : msg.legalMoves,
+            lastMove: msg.lastMove ?? null,
             promotionPending: null,
             statusMessage: message,
           }));

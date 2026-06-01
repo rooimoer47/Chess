@@ -7,6 +7,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import pvt.phgg.chess.*;
 import pvt.phgg.chess.piece.APiece;
+import pvt.phgg.chess.server.dto.LastMoveDto;
 import pvt.phgg.chess.server.dto.LegalMove;
 import pvt.phgg.chess.server.dto.PieceDto;
 import pvt.phgg.chess.server.dto.ServerMessage;
@@ -27,6 +28,7 @@ public class GameSession {
     private WebSocketSession blackSession;
     private String whiteUsername;
     private String blackUsername;
+    private LastMoveDto lastMove;
 
     public GameSession(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -77,7 +79,11 @@ public class GameSession {
     }
 
     public synchronized MoveResult applyMove(Position from, Position to) {
-        return engine.applyMove(from, to);
+        MoveResult result = engine.applyMove(from, to);
+        if (result.isValid()) {
+            lastMove = new LastMoveDto(from.getRow(), from.getCol(), to.getRow(), to.getCol());
+        }
+        return result;
     }
 
     public synchronized MoveResult applyPromotion(Position pos, PromotionChoice choice) {
@@ -128,7 +134,7 @@ public class GameSession {
 
         String turn = engine.isWhiteTurn() ? "WHITE" : "BLACK";
         String status = engine.getStatus().name();
-        return ServerMessage.boardUpdate(board, turn, status, legalMoves);
+        return ServerMessage.boardUpdate(board, turn, status, legalMoves, lastMove);
     }
 
     private void sendTo(WebSocketSession ws, ServerMessage message) throws IOException {

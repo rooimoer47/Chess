@@ -14,9 +14,16 @@ export interface LegalMove {
   toCol: number;
 }
 
+export interface LastMove {
+  fromRow: number;
+  fromCol: number;
+  toRow: number;
+  toCol: number;
+}
+
 export type ServerMessage =
   | { type: 'WAITING'; color: Color }
-  | { type: 'BOARD_UPDATE'; board: (Piece | null)[][]; currentTurn: Color; status: GameStatus; legalMoves: LegalMove[] }
+  | { type: 'BOARD_UPDATE'; board: (Piece | null)[][]; currentTurn: Color; status: GameStatus; legalMoves: LegalMove[]; lastMove?: LastMove }
   | { type: 'PROMOTION_NEEDED'; promotionRow: number; promotionCol: number }
   | { type: 'OPPONENT_DISCONNECTED' }
   | { type: 'ERROR'; message: string };

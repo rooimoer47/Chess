@@ -7,13 +7,15 @@ interface Props {
   piece: PieceType | null;
   isSelected: boolean;
   isLegalTarget: boolean;
+  isLastMove: boolean;
   onClick: () => void;
 }
 
-export function Square({ row, col, piece, isSelected, isLegalTarget, onClick }: Props) {
+export function Square({ row, col, piece, isSelected, isLegalTarget, isLastMove, onClick }: Props) {
   const isLight = (row + col) % 2 === 0;
 
   let background = isLight ? '#f0d9b5' : '#b58863';
+  if (isLastMove) background = isLight ? '#f6f669' : '#baca2b';
   if (isSelected) background = '#7fc97f';
   else if (isLegalTarget) background = isLight ? '#cdd16e' : '#aaa23a';
 

@@ -24,6 +24,7 @@ function ChessGame({ token }: { token: string }) {
     currentTurn,
     status,
     legalMoves,
+    lastMove,
     promotionPending,
     statusMessage,
     sendMove,
@@ -64,6 +65,7 @@ function ChessGame({ token }: { token: string }) {
       <Board
         board={board}
         legalMoves={legalMoves}
+        lastMove={lastMove}
         playerColor={playerColor!}
         isMyTurn={isMyTurn && !isGameOver}
         onMove={sendMove}

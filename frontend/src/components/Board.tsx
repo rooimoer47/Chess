@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import type { Piece, LegalMove, Color } from '../types';
+import type { Piece, LegalMove, LastMove, Color } from '../types';
 import { Square } from './Square';
 
 interface Props {
   board: (Piece | null)[][];
   legalMoves: LegalMove[];
+  lastMove: LastMove | null;
   playerColor: Color;
   isMyTurn: boolean;
   onMove: (fromRow: number, fromCol: number, toRow: number, toCol: number) => void;
 }
 
-export function Board({ board, legalMoves, playerColor, isMyTurn, onMove }: Props) {
+export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, onMove }: Props) {
   const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
 
   const legalTargets = selected
@@ -58,6 +59,10 @@ export function Board({ board, legalMoves, playerColor, isMyTurn, onMove }: Prop
             piece={board[row][col]}
             isSelected={selected?.row === row && selected?.col === col}
             isLegalTarget={legalTargets.some(t => t.row === row && t.col === col)}
+            isLastMove={lastMove != null && (
+              (lastMove.fromRow === row && lastMove.fromCol === col) ||
+              (lastMove.toRow === row && lastMove.toCol === col)
+            )}
             onClick={() => handleSquareClick(row, col)}
           />
         ))

@@ -13,6 +13,7 @@ public class ServerMessage {
     private final String currentTurn;
     private final String status;
     private final List<LegalMove> legalMoves;
+    private final LastMoveDto lastMove;
     private final Integer promotionRow;
     private final Integer promotionCol;
     private final String message;
@@ -24,6 +25,7 @@ public class ServerMessage {
         this.currentTurn = b.currentTurn;
         this.status = b.status;
         this.legalMoves = b.legalMoves;
+        this.lastMove = b.lastMove;
         this.promotionRow = b.promotionRow;
         this.promotionCol = b.promotionCol;
         this.message = b.message;
@@ -33,9 +35,9 @@ public class ServerMessage {
         return new Builder("WAITING").color(color).build();
     }
 
-    public static ServerMessage boardUpdate(PieceDto[][] board, String currentTurn, String status, List<LegalMove> legalMoves) {
+    public static ServerMessage boardUpdate(PieceDto[][] board, String currentTurn, String status, List<LegalMove> legalMoves, LastMoveDto lastMove) {
         return new Builder("BOARD_UPDATE")
-                .board(board).currentTurn(currentTurn).status(status).legalMoves(legalMoves)
+                .board(board).currentTurn(currentTurn).status(status).legalMoves(legalMoves).lastMove(lastMove)
                 .build();
     }
 
@@ -60,6 +62,7 @@ public class ServerMessage {
     public Integer getPromotionRow()    { return promotionRow; }
     public Integer getPromotionCol()    { return promotionCol; }
     public String getMessage()          { return message; }
+    public LastMoveDto getLastMove()    { return lastMove; }
 
     private static class Builder {
         private final String type;
@@ -68,6 +71,7 @@ public class ServerMessage {
         private String currentTurn;
         private String status;
         private List<LegalMove> legalMoves;
+        private LastMoveDto lastMove;
         private Integer promotionRow;
         private Integer promotionCol;
         private String message;
@@ -79,6 +83,7 @@ public class ServerMessage {
         Builder currentTurn(String v)             { this.currentTurn = v; return this; }
         Builder status(String v)                  { this.status = v; return this; }
         Builder legalMoves(List<LegalMove> v)     { this.legalMoves = v; return this; }
+        Builder lastMove(LastMoveDto v)           { this.lastMove = v; return this; }
         Builder promotionRow(Integer v)           { this.promotionRow = v; return this; }
         Builder promotionCol(Integer v)           { this.promotionCol = v; return this; }
         Builder message(String v)                 { this.message = v; return this; }
