@@ -9,15 +9,21 @@ import './App.css';
 export default function App() {
   const [token, setToken] = useState<string | null>(null);
   const [botMode, setBotMode] = useState(false);
+  const [gameKey, setGameKey] = useState(0);
 
   if (!token) {
     return <LoginScreen onLogin={(t, bot) => { setToken(t); setBotMode(bot); }} />;
   }
 
-  return <ChessGame token={token} botMode={botMode} />;
+  const handlePlayAgain = (newBotMode: boolean) => {
+    setBotMode(newBotMode);
+    setGameKey(k => k + 1);
+  };
+
+  return <ChessGame key={gameKey} token={token} botMode={botMode} onPlayAgain={handlePlayAgain} />;
 }
 
-function ChessGame({ token, botMode }: { token: string; botMode: boolean }) {
+function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: boolean; onPlayAgain: (botMode: boolean) => void }) {
   const {
     connected,
     gameStarted,
@@ -84,6 +90,16 @@ function ChessGame({ token, botMode }: { token: string; botMode: boolean }) {
       />
 
       <CapturedPieces pieces={opponentLost} color={opponentColor} />
+
+      {isGameOver && (
+        <div className="play-again">
+          <span>Play again?</span>
+          <div className="mode-toggle">
+            <button type="button" className="mode-btn" onClick={() => onPlayAgain(false)}>vs Human</button>
+            <button type="button" className="mode-btn" onClick={() => onPlayAgain(true)}>vs Bot</button>
+          </div>
+        </div>
+      )}
 
       {promotionPending && playerColor && (
         <PromotionDialog color={playerColor} onChoice={sendPromotion} />
