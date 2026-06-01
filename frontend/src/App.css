@@ -202,6 +202,29 @@ body {
   cursor: default;
 }
 
+.mode-toggle {
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #555;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 9px;
+  border: none;
+  background: #2e2e2e;
+  color: #aaa;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.mode-btn-active {
+  background: #7fc97f;
+  color: #111;
+  font-weight: bold;
+}
+
 .login-error {
   color: #e06060;
   font-size: 0.9rem;

@@ -28,6 +28,10 @@ public class GameSessionManager {
         return activeSession.join(ws, username);
     }
 
+    public synchronized boolean joinBot() {
+        return activeSession.joinBot();
+    }
+
     public synchronized void disconnect(WebSocketSession ws) throws IOException {
         activeSession.disconnect(ws);
         if (activeSession.isEmpty()) {

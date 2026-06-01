@@ -26,6 +26,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             String token = servletRequest.getServletRequest().getParameter("token");
             if (token != null && jwtUtil.isValid(token)) {
                 attributes.put("username", jwtUtil.extractUsername(token));
+                attributes.put("botMode", "true".equals(servletRequest.getServletRequest().getParameter("bot")));
                 return true;
             }
         }

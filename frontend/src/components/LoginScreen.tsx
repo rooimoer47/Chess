@@ -1,12 +1,13 @@
 import { useState } from 'react';
 
 interface Props {
-  onLogin: (token: string) => void;
+  onLogin: (token: string, botMode: boolean) => void;
 }
 
 export function LoginScreen({ onLogin }: Props) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [botMode, setBotMode] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +23,7 @@ export function LoginScreen({ onLogin }: Props) {
       });
       if (res.ok) {
         const { token } = await res.json() as { token: string };
-        onLogin(token);
+        onLogin(token, botMode);
       } else {
         setError('Invalid username or password');
       }
@@ -54,9 +55,17 @@ export function LoginScreen({ onLogin }: Props) {
           autoComplete="current-password"
           required
         />
+        <div className="mode-toggle">
+          <button type="button" className={`mode-btn${!botMode ? ' mode-btn-active' : ''}`} onClick={() => setBotMode(false)}>
+            vs Human
+          </button>
+          <button type="button" className={`mode-btn${botMode ? ' mode-btn-active' : ''}`} onClick={() => setBotMode(true)}>
+            vs Bot
+          </button>
+        </div>
         {error && <p className="login-error">{error}</p>}
         <button className="login-button" type="submit" disabled={loading}>
-          {loading ? 'Logging in…' : 'Login'}
+          {loading ? 'Logging in…' : 'Play'}
         </button>
       </form>
     </div>

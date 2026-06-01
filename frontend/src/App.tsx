@@ -8,15 +8,16 @@ import './App.css';
 
 export default function App() {
   const [token, setToken] = useState<string | null>(null);
+  const [botMode, setBotMode] = useState(false);
 
   if (!token) {
-    return <LoginScreen onLogin={setToken} />;
+    return <LoginScreen onLogin={(t, bot) => { setToken(t); setBotMode(bot); }} />;
   }
 
-  return <ChessGame token={token} />;
+  return <ChessGame token={token} botMode={botMode} />;
 }
 
-function ChessGame({ token }: { token: string }) {
+function ChessGame({ token, botMode }: { token: string; botMode: boolean }) {
   const {
     connected,
     gameStarted,
@@ -32,7 +33,7 @@ function ChessGame({ token }: { token: string }) {
     statusMessage,
     sendMove,
     sendPromotion,
-  } = useChessSocket(token);
+  } = useChessSocket(token, botMode);
 
   if (!connected) {
     return <div className="screen"><p>Connecting to server…</p></div>;

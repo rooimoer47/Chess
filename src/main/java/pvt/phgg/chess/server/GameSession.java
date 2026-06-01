@@ -17,6 +17,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import pvt.phgg.chess.server.bot.BotStrategy;
+import pvt.phgg.chess.server.bot.RandomBotStrategy;
 
 public class GameSession {
 
@@ -42,6 +44,9 @@ public class GameSession {
     private LastMoveDto lastMove;
     private final List<PieceType> capturedByWhite = new ArrayList<>();
     private final List<PieceType> capturedByBlack = new ArrayList<>();
+    private boolean botEnabled = false;
+    private boolean botIsWhite;
+    private BotStrategy botStrategy;
 
     public GameSession(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -64,8 +69,40 @@ public class GameSession {
         return null;
     }
 
+    public synchronized boolean joinBot() {
+        if (whiteSession == null && whiteUsername == null) {
+            whiteUsername = "BOT";
+            botEnabled = true;
+            botIsWhite = true;
+            botStrategy = new RandomBotStrategy();
+            return true;
+        }
+        if (blackSession == null && blackUsername == null) {
+            blackUsername = "BOT";
+            botEnabled = true;
+            botIsWhite = false;
+            botStrategy = new RandomBotStrategy();
+            return true;
+        }
+        return false;
+    }
+
+    public synchronized boolean isBotTurn() {
+        return botEnabled && engine.isWhiteTurn() == botIsWhite;
+    }
+
+    public synchronized boolean makeBotMove() {
+        Position[] chosen = botStrategy.chooseMove(engine, botIsWhite);
+        if (chosen == null) return false;
+        MoveResult result = applyMove(chosen[0], chosen[1]);
+        if (result.getType() == MoveResult.Type.PROMOTION_NEEDED) {
+            applyPromotion(chosen[1], PromotionChoice.QUEEN);
+        }
+        return true;
+    }
+
     public synchronized boolean isFull() {
-        return whiteSession != null && blackSession != null;
+        return whiteUsername != null && blackUsername != null;
     }
 
     public synchronized boolean isEmpty() {

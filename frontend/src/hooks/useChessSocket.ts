@@ -18,7 +18,7 @@ export interface GameState {
   statusMessage: string | null;
 }
 
-export function useChessSocket(token: string) {
+export function useChessSocket(token: string, botMode = false) {
   const [state, setState] = useState<GameState>({
     connected: false,
     gameStarted: false,
@@ -38,7 +38,8 @@ export function useChessSocket(token: string) {
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/game?token=${encodeURIComponent(token)}`);
+    const botParam = botMode ? '&bot=true' : '';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/game?token=${encodeURIComponent(token)}${botParam}`);
     wsRef.current = ws;
 
     ws.onopen = () => setState(s => ({ ...s, connected: true }));
@@ -95,7 +96,7 @@ export function useChessSocket(token: string) {
     };
 
     return () => ws.close();
-  }, [token]);
+  }, [token, botMode]);
 
   const sendMove = useCallback((fromRow: number, fromCol: number, toRow: number, toCol: number) => {
     wsRef.current?.send(JSON.stringify({ type: 'MOVE', fromRow, fromCol, toRow, toCol }));

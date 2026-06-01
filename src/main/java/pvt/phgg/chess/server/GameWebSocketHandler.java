@@ -42,6 +42,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         LOGGER.info("Player connected as {}: {}", role, ws.getId());
         sendTo(ws, ServerMessage.waiting(role.name()));
 
+        boolean botMode = Boolean.TRUE.equals(ws.getAttributes().get("botMode"));
+        if (botMode) {
+            sessionManager.joinBot();
+        }
+
         GameSession session = sessionManager.getSession();
         if (session.isFull()) {
             LOGGER.info("Both players connected — game starting");
@@ -105,6 +110,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
 
         session.broadcastBoardState();
+        if (session.isBotTurn() && session.makeBotMove()) {
+            session.broadcastBoardState();
+        }
     }
 
     private void handlePromotion(WebSocketSession ws, GameSession session, PlayerRole role, ClientMessage msg) throws IOException {
@@ -127,6 +135,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
         session.applyPromotion(promotionPos, choice);
         session.broadcastBoardState();
+        if (session.isBotTurn() && session.makeBotMove()) {
+            session.broadcastBoardState();
+        }
     }
 
     private Position findPromotionPawn(GameSession session, PlayerRole role) {
