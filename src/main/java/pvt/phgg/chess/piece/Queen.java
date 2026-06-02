@@ -67,4 +67,9 @@ public class Queen extends APiece{
 
         return moves;
     }
+
+    @Override
+    public APiece copy() {
+        return copyStateTo(new Queen(new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol()), isWhite()));
+    }
 }

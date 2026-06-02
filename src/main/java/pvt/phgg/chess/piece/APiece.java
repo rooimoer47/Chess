@@ -7,24 +7,26 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class APiece implements Cloneable {
+public abstract class APiece {
 
     private Position pos;
     private final boolean white;
     private boolean originalPosition = true;
     protected static final String ROOT = "src/main/resources";
 
-    public APiece(Position pos) {
+    protected APiece(Position pos) {
         this.pos = pos;
         this.white = false;
     }
 
-    public APiece(Position position, boolean white) {
+    protected APiece(Position position, boolean white) {
         this.pos = position;
         this.white = white;
     }
 
     public abstract BufferedImage getImage(boolean selected);
+
+    public abstract APiece copy();
 
     public abstract PieceType getPieceType();
 
@@ -72,7 +74,7 @@ public abstract class APiece implements Cloneable {
 
         for (Position candidate : validPositions) {
             APiece[][] tempBoard = boardState.deepCopy(board);
-            tempBoard[candidate.getRow()][candidate.getCol()] = this.clone();
+            tempBoard[candidate.getRow()][candidate.getCol()] = this.copy();
             tempBoard[this.pos.getRow()][this.pos.getCol()] = new EmptySquare(this.pos);
             tempBoard[candidate.getRow()][candidate.getCol()].setCurrentPosition(candidate);
             if (!boardState.isInCheck(tempBoard, this.isWhite())) {
@@ -86,14 +88,8 @@ public abstract class APiece implements Cloneable {
         return getLegalPositions(board, new BoardState());
     }
 
-    @Override
-    public APiece clone() {
-        try {
-            APiece clone = (APiece) super.clone();
-            clone.pos = new Position(this.pos.getRow(), this.pos.getCol());
-            return clone;
-        } catch (CloneNotSupportedException e) {
-            throw new AssertionError();
-        }
+    protected APiece copyStateTo(APiece target) {
+        if (!isOriginalPosition()) target.moved();
+        return target;
     }
 }

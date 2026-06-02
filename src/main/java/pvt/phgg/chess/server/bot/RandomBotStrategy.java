@@ -24,7 +24,7 @@ public class RandomBotStrategy implements BotStrategy {
                 }
             }
         }
-        if (moves.isEmpty()) return null;
+        if (moves.isEmpty()) return new Position[0];
         return moves.get(ThreadLocalRandom.current().nextInt(moves.size()));
     }
 }

@@ -1,9 +1,14 @@
 package pvt.phgg.chess;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 
 public class Chess {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Chess.class);
 
     private final Board board;
 
@@ -23,8 +28,7 @@ public class Chess {
                 Chess chess = new Chess();
                 chess.start();
             } catch (Exception e) {
-                System.err.println("Error initializing chess game: " + e.getMessage());
-                e.printStackTrace();
+                LOGGER.error("Error initializing chess game", e);
             }
         });
     }

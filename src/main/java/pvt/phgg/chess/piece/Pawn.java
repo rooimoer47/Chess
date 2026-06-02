@@ -112,6 +112,7 @@ public class Pawn extends APiece{
         return PieceType.PAWN;
     }
 
+    @Override
     public boolean isPawn() {
         return true;
     }
@@ -126,5 +127,12 @@ public class Pawn extends APiece{
 
     public boolean isJumped() {
         return jumped;
+    }
+
+    @Override
+    public APiece copy() {
+        Pawn p = (Pawn) copyStateTo(new Pawn(new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol()), isWhite()));
+        if (jumped) p.setJumped();
+        return p;
     }
 }

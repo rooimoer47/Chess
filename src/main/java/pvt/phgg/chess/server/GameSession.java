@@ -1,8 +1,6 @@
 package pvt.phgg.chess.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import pvt.phgg.chess.*;
@@ -23,7 +21,6 @@ import pvt.phgg.chess.server.bot.RandomBotStrategy;
 
 public class GameSession {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(GameSession.class);
     private static final int BOARD_SIZE = 8;
 
     private final ObjectMapper objectMapper;
@@ -97,7 +94,7 @@ public class GameSession {
 
     public synchronized boolean makeBotMove() {
         Position[] chosen = botStrategy.chooseMove(engine, botIsWhite);
-        if (chosen == null) return false;
+        if (chosen.length == 0) return false;
         MoveResult result = applyMove(chosen[0], chosen[1]);
         if (result.getType() == MoveResult.Type.PROMOTION_NEEDED) {
             applyPromotion(chosen[1], PromotionChoice.QUEEN);
@@ -215,9 +212,14 @@ public class GameSession {
     }
 
     private ServerMessage buildBoardUpdate() {
-        GameStatus currentStatus = resigned     ? GameStatus.RESIGNED    :
-                                   drawAgreed   ? GameStatus.DRAW_AGREED :
-                                   engine.getStatus();
+        GameStatus currentStatus;
+        if (resigned) {
+            currentStatus = GameStatus.RESIGNED;
+        } else if (drawAgreed) {
+            currentStatus = GameStatus.DRAW_AGREED;
+        } else {
+            currentStatus = engine.getStatus();
+        }
         boolean sendLegalMoves = currentStatus != GameStatus.RESIGNED
                 && currentStatus != GameStatus.THREEFOLD_REPETITION
                 && currentStatus != GameStatus.FIFTY_MOVE_RULE
@@ -241,7 +243,12 @@ public class GameSession {
             }
         }
 
-        String turn = resigned ? (resignedWhite ? "WHITE" : "BLACK") : (engine.isWhiteTurn() ? "WHITE" : "BLACK");
+        String turn;
+        if (resigned) {
+            turn = resignedWhite ? "WHITE" : "BLACK";
+        } else {
+            turn = engine.isWhiteTurn() ? "WHITE" : "BLACK";
+        }
         List<String> capturedW = capturedByWhite.stream().map(Enum::name).toList();
         List<String> capturedB = capturedByBlack.stream().map(Enum::name).toList();
         return ServerMessage.boardUpdate(board, turn, currentStatus.name(), legalMoves, lastMove, capturedW, capturedB);
@@ -249,9 +256,6 @@ public class GameSession {
 
     private void sendTo(WebSocketSession ws, ServerMessage message) throws IOException {
         if (ws == null || !ws.isOpen()) return;
-        String json = objectMapper.writeValueAsString(message);
-        synchronized (ws) {
-            ws.sendMessage(new TextMessage(json));
-        }
+        ws.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
     }
 }

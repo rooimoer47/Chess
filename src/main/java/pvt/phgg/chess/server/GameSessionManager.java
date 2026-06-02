@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
-
 @Component
 public class GameSessionManager {
 
@@ -21,7 +20,7 @@ public class GameSessionManager {
         return activeSession;
     }
 
-    public synchronized PlayerRole join(WebSocketSession ws, String username) throws IOException {
+    public synchronized PlayerRole join(WebSocketSession ws, String username) {
         if (activeSession.isFull()) {
             return null;
         }

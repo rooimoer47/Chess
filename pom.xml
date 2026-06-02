@@ -19,6 +19,9 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>21</java.version>
+        <sonar.host.url>http://localhost:9000</sonar.host.url>
+        <!-- sonar.token must be passed on the command line: -Dsonar.token=<token> -->
+        <sonar.exclusions>src/main/java/pvt/phgg/chess/Board.java</sonar.exclusions>
     </properties>
 
     <dependencies>
@@ -62,6 +65,11 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>4.0.0.4121</version>
             </plugin>
         </plugins>
     </build>

@@ -2,6 +2,7 @@ package pvt.phgg.chess;
 
 import pvt.phgg.chess.piece.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -172,15 +173,16 @@ public class GameEngine {
     }
 
     private boolean isInsufficientMaterial() {
-        List<APiece> white = new java.util.ArrayList<>();
-        List<APiece> black = new java.util.ArrayList<>();
+        List<APiece> white = new ArrayList<>();
+        List<APiece> black = new ArrayList<>();
         for (APiece[] row : board) {
             for (APiece p : row) {
                 if (!p.isPositionOccupied() || p.isKing()) continue;
                 (p.isWhite() ? white : black).add(p);
             }
         }
-        int w = white.size(), b = black.size();
+        int w = white.size();
+        int b = black.size();
         // K vs K
         if (w == 0 && b == 0) return true;
         // K + single minor vs K
@@ -188,7 +190,8 @@ public class GameEngine {
         if (w == 0 && b == 1) return isMinor(black.get(0));
         // K + B vs K + B, bishops on the same color square
         if (w == 1 && b == 1) {
-            APiece wp = white.get(0), bp = black.get(0);
+            APiece wp = white.get(0);
+            APiece bp = black.get(0);
             if (wp.getPieceType() == PieceType.BISHOP && bp.getPieceType() == PieceType.BISHOP) {
                 return sameSquareColor(wp.getCurrentPosition(), bp.getCurrentPosition());
             }

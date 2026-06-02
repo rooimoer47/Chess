@@ -34,7 +34,7 @@ public class EmptySquare extends APiece {
     }
 
     @Override
-    public APiece clone() {
-        return new EmptySquare(this.getCurrentPosition());
+    public APiece copy() {
+        return new EmptySquare(new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol()));
     }
 }

@@ -67,4 +67,9 @@ public class Bishop extends APiece{
 
         return moves;
     }
+
+    @Override
+    public APiece copy() {
+        return copyStateTo(new Bishop(new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol()), isWhite()));
+    }
 }

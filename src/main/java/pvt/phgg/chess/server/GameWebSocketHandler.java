@@ -70,7 +70,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             case "PROMOTE"      -> handlePromotion(ws, session, role, msg);
             case "RESIGN"       -> handleResign(ws, session, role);
             case "OFFER_DRAW"   -> handleOfferDraw(ws, session, role);
-            case "RESPOND_DRAW" -> handleRespondDraw(ws, session, role, msg);
+            case "RESPOND_DRAW" -> handleRespondDraw(session, role, msg);
             default             -> sendTo(ws, ServerMessage.error("Unknown message type: " + msg.type()));
         }
     }
@@ -137,11 +137,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         switch (outcome) {
             case ACCEPTED -> session.broadcastBoardState();
             case DECLINED -> session.sendDrawDeclinedTo(isWhite);
-            case SENT_TO_OPPONENT -> {} // opponent receives DRAW_OFFERED; nothing more to do here
+            case SENT_TO_OPPONENT -> { /* offer forwarded; no further action needed on this side */ }
         }
     }
 
-    private void handleRespondDraw(WebSocketSession ws, GameSession session, PlayerRole role, ClientMessage msg) throws IOException {
+    private void handleRespondDraw(GameSession session, PlayerRole role, ClientMessage msg) throws IOException {
         boolean isWhite = role == PlayerRole.WHITE;
         if (Boolean.TRUE.equals(msg.accept())) {
             session.acceptDraw();
@@ -192,9 +192,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private void sendTo(WebSocketSession ws, ServerMessage message) throws IOException {
         if (!ws.isOpen()) return;
-        String json = objectMapper.writeValueAsString(message);
-        synchronized (ws) {
-            ws.sendMessage(new TextMessage(json));
-        }
+        ws.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
     }
 }

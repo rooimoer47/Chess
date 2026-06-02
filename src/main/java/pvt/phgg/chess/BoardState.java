@@ -77,16 +77,13 @@ public class BoardState {
         return false;
     }
 
-    public boolean arePositionsSafe(APiece [][] board, List<Position> posList, boolean KingColor) {
-        for (APiece [] row : board) {
+    public boolean arePositionsSafe(APiece[][] board, List<Position> posList, boolean kingColor) {
+        for (APiece[] row : board) {
             for (APiece piece : row) {
-                if (piece.isPositionOccupied() && (piece.isWhite() != KingColor)) {
-                    List<Position> attackPositions;
-                    if (piece.isKing()) {
-                        attackPositions = ((King) piece).getKingMovements(board, this);
-                    } else {
-                        attackPositions = piece.getValidPositions(board, this);
-                    }
+                if (piece.isPositionOccupied() && (piece.isWhite() != kingColor)) {
+                    List<Position> attackPositions = piece.isKing()
+                            ? ((King) piece).getKingMovements(board, this)
+                            : piece.getValidPositions(board, this);
 
                     for (Position attackPos : attackPositions) {
                         for (Position posToCheck : posList) {
@@ -107,7 +104,7 @@ public class BoardState {
         for (int i = 0; i < original.length; i++) {
             copy[i] = new APiece[original[i].length];
             for (int j = 0; j < original[i].length; j++) {
-                copy[i][j] = original[i][j].clone();
+                copy[i][j] = original[i][j].copy();
             }
         }
 

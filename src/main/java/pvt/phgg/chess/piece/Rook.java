@@ -68,7 +68,13 @@ public class Rook extends APiece{
         return PieceType.ROOK;
     }
 
+    @Override
     public boolean isRook() {
         return true;
+    }
+
+    @Override
+    public APiece copy() {
+        return copyStateTo(new Rook(new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol()), isWhite()));
     }
 }
