@@ -105,6 +105,7 @@ public class GameEngine {
             case THREEFOLD_REPETITION -> MoveResult.Type.DRAW;
             case FIFTY_MOVE_RULE          -> MoveResult.Type.DRAW;
             case INSUFFICIENT_MATERIAL    -> MoveResult.Type.DRAW;
+            case DRAW_AGREED              -> MoveResult.Type.DRAW;
         };
         return new MoveResult(type, wasWhite, captureOccurred);
     }

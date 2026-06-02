@@ -16,6 +16,8 @@ export interface GameState {
   capturedByBlack: string[];
   promotionPending: { row: number; col: number } | null;
   statusMessage: string | null;
+  drawOfferedByOpponent: boolean;
+  drawOfferPending: boolean;
 }
 
 export function useChessSocket(token: string, botMode = false) {
@@ -32,6 +34,8 @@ export function useChessSocket(token: string, botMode = false) {
     capturedByBlack: [],
     promotionPending: null,
     statusMessage: null,
+    drawOfferedByOpponent: false,
+    drawOfferPending: false,
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -57,13 +61,14 @@ export function useChessSocket(token: string, botMode = false) {
 
         case 'BOARD_UPDATE': {
           const message =
-            msg.status === 'CHECKMATE' ? `Checkmate! ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
-            : msg.status === 'STALEMATE' ? 'Draw — stalemate!'
-            : msg.status === 'RESIGNED' ? `${msg.currentTurn} resigned. ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
-            : msg.status === 'THREEFOLD_REPETITION' ? 'Draw — threefold repetition!'
-            : msg.status === 'FIFTY_MOVE_RULE' ? 'Draw — fifty-move rule!'
-            : msg.status === 'INSUFFICIENT_MATERIAL' ? 'Draw — insufficient material!'
-            : msg.status === 'CHECK' ? `${msg.currentTurn} is in check!`
+            msg.status === 'CHECKMATE'            ? `Checkmate! ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
+            : msg.status === 'STALEMATE'           ? 'Draw — stalemate!'
+            : msg.status === 'RESIGNED'            ? `${msg.currentTurn} resigned. ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
+            : msg.status === 'THREEFOLD_REPETITION'? 'Draw — threefold repetition!'
+            : msg.status === 'FIFTY_MOVE_RULE'     ? 'Draw — fifty-move rule!'
+            : msg.status === 'INSUFFICIENT_MATERIAL'? 'Draw — insufficient material!'
+            : msg.status === 'DRAW_AGREED'         ? 'Draw by agreement!'
+            : msg.status === 'CHECK'               ? `${msg.currentTurn} is in check!`
             : null;
           setState(s => ({
             ...s,
@@ -71,7 +76,9 @@ export function useChessSocket(token: string, botMode = false) {
             board: msg.board,
             currentTurn: msg.currentTurn,
             status: msg.status,
-            legalMoves: msg.status === 'CHECKMATE' || msg.status === 'STALEMATE' || msg.status === 'RESIGNED' || msg.status === 'THREEFOLD_REPETITION' || msg.status === 'FIFTY_MOVE_RULE' || msg.status === 'INSUFFICIENT_MATERIAL' ? [] : msg.legalMoves,
+            legalMoves: msg.status === 'CHECKMATE' || msg.status === 'STALEMATE' || msg.status === 'RESIGNED' || msg.status === 'THREEFOLD_REPETITION' || msg.status === 'FIFTY_MOVE_RULE' || msg.status === 'INSUFFICIENT_MATERIAL' || msg.status === 'DRAW_AGREED' ? [] : msg.legalMoves,
+            drawOfferedByOpponent: false,
+            drawOfferPending: false,
             lastMove: msg.lastMove ?? null,
             capturedByWhite: msg.capturedByWhite,
             capturedByBlack: msg.capturedByBlack,
@@ -87,6 +94,14 @@ export function useChessSocket(token: string, botMode = false) {
             promotionPending: { row: msg.promotionRow, col: msg.promotionCol },
             legalMoves: [],
           }));
+          break;
+
+        case 'DRAW_OFFERED':
+          setState(s => ({ ...s, drawOfferedByOpponent: true }));
+          break;
+
+        case 'DRAW_DECLINED':
+          setState(s => ({ ...s, drawOfferPending: false, statusMessage: 'Draw offer declined.' }));
           break;
 
         case 'OPPONENT_DISCONNECTED':
@@ -114,5 +129,15 @@ export function useChessSocket(token: string, botMode = false) {
     wsRef.current?.send(JSON.stringify({ type: 'RESIGN' }));
   }, []);
 
-  return { ...state, sendMove, sendPromotion, sendResign };
+  const sendDrawOffer = useCallback(() => {
+    wsRef.current?.send(JSON.stringify({ type: 'OFFER_DRAW' }));
+    setState(s => ({ ...s, drawOfferPending: true }));
+  }, []);
+
+  const sendDrawResponse = useCallback((accept: boolean) => {
+    wsRef.current?.send(JSON.stringify({ type: 'RESPOND_DRAW', accept }));
+    setState(s => ({ ...s, drawOfferedByOpponent: false }));
+  }, []);
+
+  return { ...state, sendMove, sendPromotion, sendResign, sendDrawOffer, sendDrawResponse };
 }

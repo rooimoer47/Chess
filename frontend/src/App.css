@@ -140,6 +140,69 @@ body {
   background: #666;
 }
 
+.draw-btn {
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid #666;
+  background: transparent;
+  color: #aaa;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.draw-btn:hover:not(:disabled) {
+  background: #2e6b2e;
+  border-color: #4a9a4a;
+  color: #fff;
+}
+
+.draw-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.draw-offer-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #4a9a4a;
+  background: #1e2e1e;
+  font-size: 0.95rem;
+  width: min(576px, 100vw - 16px);
+}
+
+.draw-accept-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: none;
+  background: #4a9a4a;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.draw-accept-btn:hover {
+  background: #3a8a3a;
+}
+
+.draw-decline-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid #666;
+  background: transparent;
+  color: #aaa;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.draw-decline-btn:hover {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+}
+
 .resign-btn {
   padding: 3px 10px;
   border-radius: 4px;

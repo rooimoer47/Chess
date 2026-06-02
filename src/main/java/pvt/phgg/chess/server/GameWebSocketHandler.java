@@ -66,10 +66,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
 
         switch (msg.type()) {
-            case "MOVE"    -> handleMove(ws, session, role, msg);
-            case "PROMOTE" -> handlePromotion(ws, session, role, msg);
-            case "RESIGN"  -> handleResign(ws, session, role);
-            default        -> sendTo(ws, ServerMessage.error("Unknown message type: " + msg.type()));
+            case "MOVE"         -> handleMove(ws, session, role, msg);
+            case "PROMOTE"      -> handlePromotion(ws, session, role, msg);
+            case "RESIGN"       -> handleResign(ws, session, role);
+            case "OFFER_DRAW"   -> handleOfferDraw(ws, session, role);
+            case "RESPOND_DRAW" -> handleRespondDraw(ws, session, role, msg);
+            default             -> sendTo(ws, ServerMessage.error("Unknown message type: " + msg.type()));
         }
     }
 
@@ -123,6 +125,31 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
         session.resign(role == PlayerRole.WHITE);
         session.broadcastBoardState();
+    }
+
+    private void handleOfferDraw(WebSocketSession ws, GameSession session, PlayerRole role) throws IOException {
+        if (!session.isFull()) {
+            session.sendError(ws, "Game not started.");
+            return;
+        }
+        boolean isWhite = role == PlayerRole.WHITE;
+        GameSession.DrawOfferOutcome outcome = session.offerDraw(isWhite);
+        switch (outcome) {
+            case ACCEPTED -> session.broadcastBoardState();
+            case DECLINED -> session.sendDrawDeclinedTo(isWhite);
+            case SENT_TO_OPPONENT -> {} // opponent receives DRAW_OFFERED; nothing more to do here
+        }
+    }
+
+    private void handleRespondDraw(WebSocketSession ws, GameSession session, PlayerRole role, ClientMessage msg) throws IOException {
+        boolean isWhite = role == PlayerRole.WHITE;
+        if (Boolean.TRUE.equals(msg.accept())) {
+            session.acceptDraw();
+            session.broadcastBoardState();
+        } else {
+            // Notify the offeror (the other player) that the draw was declined
+            session.sendDrawDeclinedTo(!isWhite);
+        }
     }
 
     private void handlePromotion(WebSocketSession ws, GameSession session, PlayerRole role, ClientMessage msg) throws IOException {

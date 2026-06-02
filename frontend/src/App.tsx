@@ -40,6 +40,10 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
     sendMove,
     sendPromotion,
     sendResign,
+    sendDrawOffer,
+    sendDrawResponse,
+    drawOfferedByOpponent,
+    drawOfferPending,
   } = useChessSocket(token, botMode);
 
   if (!connected) {
@@ -55,7 +59,7 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
     );
   }
 
-  const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE' || status === 'RESIGNED' || status === 'THREEFOLD_REPETITION' || status === 'FIFTY_MOVE_RULE' || status === 'INSUFFICIENT_MATERIAL';
+  const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE' || status === 'RESIGNED' || status === 'THREEFOLD_REPETITION' || status === 'FIFTY_MOVE_RULE' || status === 'INSUFFICIENT_MATERIAL' || status === 'DRAW_AGREED';
   const isMyTurn = currentTurn === playerColor;
 
   // Pieces of my color captured by opponent (shown at top)
@@ -72,13 +76,30 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
           {isGameOver ? '—' : isMyTurn ? 'Your turn' : "Opponent's turn"}
         </span>
         {!isGameOver && (
-          <button className="resign-btn" onClick={sendResign}>Resign</button>
+          <>
+            <button
+              className="draw-btn"
+              onClick={sendDrawOffer}
+              disabled={drawOfferPending || drawOfferedByOpponent}
+            >
+              {drawOfferPending ? 'Draw offered…' : 'Offer Draw'}
+            </button>
+            <button className="resign-btn" onClick={sendResign}>Resign</button>
+          </>
         )}
       </div>
 
       {statusMessage && (
         <div className={`status-message ${isGameOver ? 'game-over' : ''}`}>
           {statusMessage}
+        </div>
+      )}
+
+      {drawOfferedByOpponent && !isGameOver && (
+        <div className="draw-offer-bar">
+          <span>Opponent offers a draw</span>
+          <button className="draw-accept-btn" onClick={() => sendDrawResponse(true)}>Accept</button>
+          <button className="draw-decline-btn" onClick={() => sendDrawResponse(false)}>Decline</button>
         </div>
       )}
 

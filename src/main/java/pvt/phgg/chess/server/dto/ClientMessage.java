@@ -9,5 +9,6 @@ public record ClientMessage(
         Integer fromCol,
         Integer toRow,
         Integer toCol,
-        String choice
+        String choice,
+        Boolean accept
 ) {}

@@ -52,6 +52,14 @@ public class ServerMessage {
         return new Builder("PROMOTION_NEEDED").promotionRow(row).promotionCol(col).build();
     }
 
+    public static ServerMessage drawOffered() {
+        return new Builder("DRAW_OFFERED").build();
+    }
+
+    public static ServerMessage drawDeclined() {
+        return new Builder("DRAW_DECLINED").build();
+    }
+
     public static ServerMessage opponentDisconnected() {
         return new Builder("OPPONENT_DISCONNECTED").build();
     }

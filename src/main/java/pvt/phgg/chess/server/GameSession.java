@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import pvt.phgg.chess.server.bot.BotStrategy;
 import pvt.phgg.chess.server.bot.RandomBotStrategy;
 
@@ -49,6 +50,7 @@ public class GameSession {
     private BotStrategy botStrategy;
     private boolean resigned = false;
     private boolean resignedWhite;
+    private boolean drawAgreed = false;
 
     public GameSession(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -137,6 +139,29 @@ public class GameSession {
         }
     }
 
+    public enum DrawOfferOutcome { ACCEPTED, DECLINED, SENT_TO_OPPONENT }
+
+    public synchronized DrawOfferOutcome offerDraw(boolean isWhite) throws IOException {
+        if (botEnabled) {
+            if (ThreadLocalRandom.current().nextBoolean()) {
+                drawAgreed = true;
+                return DrawOfferOutcome.ACCEPTED;
+            }
+            return DrawOfferOutcome.DECLINED;
+        }
+        WebSocketSession opponent = isWhite ? blackSession : whiteSession;
+        sendTo(opponent, ServerMessage.drawOffered());
+        return DrawOfferOutcome.SENT_TO_OPPONENT;
+    }
+
+    public synchronized void acceptDraw() {
+        drawAgreed = true;
+    }
+
+    public synchronized void sendDrawDeclinedTo(boolean isWhite) throws IOException {
+        sendTo(isWhite ? whiteSession : blackSession, ServerMessage.drawDeclined());
+    }
+
     public synchronized MoveResult applyMove(Position from, Position to) {
         APiece movingPiece = engine.getPiece(from.getRow(), from.getCol());
         APiece targetPiece = engine.getPiece(to.getRow(), to.getCol());
@@ -190,11 +215,14 @@ public class GameSession {
     }
 
     private ServerMessage buildBoardUpdate() {
-        GameStatus currentStatus = resigned ? GameStatus.RESIGNED : engine.getStatus();
+        GameStatus currentStatus = resigned     ? GameStatus.RESIGNED    :
+                                   drawAgreed   ? GameStatus.DRAW_AGREED :
+                                   engine.getStatus();
         boolean sendLegalMoves = currentStatus != GameStatus.RESIGNED
                 && currentStatus != GameStatus.THREEFOLD_REPETITION
                 && currentStatus != GameStatus.FIFTY_MOVE_RULE
-                && currentStatus != GameStatus.INSUFFICIENT_MATERIAL;
+                && currentStatus != GameStatus.INSUFFICIENT_MATERIAL
+                && currentStatus != GameStatus.DRAW_AGREED;
 
         PieceDto[][] board = new PieceDto[BOARD_SIZE][BOARD_SIZE];
         List<LegalMove> legalMoves = new ArrayList<>();
