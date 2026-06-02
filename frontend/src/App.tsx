@@ -55,7 +55,7 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
     );
   }
 
-  const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE' || status === 'RESIGNED' || status === 'THREEFOLD_REPETITION' || status === 'FIFTY_MOVE_RULE';
+  const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE' || status === 'RESIGNED' || status === 'THREEFOLD_REPETITION' || status === 'FIFTY_MOVE_RULE' || status === 'INSUFFICIENT_MATERIAL';
   const isMyTurn = currentTurn === playerColor;
 
   // Pieces of my color captured by opponent (shown at top)

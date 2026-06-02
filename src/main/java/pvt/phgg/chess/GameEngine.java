@@ -103,7 +103,8 @@ public class GameEngine {
             case STALEMATE            -> MoveResult.Type.STALEMATE;
             case RESIGNED             -> MoveResult.Type.VALID;
             case THREEFOLD_REPETITION -> MoveResult.Type.DRAW;
-            case FIFTY_MOVE_RULE      -> MoveResult.Type.DRAW;
+            case FIFTY_MOVE_RULE          -> MoveResult.Type.DRAW;
+            case INSUFFICIENT_MATERIAL    -> MoveResult.Type.DRAW;
         };
         return new MoveResult(type, wasWhite, captureOccurred);
     }
@@ -157,6 +158,9 @@ public class GameEngine {
         if (!boardState.canMove(board, forWhite)) {
             return boardState.isInCheck(board, forWhite) ? GameStatus.CHECKMATE : GameStatus.STALEMATE;
         }
+        if (isInsufficientMaterial()) {
+            return GameStatus.INSUFFICIENT_MATERIAL;
+        }
         if (positionHistory.getOrDefault(positionFingerprint(), 0) >= 3) {
             return GameStatus.THREEFOLD_REPETITION;
         }
@@ -164,6 +168,39 @@ public class GameEngine {
             return GameStatus.FIFTY_MOVE_RULE;
         }
         return boardState.isInCheck(board, forWhite) ? GameStatus.CHECK : GameStatus.IN_PROGRESS;
+    }
+
+    private boolean isInsufficientMaterial() {
+        List<APiece> white = new java.util.ArrayList<>();
+        List<APiece> black = new java.util.ArrayList<>();
+        for (APiece[] row : board) {
+            for (APiece p : row) {
+                if (!p.isPositionOccupied() || p.isKing()) continue;
+                (p.isWhite() ? white : black).add(p);
+            }
+        }
+        int w = white.size(), b = black.size();
+        // K vs K
+        if (w == 0 && b == 0) return true;
+        // K + single minor vs K
+        if (w == 1 && b == 0) return isMinor(white.get(0));
+        if (w == 0 && b == 1) return isMinor(black.get(0));
+        // K + B vs K + B, bishops on the same color square
+        if (w == 1 && b == 1) {
+            APiece wp = white.get(0), bp = black.get(0);
+            if (wp.getPieceType() == PieceType.BISHOP && bp.getPieceType() == PieceType.BISHOP) {
+                return sameSquareColor(wp.getCurrentPosition(), bp.getCurrentPosition());
+            }
+        }
+        return false;
+    }
+
+    private boolean isMinor(APiece p) {
+        return p.getPieceType() == PieceType.BISHOP || p.getPieceType() == PieceType.KNIGHT;
+    }
+
+    private boolean sameSquareColor(Position a, Position b) {
+        return (a.getRow() + a.getCol()) % 2 == (b.getRow() + b.getCol()) % 2;
     }
 
     private String positionFingerprint() {
