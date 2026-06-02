@@ -16,6 +16,12 @@ public class GameEngine {
         initializeBoard();
     }
 
+    GameEngine(APiece[][] initialBoard, boolean whiteTurn) {
+        for (int r = 0; r < BOARD_SIZE; r++)
+            System.arraycopy(initialBoard[r], 0, board[r], 0, BOARD_SIZE);
+        this.whiteTurn = whiteTurn;
+    }
+
     // --- Public API ---
 
     public List<Position> getLegalMoves(Position from) {
