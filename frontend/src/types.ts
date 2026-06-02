@@ -1,6 +1,6 @@
 export type PieceType = 'PAWN' | 'KNIGHT' | 'BISHOP' | 'ROOK' | 'QUEEN' | 'KING';
 export type Color = 'WHITE' | 'BLACK';
-export type GameStatus = 'IN_PROGRESS' | 'CHECK' | 'CHECKMATE' | 'STALEMATE' | 'RESIGNED';
+export type GameStatus = 'IN_PROGRESS' | 'CHECK' | 'CHECKMATE' | 'STALEMATE' | 'RESIGNED' | 'THREEFOLD_REPETITION';
 
 export interface Piece {
   type: PieceType;

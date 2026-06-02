@@ -8,6 +8,7 @@ public class MoveResult {
         CHECK,
         CHECKMATE,
         STALEMATE,
+        DRAW,
         PROMOTION_NEEDED
     }
 
@@ -34,7 +35,7 @@ public class MoveResult {
     }
 
     public boolean isGameOver() {
-        return type == Type.CHECKMATE || type == Type.STALEMATE;
+        return type == Type.CHECKMATE || type == Type.STALEMATE || type == Type.DRAW;
     }
 
     public boolean isValid() {

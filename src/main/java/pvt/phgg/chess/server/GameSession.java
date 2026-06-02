@@ -190,6 +190,10 @@ public class GameSession {
     }
 
     private ServerMessage buildBoardUpdate() {
+        GameStatus currentStatus = resigned ? GameStatus.RESIGNED : engine.getStatus();
+        boolean sendLegalMoves = currentStatus != GameStatus.RESIGNED
+                && currentStatus != GameStatus.THREEFOLD_REPETITION;
+
         PieceDto[][] board = new PieceDto[BOARD_SIZE][BOARD_SIZE];
         List<LegalMove> legalMoves = new ArrayList<>();
 
@@ -198,7 +202,7 @@ public class GameSession {
                 APiece piece = engine.getPiece(row, col);
                 board[row][col] = PieceDto.from(piece);
 
-                if (!resigned && piece.isPositionOccupied() && piece.isWhite() == engine.isWhiteTurn()) {
+                if (sendLegalMoves && piece.isPositionOccupied() && piece.isWhite() == engine.isWhiteTurn()) {
                     Position pos = new Position(row, col);
                     for (Position target : engine.getLegalMoves(pos)) {
                         legalMoves.add(new LegalMove(row, col, target.getRow(), target.getCol()));
@@ -208,10 +212,9 @@ public class GameSession {
         }
 
         String turn = resigned ? (resignedWhite ? "WHITE" : "BLACK") : (engine.isWhiteTurn() ? "WHITE" : "BLACK");
-        String status = resigned ? GameStatus.RESIGNED.name() : engine.getStatus().name();
         List<String> capturedW = capturedByWhite.stream().map(Enum::name).toList();
         List<String> capturedB = capturedByBlack.stream().map(Enum::name).toList();
-        return ServerMessage.boardUpdate(board, turn, status, legalMoves, lastMove, capturedW, capturedB);
+        return ServerMessage.boardUpdate(board, turn, currentStatus.name(), legalMoves, lastMove, capturedW, capturedB);
     }
 
     private void sendTo(WebSocketSession ws, ServerMessage message) throws IOException {

@@ -2,7 +2,9 @@ package pvt.phgg.chess;
 
 import pvt.phgg.chess.piece.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GameEngine {
 
@@ -10,6 +12,7 @@ public class GameEngine {
 
     private final APiece[][] board = new APiece[BOARD_SIZE][BOARD_SIZE];
     private final BoardState boardState = new BoardState();
+    private final Map<String, Integer> positionHistory = new HashMap<>();
     private boolean whiteTurn = true;
 
     public GameEngine() {
@@ -80,13 +83,15 @@ public class GameEngine {
         // Close the en passant window opened by the opponent's previous double push
         clearJumpedPawns(!wasWhite);
         whiteTurn = !wasWhite;
+        positionHistory.merge(positionFingerprint(), 1, Integer::sum);
         GameStatus status = computeStatus(whiteTurn);
         MoveResult.Type type = switch (status) {
-            case IN_PROGRESS -> MoveResult.Type.VALID;
-            case CHECK       -> MoveResult.Type.CHECK;
-            case CHECKMATE   -> MoveResult.Type.CHECKMATE;
-            case STALEMATE   -> MoveResult.Type.STALEMATE;
-            case RESIGNED    -> MoveResult.Type.VALID;
+            case IN_PROGRESS          -> MoveResult.Type.VALID;
+            case CHECK                -> MoveResult.Type.CHECK;
+            case CHECKMATE            -> MoveResult.Type.CHECKMATE;
+            case STALEMATE            -> MoveResult.Type.STALEMATE;
+            case RESIGNED             -> MoveResult.Type.VALID;
+            case THREEFOLD_REPETITION -> MoveResult.Type.DRAW;
         };
         return new MoveResult(type, wasWhite, captureOccurred);
     }
@@ -140,7 +145,37 @@ public class GameEngine {
         if (!boardState.canMove(board, forWhite)) {
             return boardState.isInCheck(board, forWhite) ? GameStatus.CHECKMATE : GameStatus.STALEMATE;
         }
+        if (positionHistory.getOrDefault(positionFingerprint(), 0) >= 3) {
+            return GameStatus.THREEFOLD_REPETITION;
+        }
         return boardState.isInCheck(board, forWhite) ? GameStatus.CHECK : GameStatus.IN_PROGRESS;
+    }
+
+    private String positionFingerprint() {
+        StringBuilder sb = new StringBuilder();
+        for (int r = 0; r < BOARD_SIZE; r++) {
+            for (int c = 0; c < BOARD_SIZE; c++) {
+                APiece p = board[r][c];
+                if (!p.isPositionOccupied()) {
+                    sb.append('.');
+                } else {
+                    sb.append(p.isWhite() ? 'W' : 'B');
+                    sb.append(switch (p.getPieceType()) {
+                        case PAWN   -> 'P';
+                        case KNIGHT -> 'N';
+                        case BISHOP -> 'B';
+                        case ROOK   -> 'R';
+                        case QUEEN  -> 'Q';
+                        case KING   -> 'K';
+                    });
+                    if (p.isOriginalPosition()) sb.append('O');
+                    if (p.isPawn() && ((Pawn) p).isJumped()) sb.append('J');
+                }
+                sb.append(',');
+            }
+        }
+        sb.append(whiteTurn ? 'W' : 'B');
+        return sb.toString();
     }
 
     private void initializeBoard() {

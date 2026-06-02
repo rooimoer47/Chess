@@ -5,5 +5,6 @@ public enum GameStatus {
     CHECK,
     CHECKMATE,
     STALEMATE,
-    RESIGNED
+    RESIGNED,
+    THREEFOLD_REPETITION
 }
