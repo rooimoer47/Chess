@@ -192,7 +192,8 @@ public class GameSession {
     private ServerMessage buildBoardUpdate() {
         GameStatus currentStatus = resigned ? GameStatus.RESIGNED : engine.getStatus();
         boolean sendLegalMoves = currentStatus != GameStatus.RESIGNED
-                && currentStatus != GameStatus.THREEFOLD_REPETITION;
+                && currentStatus != GameStatus.THREEFOLD_REPETITION
+                && currentStatus != GameStatus.FIFTY_MOVE_RULE;
 
         PieceDto[][] board = new PieceDto[BOARD_SIZE][BOARD_SIZE];
         List<LegalMove> legalMoves = new ArrayList<>();

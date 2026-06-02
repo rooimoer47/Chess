@@ -61,6 +61,7 @@ export function useChessSocket(token: string, botMode = false) {
             : msg.status === 'STALEMATE' ? 'Draw — stalemate!'
             : msg.status === 'RESIGNED' ? `${msg.currentTurn} resigned. ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
             : msg.status === 'THREEFOLD_REPETITION' ? 'Draw — threefold repetition!'
+            : msg.status === 'FIFTY_MOVE_RULE' ? 'Draw — fifty-move rule!'
             : msg.status === 'CHECK' ? `${msg.currentTurn} is in check!`
             : null;
           setState(s => ({
@@ -69,7 +70,7 @@ export function useChessSocket(token: string, botMode = false) {
             board: msg.board,
             currentTurn: msg.currentTurn,
             status: msg.status,
-            legalMoves: msg.status === 'CHECKMATE' || msg.status === 'STALEMATE' || msg.status === 'RESIGNED' || msg.status === 'THREEFOLD_REPETITION' ? [] : msg.legalMoves,
+            legalMoves: msg.status === 'CHECKMATE' || msg.status === 'STALEMATE' || msg.status === 'RESIGNED' || msg.status === 'THREEFOLD_REPETITION' || msg.status === 'FIFTY_MOVE_RULE' ? [] : msg.legalMoves,
             lastMove: msg.lastMove ?? null,
             capturedByWhite: msg.capturedByWhite,
             capturedByBlack: msg.capturedByBlack,

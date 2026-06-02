@@ -14,15 +14,21 @@ public class GameEngine {
     private final BoardState boardState = new BoardState();
     private final Map<String, Integer> positionHistory = new HashMap<>();
     private boolean whiteTurn = true;
+    private int halfMoveClock = 0;
 
     public GameEngine() {
         initializeBoard();
     }
 
     GameEngine(APiece[][] initialBoard, boolean whiteTurn) {
+        this(initialBoard, whiteTurn, 0);
+    }
+
+    GameEngine(APiece[][] initialBoard, boolean whiteTurn, int halfMoveClock) {
         for (int r = 0; r < BOARD_SIZE; r++)
             System.arraycopy(initialBoard[r], 0, board[r], 0, BOARD_SIZE);
         this.whiteTurn = whiteTurn;
+        this.halfMoveClock = halfMoveClock;
     }
 
     // --- Public API ---
@@ -48,7 +54,7 @@ public class GameEngine {
                     return new MoveResult(MoveResult.Type.PROMOTION_NEEDED, whiteTurn, captureOccurred);
                 }
 
-                return finalizeTurn(whiteTurn, captureOccurred);
+                return finalizeTurn(whiteTurn, captureOccurred, piece.isPawn());
             }
         }
         return new MoveResult(MoveResult.Type.INVALID, whiteTurn, false);
@@ -62,7 +68,7 @@ public class GameEngine {
             case BISHOP -> new Bishop(pos, isWhite);
             case KNIGHT -> new Knight(pos, isWhite);
         };
-        return finalizeTurn(isWhite, false);
+        return finalizeTurn(isWhite, false, true);
     }
 
     public GameStatus getStatus() {
@@ -79,10 +85,15 @@ public class GameEngine {
 
     // --- Internal ---
 
-    private MoveResult finalizeTurn(boolean wasWhite, boolean captureOccurred) {
+    private MoveResult finalizeTurn(boolean wasWhite, boolean captureOccurred, boolean wasPawnMove) {
         // Close the en passant window opened by the opponent's previous double push
         clearJumpedPawns(!wasWhite);
         whiteTurn = !wasWhite;
+        if (captureOccurred || wasPawnMove) {
+            halfMoveClock = 0;
+        } else {
+            halfMoveClock++;
+        }
         positionHistory.merge(positionFingerprint(), 1, Integer::sum);
         GameStatus status = computeStatus(whiteTurn);
         MoveResult.Type type = switch (status) {
@@ -92,6 +103,7 @@ public class GameEngine {
             case STALEMATE            -> MoveResult.Type.STALEMATE;
             case RESIGNED             -> MoveResult.Type.VALID;
             case THREEFOLD_REPETITION -> MoveResult.Type.DRAW;
+            case FIFTY_MOVE_RULE      -> MoveResult.Type.DRAW;
         };
         return new MoveResult(type, wasWhite, captureOccurred);
     }
@@ -147,6 +159,9 @@ public class GameEngine {
         }
         if (positionHistory.getOrDefault(positionFingerprint(), 0) >= 3) {
             return GameStatus.THREEFOLD_REPETITION;
+        }
+        if (halfMoveClock >= 100) {
+            return GameStatus.FIFTY_MOVE_RULE;
         }
         return boardState.isInCheck(board, forWhite) ? GameStatus.CHECK : GameStatus.IN_PROGRESS;
     }
