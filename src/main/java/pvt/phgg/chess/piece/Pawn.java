@@ -1,5 +1,7 @@
 package pvt.phgg.chess.piece;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pvt.phgg.chess.BoardState;
 import pvt.phgg.chess.Position;
 
@@ -11,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Pawn extends APiece{
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Pawn.class);
     private boolean jumped = false;
 
     public Pawn(Position position, boolean white) {
@@ -38,7 +42,7 @@ public class Pawn extends APiece{
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error("Failed to load pawn image", e);
             return null;
         }
     }

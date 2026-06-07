@@ -1,5 +1,7 @@
 package pvt.phgg.chess.piece;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pvt.phgg.chess.BoardState;
 import pvt.phgg.chess.Position;
 
@@ -11,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Queen extends APiece{
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Queen.class);
     public Queen(Position position, boolean white) {
         super(position, white);
     }
@@ -36,7 +40,7 @@ public class Queen extends APiece{
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error("Failed to load queen image", e);
             return null;
         }
     }
