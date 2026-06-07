@@ -8,10 +8,11 @@ interface Props {
   lastMove: LastMove | null;
   playerColor: Color;
   isMyTurn: boolean;
+  theme: string;
   onMove: (fromRow: number, fromCol: number, toRow: number, toCol: number) => void;
 }
 
-export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, onMove }: Props) {
+export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, theme, onMove }: Props) {
   const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
 
   const legalTargets = selected
@@ -63,6 +64,7 @@ export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, onMo
               (lastMove.fromRow === row && lastMove.fromCol === col) ||
               (lastMove.toRow === row && lastMove.toCol === col)
             )}
+            theme={theme}
             onClick={() => handleSquareClick(row, col)}
           />
         ))

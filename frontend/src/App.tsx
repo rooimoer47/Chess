@@ -23,7 +23,11 @@ export default function App() {
   return <ChessGame key={gameKey} token={token} botMode={botMode} onPlayAgain={handlePlayAgain} />;
 }
 
+const THEMES = ['classic', 'generated'] as const;
+type Theme = typeof THEMES[number];
+
 function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: boolean; onPlayAgain: (botMode: boolean) => void }) {
+  const [theme, setTheme] = useState<Theme>('classic');
   const {
     connected,
     gameStarted,
@@ -72,6 +76,16 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
     <div className="app">
       <div className="info-bar">
         <span>You: <strong>{playerColor}</strong></span>
+        <select
+          className="theme-select"
+          value={theme}
+          onChange={e => setTheme(e.target.value as Theme)}
+          aria-label="Piece theme"
+        >
+          {THEMES.map(t => (
+            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+          ))}
+        </select>
         <span className={`turn-indicator ${isMyTurn ? 'my-turn' : ''}`}>
           {isGameOver ? '—' : isMyTurn ? 'Your turn' : "Opponent's turn"}
         </span>
@@ -111,6 +125,7 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
         lastMove={lastMove}
         playerColor={playerColor!}
         isMyTurn={isMyTurn && !isGameOver}
+        theme={theme}
         onMove={sendMove}
       />
 

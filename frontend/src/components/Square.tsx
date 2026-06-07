@@ -8,10 +8,11 @@ interface Props {
   isSelected: boolean;
   isLegalTarget: boolean;
   isLastMove: boolean;
+  theme: string;
   onClick: () => void;
 }
 
-export function Square({ row, col, piece, isSelected, isLegalTarget, isLastMove, onClick }: Props) {
+export function Square({ row, col, piece, isSelected, isLegalTarget, isLastMove, theme, onClick }: Props) {
   const isLight = (row + col) % 2 === 0;
 
   let background = isLight ? '#f0d9b5' : '#b58863';
@@ -21,7 +22,7 @@ export function Square({ row, col, piece, isSelected, isLegalTarget, isLastMove,
 
   return (
     <div className="square" style={{ background }} onClick={onClick}>
-      {piece && <Piece piece={piece} />}
+      {piece && <Piece piece={piece} theme={theme} />}
       {isLegalTarget && !piece && <div className="legal-dot" />}
       {isLegalTarget && piece && <div className="legal-capture" />}
     </div>

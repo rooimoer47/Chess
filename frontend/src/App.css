@@ -140,6 +140,20 @@ body {
   background: #666;
 }
 
+.theme-select {
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background: #2a2a2a;
+  color: #ddd;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.theme-select:focus {
+  outline: 1px solid #888;
+}
+
 .draw-btn {
   padding: 3px 10px;
   border-radius: 4px;
