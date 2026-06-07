@@ -8,23 +8,32 @@ interface Props {
   isSelected: boolean;
   isLegalTarget: boolean;
   isLastMove: boolean;
+  isLegalDropTarget: boolean;
+  isDraggingSource: boolean;
   theme: string;
-  onClick: () => void;
+  onMouseDown: (e: React.MouseEvent) => void;
+  onMouseEnter: () => void;
 }
 
-export function Square({ row, col, piece, isSelected, isLegalTarget, isLastMove, theme, onClick }: Props) {
+export function Square({ row, col, piece, isSelected, isLegalTarget, isLastMove, isLegalDropTarget, isDraggingSource, theme, onMouseDown, onMouseEnter }: Props) {
   const isLight = (row + col) % 2 === 0;
 
   let background = isLight ? '#f0d9b5' : '#b58863';
-  if (isLastMove) background = isLight ? '#f6f669' : '#baca2b';
-  if (isSelected) background = '#7fc97f';
-  else if (isLegalTarget) background = isLight ? '#cdd16e' : '#aaa23a';
+  if (isLastMove)       background = isLight ? '#f6f669' : '#baca2b';
+  if (isSelected)       background = '#7fc97f';
+  else if (isLegalDropTarget) background = isLight ? '#f5c518' : '#d4a900';
+  else if (isLegalTarget)     background = isLight ? '#cdd16e' : '#aaa23a';
 
   return (
-    <div className="square" style={{ background }} onClick={onClick}>
-      {piece && <Piece piece={piece} theme={theme} />}
+    <div
+      className="square"
+      style={{ background }}
+      onMouseDown={onMouseDown}
+      onMouseEnter={onMouseEnter}
+    >
+      {piece && <Piece piece={piece} theme={theme} style={{ opacity: isDraggingSource ? 0.25 : 1 }} />}
       {isLegalTarget && !piece && <div className="legal-dot" />}
-      {isLegalTarget && piece && <div className="legal-capture" />}
+      {isLegalTarget && piece && !isDraggingSource && <div className="legal-capture" />}
     </div>
   );
 }
