@@ -29,19 +29,19 @@ public class Board extends JFrame {
     private static final Color DARK_SQUARE_COLOR = Color.BLACK;
     private static final Color MARKER_COLOR = Color.BLUE;
 
-    private final GameEngine engine;
+    private final transient GameEngine engine;
 
-    private Position selectedPosition = null;
-    private final Set<Position> markedPositions = new HashSet<>();
+    private transient Position selectedPosition = null;
+    private transient Set<Position> markedPositions = new HashSet<>();
 
-    private final Metrics metrics = new Metrics();
+    private final transient Metrics metrics = new Metrics();
 
     public Board(String title, GameEngine engine) {
         super(title);
         this.engine = engine;
         createBoardUI();
         setLocationRelativeTo(null);
-        System.out.println("Window size after pack: " + getWidth() + "x" + getHeight());
+        LOGGER.debug("Window size after pack: {}x{}", getWidth(), getHeight());
     }
 
     private void createBoardUI() {
