@@ -33,7 +33,7 @@ class PawnPromotionTest {
         GameEngine engine = new GameEngine(board, true);
 
         MoveResult result = engine.applyMove(p(6, 3), p(7, 3)); // d7→d8
-        assertEquals(MoveResult.Type.PROMOTION_NEEDED, result.getType(),
+        assertEquals(MoveResult.Type.PROMOTION_NEEDED, result.type(),
             "Moving pawn to the last rank should require a promotion choice");
     }
 
@@ -106,7 +106,7 @@ class PawnPromotionTest {
         GameEngine engine = new GameEngine(board, false); // black to move
 
         MoveResult move = engine.applyMove(p(1, 3), p(0, 3)); // d2→d1
-        assertEquals(MoveResult.Type.PROMOTION_NEEDED, move.getType());
+        assertEquals(MoveResult.Type.PROMOTION_NEEDED, move.type());
 
         engine.applyPromotion(p(0, 3), PromotionChoice.QUEEN);
 
@@ -128,9 +128,9 @@ class PawnPromotionTest {
         GameEngine engine = new GameEngine(board, true);
 
         MoveResult move = engine.applyMove(p(6, 3), p(7, 2)); // d7xc8
-        assertEquals(MoveResult.Type.PROMOTION_NEEDED, move.getType(),
+        assertEquals(MoveResult.Type.PROMOTION_NEEDED, move.type(),
             "Capture onto last rank should also require promotion");
-        assertTrue(move.isCaptureOccurred(), "A capture should have been recorded");
+        assertTrue(move.captureOccurred(), "A capture should have been recorded");
 
         engine.applyPromotion(p(7, 2), PromotionChoice.QUEEN);
         assertEquals(PieceType.QUEEN, engine.getPiece(7, 2).getPieceType());

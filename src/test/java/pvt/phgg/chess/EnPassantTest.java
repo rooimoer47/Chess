@@ -16,7 +16,7 @@ class EnPassantTest {
 
     private static void move(GameEngine engine, int fromRow, int fromCol, int toRow, int toCol) {
         MoveResult result = engine.applyMove(p(fromRow, fromCol), p(toRow, toCol));
-        assertNotEquals(MoveResult.Type.INVALID, result.getType(),
+        assertNotEquals(MoveResult.Type.INVALID, result.type(),
             String.format("Setup move (%d,%d)->(%d,%d) should be valid", fromRow, fromCol, toRow, toCol));
     }
 
@@ -89,6 +89,6 @@ class EnPassantTest {
 
         MoveResult result = engine.applyMove(p(4, 4), p(5, 3)); // white tries e5xd6 e.p. — too late
 
-        assertEquals(MoveResult.Type.INVALID, result.getType(), "En passant should be invalid after the window expires");
+        assertEquals(MoveResult.Type.INVALID, result.type(), "En passant should be invalid after the window expires");
     }
 }

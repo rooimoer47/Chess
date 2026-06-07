@@ -16,7 +16,7 @@ class CheckmateTest {
 
     private static void move(GameEngine engine, int fr, int fc, int tr, int tc) {
         MoveResult result = engine.applyMove(p(fr, fc), p(tr, tc));
-        assertNotEquals(MoveResult.Type.INVALID, result.getType(),
+        assertNotEquals(MoveResult.Type.INVALID, result.type(),
             String.format("Setup move (%d,%d)->(%d,%d) should be valid", fr, fc, tr, tc));
     }
 
@@ -38,7 +38,7 @@ class CheckmateTest {
         move(engine, 1, 6, 3, 6); // 2. g2→g4
         MoveResult result = engine.applyMove(p(7, 3), p(3, 7)); // 2... Qd8→h4#
 
-        assertEquals(MoveResult.Type.CHECKMATE, result.getType(), "Qh4 should deliver checkmate");
+        assertEquals(MoveResult.Type.CHECKMATE, result.type(), "Qh4 should deliver checkmate");
         assertEquals(GameStatus.CHECKMATE, engine.getStatus());
     }
 

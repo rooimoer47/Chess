@@ -32,7 +32,7 @@ public class Board extends JFrame {
     private final transient GameEngine engine;
 
     private transient Position selectedPosition = null;
-    private transient Set<Position> markedPositions = new HashSet<>();
+    private final transient  Set<Position> markedPositions = new HashSet<>();
 
     private final transient Metrics metrics = new Metrics();
 
@@ -58,14 +58,24 @@ public class Board extends JFrame {
     }
 
     private JPanel createSquarePanel(int row, int col) {
-        JPanel square = new JPanel() {
+        JPanel square = buildSquare(row, col);
+        square.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                handleSquareClick(row, col);
+            }
+        });
+        square.setPreferredSize(new Dimension(SQUARE_SIZE_PIXELS, SQUARE_SIZE_PIXELS));
+        return square;
+    }
+
+    private JPanel buildSquare(int row, int col) {
+        return new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-
                 g.setColor((row + col) % 2 == 0 ? LIGHT_SQUARE_COLOR : DARK_SQUARE_COLOR);
                 g.fillRect(0, 0, getWidth(), getHeight());
-
                 APiece piece = engine.getPiece(row, col);
                 Position pos = new Position(row, col);
                 boolean isSelected = pos.equals(selectedPosition);
@@ -73,23 +83,12 @@ public class Board extends JFrame {
                 if (image != null) {
                     g.drawImage(image, 0, 0, getWidth(), getHeight(), this);
                 }
-
                 if (markedPositions.contains(pos)) {
                     g.setColor(MARKER_COLOR);
                     g.fillOval(getWidth() / 2, getHeight() / 2, getWidth() / 10, getHeight() / 10);
                 }
             }
         };
-
-        square.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                handleSquareClick(row, col);
-            }
-        });
-
-        square.setPreferredSize(new Dimension(SQUARE_SIZE_PIXELS, SQUARE_SIZE_PIXELS));
-        return square;
     }
 
     private void handleSquareClick(int row, int col) {
@@ -108,7 +107,6 @@ public class Board extends JFrame {
         if (!moves.isEmpty()) {
             selectedPosition = clicked;
             markedPositions.addAll(moves);
-            metrics.recordSelection();
             repaint();
         }
     }
@@ -124,10 +122,10 @@ public class Board extends JFrame {
             return;
         }
 
-        metrics.recordMove(result.wasWhiteMove(), result.isCaptureOccurred());
+        metrics.recordMove(result.wasWhiteMove(), result.captureOccurred());
         repaint();
 
-        if (result.getType() == MoveResult.Type.PROMOTION_NEEDED) {
+        if (result.type() == MoveResult.Type.PROMOTION_NEEDED) {
             showPromotionDialog(target);
             return;
         }
@@ -155,7 +153,7 @@ public class Board extends JFrame {
 
     private void showGameOverDialog(MoveResult result) {
         String message;
-        if (result.getType() == MoveResult.Type.CHECKMATE) {
+        if (result.type() == MoveResult.Type.CHECKMATE) {
             String winner = result.wasWhiteMove() ? "White" : "Black";
             message = String.format("Checkmate! %s player wins.", winner);
         } else {
@@ -237,11 +235,8 @@ public class Board extends JFrame {
         private long lastMoveTimestampMillis = gameStartTimeMillis;
 
         private int totalMoveCount;
-        private int whiteMoveCount;
-        private int blackMoveCount;
         private int whitePiecesCaptured;
         private int blackPiecesCaptured;
-        private int selectionsMade;
 
         public void recordMove(boolean wasWhite, boolean captureOccurred) {
             long now = System.currentTimeMillis();
@@ -249,18 +244,11 @@ public class Board extends JFrame {
             lastMoveTimestampMillis = now;
 
             totalMoveCount++;
-            if (wasWhite) {
-                whiteMoveCount++;
-                if (captureOccurred) blackPiecesCaptured++;
-            } else {
-                blackMoveCount++;
-                if (captureOccurred) whitePiecesCaptured++;
+            if (captureOccurred) {
+                if (wasWhite) blackPiecesCaptured++;
+                else whitePiecesCaptured++;
             }
             LOGGER.debug("Move #{} ({}): {}ms. Capture: {}", totalMoveCount, wasWhite ? "W" : "B", moveDuration, captureOccurred);
-        }
-
-        public void recordSelection() {
-            selectionsMade++;
         }
 
         public int getTotalMoveCount() { return totalMoveCount; }

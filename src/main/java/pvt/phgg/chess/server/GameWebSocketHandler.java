@@ -106,7 +106,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        if (result.getType() == MoveResult.Type.PROMOTION_NEEDED) {
+        if (result.type() == MoveResult.Type.PROMOTION_NEEDED) {
             session.broadcastBoardState();
             session.sendPromotionNeeded(to);
             return;

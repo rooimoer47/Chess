@@ -16,7 +16,7 @@ class ThreefoldRepetitionTest {
 
     private static void move(GameEngine engine, int fromRow, int fromCol, int toRow, int toCol) {
         MoveResult result = engine.applyMove(p(fromRow, fromCol), p(toRow, toCol));
-        assertNotEquals(MoveResult.Type.INVALID, result.getType(),
+        assertNotEquals(MoveResult.Type.INVALID, result.type(),
             String.format("Setup move (%d,%d)->(%d,%d) should be valid", fromRow, fromCol, toRow, toCol));
     }
 
@@ -57,7 +57,7 @@ class ThreefoldRepetitionTest {
         move(engine, 2, 5, 0, 6); // 11
 
         MoveResult result = engine.applyMove(p(5, 5), p(7, 6)); // 12 — state D third occurrence
-        assertEquals(MoveResult.Type.DRAW, result.getType(), "Third repetition should be a draw");
+        assertEquals(MoveResult.Type.DRAW, result.type(), "Third repetition should be a draw");
         assertEquals(GameStatus.THREEFOLD_REPETITION, engine.getStatus());
     }
 
@@ -82,7 +82,7 @@ class ThreefoldRepetitionTest {
         move(engine, 2, 5, 0, 6);
 
         MoveResult result = engine.applyMove(p(5, 5), p(7, 6)); // state D — 2nd occurrence
-        assertNotEquals(MoveResult.Type.DRAW, result.getType(), "Two occurrences should not be a draw yet");
+        assertNotEquals(MoveResult.Type.DRAW, result.type(), "Two occurrences should not be a draw yet");
         assertNotEquals(GameStatus.THREEFOLD_REPETITION, engine.getStatus());
     }
 

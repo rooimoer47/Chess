@@ -98,15 +98,11 @@ public class GameEngine {
         positionHistory.merge(positionFingerprint(), 1, Integer::sum);
         GameStatus status = computeStatus(whiteTurn);
         MoveResult.Type type = switch (status) {
-            case IN_PROGRESS          -> MoveResult.Type.VALID;
+            case IN_PROGRESS, RESIGNED -> MoveResult.Type.VALID;
             case CHECK                -> MoveResult.Type.CHECK;
             case CHECKMATE            -> MoveResult.Type.CHECKMATE;
             case STALEMATE            -> MoveResult.Type.STALEMATE;
-            case RESIGNED             -> MoveResult.Type.VALID;
-            case THREEFOLD_REPETITION -> MoveResult.Type.DRAW;
-            case FIFTY_MOVE_RULE          -> MoveResult.Type.DRAW;
-            case INSUFFICIENT_MATERIAL    -> MoveResult.Type.DRAW;
-            case DRAW_AGREED              -> MoveResult.Type.DRAW;
+            case THREEFOLD_REPETITION, FIFTY_MOVE_RULE, INSUFFICIENT_MATERIAL, DRAW_AGREED -> MoveResult.Type.DRAW;
         };
         return new MoveResult(type, wasWhite, captureOccurred);
     }
@@ -186,12 +182,12 @@ public class GameEngine {
         // K vs K
         if (w == 0 && b == 0) return true;
         // K + single minor vs K
-        if (w == 1 && b == 0) return isMinor(white.get(0));
-        if (w == 0 && b == 1) return isMinor(black.get(0));
+        if (w == 1 && b == 0) return isMinor(white.getFirst());
+        if (w == 0 && b == 1) return isMinor(black.getFirst());
         // K + B vs K + B, bishops on the same color square
         if (w == 1 && b == 1) {
-            APiece wp = white.get(0);
-            APiece bp = black.get(0);
+            APiece wp = white.getFirst();
+            APiece bp = black.getFirst();
             if (wp.getPieceType() == PieceType.BISHOP && bp.getPieceType() == PieceType.BISHOP) {
                 return sameSquareColor(wp.getCurrentPosition(), bp.getCurrentPosition());
             }

@@ -32,10 +32,10 @@ class FiftyMoveRuleTest {
         GameEngine engine = new GameEngine(baseBoard(), true, 98);
 
         MoveResult first = engine.applyMove(p(0, 0), p(0, 1)); // White Ra1→b1 (clock 99)
-        assertNotEquals(MoveResult.Type.DRAW, first.getType(), "Clock at 99 should not yet be a draw");
+        assertNotEquals(MoveResult.Type.DRAW, first.type(), "Clock at 99 should not yet be a draw");
 
         MoveResult second = engine.applyMove(p(7, 0), p(7, 1)); // Black Ra8→b8 (clock 100)
-        assertEquals(MoveResult.Type.DRAW, second.getType(), "Clock at 100 should be a draw");
+        assertEquals(MoveResult.Type.DRAW, second.type(), "Clock at 100 should be a draw");
         assertEquals(GameStatus.FIFTY_MOVE_RULE, engine.getStatus());
     }
 
@@ -47,7 +47,7 @@ class FiftyMoveRuleTest {
         GameEngine engine = new GameEngine(board, true, 99);
 
         MoveResult result = engine.applyMove(p(0, 0), p(0, 1)); // White Ra1xb1 (capture → clock resets)
-        assertNotEquals(MoveResult.Type.DRAW, result.getType(), "Capture should reset the clock, not trigger fifty-move rule");
+        assertNotEquals(MoveResult.Type.DRAW, result.type(), "Capture should reset the clock, not trigger fifty-move rule");
         assertNotEquals(GameStatus.FIFTY_MOVE_RULE, engine.getStatus());
     }
 
@@ -59,7 +59,7 @@ class FiftyMoveRuleTest {
         GameEngine engine = new GameEngine(board, true, 99);
 
         MoveResult result = engine.applyMove(p(1, 3), p(2, 3)); // White d2→d3 (pawn move → clock resets)
-        assertNotEquals(MoveResult.Type.DRAW, result.getType(), "Pawn move should reset the clock, not trigger fifty-move rule");
+        assertNotEquals(MoveResult.Type.DRAW, result.type(), "Pawn move should reset the clock, not trigger fifty-move rule");
         assertNotEquals(GameStatus.FIFTY_MOVE_RULE, engine.getStatus());
     }
 }

@@ -96,7 +96,7 @@ public class GameSession {
         Position[] chosen = botStrategy.chooseMove(engine, botIsWhite);
         if (chosen.length == 0) return false;
         MoveResult result = applyMove(chosen[0], chosen[1]);
-        if (result.getType() == MoveResult.Type.PROMOTION_NEEDED) {
+        if (result.type() == MoveResult.Type.PROMOTION_NEEDED) {
             applyPromotion(chosen[1], PromotionChoice.QUEEN);
         }
         return true;
