@@ -117,7 +117,7 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
         </div>
       )}
 
-      <CapturedPieces pieces={myLost} color={playerColor!} />
+      <CapturedPieces pieces={myLost} color={playerColor!} theme={theme} />
 
       <Board
         board={board}
@@ -129,7 +129,7 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
         onMove={sendMove}
       />
 
-      <CapturedPieces pieces={opponentLost} color={opponentColor} />
+      <CapturedPieces pieces={opponentLost} color={opponentColor} theme={theme} />
 
       {isGameOver && (
         <div className="play-again">
