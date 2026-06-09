@@ -142,7 +142,7 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
       )}
 
       {promotionPending && playerColor && (
-        <PromotionDialog color={playerColor} onChoice={sendPromotion} />
+        <PromotionDialog color={playerColor} theme={theme} onChoice={sendPromotion} />
       )}
     </div>
   );

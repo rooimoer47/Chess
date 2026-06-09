@@ -2,12 +2,13 @@ import type { Color } from '../types';
 
 interface Props {
   color: Color;
+  theme: string;
   onChoice: (choice: string) => void;
 }
 
 const CHOICES = ['QUEEN', 'ROOK', 'BISHOP', 'KNIGHT'] as const;
 
-export function PromotionDialog({ color, onChoice }: Props) {
+export function PromotionDialog({ color, theme, onChoice }: Props) {
   return (
     <div className="promotion-overlay">
       <div className="promotion-dialog">
@@ -17,7 +18,7 @@ export function PromotionDialog({ color, onChoice }: Props) {
             <img
               key={choice}
               className="promotion-piece"
-              src={`/images/${choice.toLowerCase()}_${color.toLowerCase()}.png`}
+              src={`/images/${theme}/${choice.toLowerCase()}_${color.toLowerCase()}.png`}
               alt={choice}
               title={choice}
               onClick={() => onChoice(choice)}
