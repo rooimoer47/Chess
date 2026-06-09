@@ -84,6 +84,12 @@ public class GameEngine {
         return whiteTurn;
     }
 
+    public MoveResult.Type peekMoveResult(Position from, Position to) {
+        APiece[][] copy = boardState.deepCopy(board);
+        GameEngine temp = new GameEngine(copy, whiteTurn, halfMoveClock);
+        return temp.applyMove(from, to).type();
+    }
+
     // --- Internal ---
 
     private MoveResult finalizeTurn(boolean wasWhite, boolean captureOccurred, boolean wasPawnMove) {

@@ -115,6 +115,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         session.broadcastBoardState();
         if (session.isBotTurn() && session.makeBotMove()) {
             session.broadcastBoardState();
+            session.maybeBotDrawOffer();
         }
     }
 
@@ -174,6 +175,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         session.broadcastBoardState();
         if (session.isBotTurn() && session.makeBotMove()) {
             session.broadcastBoardState();
+            session.maybeBotDrawOffer();
         }
     }
 

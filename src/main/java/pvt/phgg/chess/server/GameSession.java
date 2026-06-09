@@ -92,6 +92,14 @@ public class GameSession {
         return botEnabled && engine.isWhiteTurn() == botIsWhite;
     }
 
+    public synchronized void maybeBotDrawOffer() throws IOException {
+        if (!botEnabled) return;
+        if (ThreadLocalRandom.current().nextDouble() < 0.05) {
+            WebSocketSession humanSession = botIsWhite ? blackSession : whiteSession;
+            sendTo(humanSession, ServerMessage.drawOffered());
+        }
+    }
+
     public synchronized boolean makeBotMove() {
         Position[] chosen = botStrategy.chooseMove(engine, botIsWhite);
         if (chosen.length == 0) return false;
