@@ -7,15 +7,21 @@ import { LoginScreen } from './components/LoginScreen';
 import './App.css';
 
 export default function App() {
-  const [token, setToken] = useState<string | null>(null);
-  const [botMode, setBotMode] = useState(false);
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('chess_token'));
+  const [botMode, setBotMode] = useState(() => localStorage.getItem('chess_bot_mode') === 'true');
   const [gameKey, setGameKey] = useState(0);
 
   if (!token) {
-    return <LoginScreen onLogin={(t, bot) => { setToken(t); setBotMode(bot); }} />;
+    return <LoginScreen onLogin={(t, bot) => {
+      localStorage.setItem('chess_token', t);
+      localStorage.setItem('chess_bot_mode', String(bot));
+      setToken(t);
+      setBotMode(bot);
+    }} />;
   }
 
   const handlePlayAgain = (newBotMode: boolean) => {
+    localStorage.setItem('chess_bot_mode', String(newBotMode));
     setBotMode(newBotMode);
     setGameKey(k => k + 1);
   };

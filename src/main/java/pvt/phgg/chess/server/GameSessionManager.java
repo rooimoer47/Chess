@@ -20,6 +20,10 @@ public class GameSessionManager {
         return activeSession;
     }
 
+    public synchronized PlayerRole rejoin(WebSocketSession ws, String username) {
+        return activeSession.rejoin(ws, username);
+    }
+
     public synchronized PlayerRole join(WebSocketSession ws, String username) {
         if (activeSession.isFull()) {
             return null;

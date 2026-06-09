@@ -32,24 +32,33 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession ws) throws Exception {
         String username = (String) ws.getAttributes().get("username");
-        PlayerRole role = sessionManager.join(ws, username);
+
+        PlayerRole role = sessionManager.rejoin(ws, username);
+        boolean isRejoin = role != null;
+
+        if (!isRejoin) {
+            role = sessionManager.join(ws, username);
+        }
+
         if (role == null) {
             sendTo(ws, ServerMessage.error("Game is full or you are already connected."));
             ws.close();
             return;
         }
 
-        LOGGER.info("Player connected as {}: {}", role, ws.getId());
+        LOGGER.info("Player {} as {}: {}", isRejoin ? "reconnected" : "connected", role, ws.getId());
         sendTo(ws, ServerMessage.waiting(role.name()));
 
-        boolean botMode = Boolean.TRUE.equals(ws.getAttributes().get("botMode"));
-        if (botMode) {
-            sessionManager.joinBot();
+        if (!isRejoin) {
+            boolean botMode = Boolean.TRUE.equals(ws.getAttributes().get("botMode"));
+            if (botMode) {
+                sessionManager.joinBot();
+            }
         }
 
         GameSession session = sessionManager.getSession();
         if (session.isFull()) {
-            LOGGER.info("Both players connected — game starting");
+            LOGGER.info(isRejoin ? "Player rejoined — game resuming" : "Both players connected — game starting");
             session.broadcastBoardState();
         }
     }

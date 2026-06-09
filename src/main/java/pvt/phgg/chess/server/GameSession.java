@@ -115,7 +115,15 @@ public class GameSession {
     }
 
     public synchronized boolean isEmpty() {
-        return whiteSession == null && blackSession == null;
+        if (botEnabled) {
+            // Bot game: reset only when the human's slot is fully vacated
+            return botIsWhite
+                    ? (blackSession == null && blackUsername == null)
+                    : (whiteSession == null && whiteUsername == null);
+        }
+        // Human game: reset only when both slots are fully vacated
+        return whiteSession == null && blackSession == null
+                && whiteUsername == null && blackUsername == null;
     }
 
     public synchronized PlayerRole roleOf(WebSocketSession ws) {
@@ -128,13 +136,23 @@ public class GameSession {
         PlayerRole role = roleOf(ws);
         if (role == PlayerRole.WHITE) {
             whiteSession = null;
-            whiteUsername = null;
             sendTo(blackSession, ServerMessage.opponentDisconnected());
         } else if (role == PlayerRole.BLACK) {
             blackSession = null;
-            blackUsername = null;
             sendTo(whiteSession, ServerMessage.opponentDisconnected());
         }
+    }
+
+    public synchronized PlayerRole rejoin(WebSocketSession ws, String username) {
+        if (username.equals(whiteUsername) && whiteSession == null) {
+            whiteSession = ws;
+            return PlayerRole.WHITE;
+        }
+        if (username.equals(blackUsername) && blackSession == null) {
+            blackSession = ws;
+            return PlayerRole.BLACK;
+        }
+        return null;
     }
 
     public synchronized void resign(boolean isWhite) {
