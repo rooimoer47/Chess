@@ -132,18 +132,29 @@ public class GameSession {
         return null;
     }
 
+    public synchronized boolean isGameOver() {
+        if (resigned || drawAgreed) return true;
+        GameStatus status = engine.getStatus();
+        return status == GameStatus.CHECKMATE || status == GameStatus.STALEMATE
+                || status == GameStatus.THREEFOLD_REPETITION || status == GameStatus.FIFTY_MOVE_RULE
+                || status == GameStatus.INSUFFICIENT_MATERIAL;
+    }
+
     public synchronized void disconnect(WebSocketSession ws) throws IOException {
         PlayerRole role = roleOf(ws);
         if (role == PlayerRole.WHITE) {
             whiteSession = null;
+            if (isGameOver()) whiteUsername = null;
             sendTo(blackSession, ServerMessage.opponentDisconnected());
         } else if (role == PlayerRole.BLACK) {
             blackSession = null;
+            if (isGameOver()) blackUsername = null;
             sendTo(whiteSession, ServerMessage.opponentDisconnected());
         }
     }
 
     public synchronized PlayerRole rejoin(WebSocketSession ws, String username) {
+        if (isGameOver()) return null;
         if (username.equals(whiteUsername) && whiteSession == null) {
             whiteSession = ws;
             return PlayerRole.WHITE;
