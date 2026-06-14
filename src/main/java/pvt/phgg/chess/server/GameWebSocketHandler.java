@@ -1,6 +1,7 @@
 package pvt.phgg.chess.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -77,7 +78,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession ws, TextMessage raw) throws Exception {
+    protected void handleTextMessage(@Nonnull WebSocketSession ws, TextMessage raw) throws Exception {
         ClientMessage msg = objectMapper.readValue(raw.getPayload(), ClientMessage.class);
         GameSession session = sessionManager.getSession();
         PlayerRole role = session.roleOf(ws);
@@ -99,7 +100,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-    public void afterConnectionClosed(WebSocketSession ws, CloseStatus status) throws Exception {
+    public void afterConnectionClosed(WebSocketSession ws, @Nonnull CloseStatus status) throws Exception {
         LOGGER.info("Player disconnected: {} ({})", ws.getId(), status);
         sessionManager.disconnect(ws);
     }
