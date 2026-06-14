@@ -331,19 +331,16 @@ public class GameSession {
             }
         }
 
-        String turn;
-        if (timedOut) {
-            turn = timedOutWhite ? "WHITE" : "BLACK";
-        } else if (resigned) {
-            turn = resignedWhite ? "WHITE" : "BLACK";
-        } else {
-            turn = engine.isWhiteTurn() ? "WHITE" : "BLACK";
-        }
+        PlayerRole turn;
+        if (timedOut)      turn = timedOutWhite       ? PlayerRole.WHITE : PlayerRole.BLACK;
+        else if (resigned) turn = resignedWhite        ? PlayerRole.WHITE : PlayerRole.BLACK;
+        else               turn = engine.isWhiteTurn() ? PlayerRole.WHITE : PlayerRole.BLACK;
+
         List<String> capturedW = capturedByWhite.stream().map(Enum::name).toList();
         List<String> capturedB = capturedByBlack.stream().map(Enum::name).toList();
         Long whiteTime = clockEnabled ? whiteRemainingMs : null;
         Long blackTime = clockEnabled ? blackRemainingMs : null;
-        return ServerMessage.boardUpdate(board, turn, currentStatus.name(), legalMoves, lastMove,
+        return ServerMessage.boardUpdate(board, turn.name(), currentStatus.name(), legalMoves, lastMove,
                 capturedW, capturedB, whiteTime, blackTime);
     }
 
