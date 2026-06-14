@@ -319,7 +319,6 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  width: 260px;
 }
 
 .lobby-label {
@@ -329,39 +328,108 @@ body {
   color: #888;
 }
 
-.theme-options {
+.theme-current-btn {
   display: flex;
-  gap: 12px;
-}
-
-.theme-option {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background: #2a2a2a;
+  color: #ddd;
+  font-size: 1rem;
+  cursor: pointer;
+  min-width: 160px;
+  justify-content: space-between;
+}
+
+.theme-current-btn:hover {
+  border-color: #888;
+  background: #333;
+}
+
+.theme-current-chevron {
+  color: #888;
+  font-size: 0.8rem;
+}
+
+.theme-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.theme-picker-dialog {
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.theme-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1rem;
+  color: #ccc;
+}
+
+.theme-picker-close {
+  border: none;
+  background: transparent;
+  color: #888;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.theme-picker-close:hover {
+  color: #eee;
+  background: #333;
+}
+
+.theme-picker-body {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.theme-picker-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+  min-width: 110px;
+}
+
+.theme-picker-option {
+  padding: 10px 14px;
+  border-radius: 6px;
   border: 2px solid #444;
   background: #2a2a2a;
   color: #bbb;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   cursor: pointer;
-  width: 118px;
+  text-align: left;
 }
 
-.theme-option:hover {
+.theme-picker-option:hover {
   border-color: #666;
-}
-
-.theme-option-active {
-  border-color: #7fc97f;
   color: #eee;
 }
 
-.theme-preview {
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
+.theme-picker-option-active {
+  border-color: #7fc97f;
+  color: #eee;
+  background: #1e2e1e;
 }
 
 .start-btn {
