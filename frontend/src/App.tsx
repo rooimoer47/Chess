@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useChessSocket } from './hooks/useChessSocket';
 import { Board } from './components/Board';
 import { CapturedPieces } from './components/CapturedPieces';
@@ -6,6 +6,7 @@ import { PromotionDialog } from './components/PromotionDialog';
 import { LoginScreen } from './components/LoginScreen';
 import { LobbyScreen } from './components/LobbyScreen';
 import type { Theme } from './components/LobbyScreen';
+import type { Color } from './types';
 import './App.css';
 
 type Screen = 'login' | 'lobby' | 'game';
@@ -16,6 +17,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>(() => localStorage.getItem('chess_token') ? 'lobby' : 'login');
   const [botMode, setBotMode] = useState(() => localStorage.getItem('chess_bot_mode') === 'true');
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('chess_theme') as Theme | null) ?? 'classic');
+  const [clockMs, setClockMs] = useState(() => Number(localStorage.getItem('chess_clock_ms') ?? '0'));
   const [gameKey, setGameKey] = useState(0);
 
   const handleLogin = (t: string, u: string) => {
@@ -31,6 +33,7 @@ export default function App() {
     localStorage.removeItem('chess_username');
     localStorage.removeItem('chess_bot_mode');
     localStorage.removeItem('chess_theme');
+    localStorage.removeItem('chess_clock_ms');
     setToken(null);
     setUsername('');
     setScreen('login');
@@ -44,6 +47,11 @@ export default function App() {
   const handleThemeChange = (t: Theme) => {
     localStorage.setItem('chess_theme', t);
     setTheme(t);
+  };
+
+  const handleClockMsChange = (ms: number) => {
+    localStorage.setItem('chess_clock_ms', String(ms));
+    setClockMs(ms);
   };
 
   const handleStartGame = () => {
@@ -65,8 +73,10 @@ export default function App() {
         username={username}
         botMode={botMode}
         theme={theme}
+        clockMs={clockMs}
         onChangeBotMode={handleBotModeChange}
         onChangeTheme={handleThemeChange}
+        onChangeClockMs={handleClockMsChange}
         onStartGame={handleStartGame}
         onLogout={handleLogout}
       />
@@ -79,36 +89,97 @@ export default function App() {
       token={token}
       botMode={botMode}
       theme={theme}
+      clockMs={clockMs}
       onBackToLobby={handleBackToLobby}
     />
   );
 }
 
-function ChessGame({ token, botMode, theme, onBackToLobby }: { token: string; botMode: boolean; theme: Theme; onBackToLobby: () => void }) {
+function formatTime(ms: number): string {
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function ClockDisplay({ timeMs, active }: { timeMs: number | null; active: boolean }) {
+  if (timeMs === null) return null;
+  const lowTime = active && timeMs < 30_000;
+  return (
+    <div className={`clock${active ? ' clock-active' : ' clock-inactive'}${lowTime ? ' clock-low' : ''}`}>
+      {formatTime(timeMs)}
+    </div>
+  );
+}
+
+function ChessGame({ token, botMode, theme, clockMs, onBackToLobby }: {
+  token: string; botMode: boolean; theme: Theme; clockMs: number; onBackToLobby: () => void;
+}) {
   const {
-    connected,
-    gameStarted,
-    playerColor,
-    board,
-    currentTurn,
-    status,
-    legalMoves,
-    lastMove,
-    capturedByWhite,
-    capturedByBlack,
-    promotionPending,
-    statusMessage,
-    sendMove,
-    sendPromotion,
-    sendResign,
-    sendDrawOffer,
-    sendDrawResponse,
-    drawOfferedByOpponent,
-    drawOfferPending,
-  } = useChessSocket(token, botMode);
+    connected, gameStarted, playerColor, board, currentTurn, status,
+    legalMoves, lastMove, capturedByWhite, capturedByBlack, promotionPending,
+    statusMessage, sendMove, sendPromotion, sendResign, sendDrawOffer,
+    sendDrawResponse, drawOfferedByOpponent, drawOfferPending,
+    whiteTimeMs, blackTimeMs, serverUpdateTime, sendFlag, serverError,
+  } = useChessSocket(token, botMode, clockMs);
+
+  const [tick, setTick] = useState(0);
+  const flagSentRef = useRef(false);
+
+  const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE' || status === 'RESIGNED'
+    || status === 'THREEFOLD_REPETITION' || status === 'FIFTY_MOVE_RULE'
+    || status === 'INSUFFICIENT_MATERIAL' || status === 'DRAW_AGREED' || status === 'TIMEOUT';
+
+  // Reset flag guard when turn changes
+  useEffect(() => { flagSentRef.current = false; }, [currentTurn]);
+
+  // Drive countdown re-renders every 100ms when a clock is active
+  useEffect(() => {
+    if (whiteTimeMs === null || isGameOver) return;
+    const id = setInterval(() => setTick(t => t + 1), 100);
+    return () => clearInterval(id);
+  }, [whiteTimeMs !== null, isGameOver]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isMyTurn = currentTurn === playerColor;
+  const myColor = playerColor as Color;
+  const opponentColor = (playerColor === 'WHITE' ? 'BLACK' : 'WHITE') as Color;
+
+  function getDisplayMs(color: Color): number | null {
+    const serverMs = color === 'WHITE' ? whiteTimeMs : blackTimeMs;
+    if (serverMs === null || serverUpdateTime === null) return null;
+    if (currentTurn !== color || isGameOver) return serverMs;
+    return Math.max(0, serverMs - (Date.now() - serverUpdateTime));
+  }
+
+  const myDisplayMs = getDisplayMs(myColor);
+  const opponentDisplayMs = getDisplayMs(opponentColor);
+
+  // Send flag when my clock reaches zero
+  useEffect(() => {
+    if (!isMyTurn || myDisplayMs === null || isGameOver || flagSentRef.current) return;
+    if (myDisplayMs <= 0) {
+      flagSentRef.current = true;
+      sendFlag();
+    }
+  }, [tick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const myLost       = playerColor === 'WHITE' ? capturedByBlack : capturedByWhite;
+  const opponentLost = playerColor === 'WHITE' ? capturedByWhite : capturedByBlack;
 
   if (!connected) {
-    return <div className="screen"><p>Connecting to server…</p></div>;
+    return (
+      <div className="screen">
+        {serverError ? (
+          <>
+            <p className="login-error">{serverError}</p>
+            <br />
+            <button className="back-to-lobby-btn" onClick={onBackToLobby}>Back to Lobby</button>
+          </>
+        ) : (
+          <p>Connecting to server…</p>
+        )}
+      </div>
+    );
   }
 
   if (!gameStarted) {
@@ -120,13 +191,6 @@ function ChessGame({ token, botMode, theme, onBackToLobby }: { token: string; bo
     );
   }
 
-  const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE' || status === 'RESIGNED' || status === 'THREEFOLD_REPETITION' || status === 'FIFTY_MOVE_RULE' || status === 'INSUFFICIENT_MATERIAL' || status === 'DRAW_AGREED';
-  const isMyTurn = currentTurn === playerColor;
-
-  const myLost       = playerColor === 'WHITE' ? capturedByBlack : capturedByWhite;
-  const opponentLost = playerColor === 'WHITE' ? capturedByWhite : capturedByBlack;
-  const opponentColor = playerColor === 'WHITE' ? 'BLACK' : 'WHITE';
-
   return (
     <div className="app">
       <div className="info-bar">
@@ -136,11 +200,7 @@ function ChessGame({ token, botMode, theme, onBackToLobby }: { token: string; bo
         </span>
         {!isGameOver && (
           <>
-            <button
-              className="draw-btn"
-              onClick={sendDrawOffer}
-              disabled={drawOfferPending || drawOfferedByOpponent}
-            >
+            <button className="draw-btn" onClick={sendDrawOffer} disabled={drawOfferPending || drawOfferedByOpponent}>
               {drawOfferPending ? 'Draw offered…' : 'Offer Draw'}
             </button>
             <button className="resign-btn" onClick={sendResign}>Resign</button>
@@ -149,9 +209,7 @@ function ChessGame({ token, botMode, theme, onBackToLobby }: { token: string; bo
       </div>
 
       {statusMessage && (
-        <div className={`status-message ${isGameOver ? 'game-over' : ''}`}>
-          {statusMessage}
-        </div>
+        <div className={`status-message ${isGameOver ? 'game-over' : ''}`}>{statusMessage}</div>
       )}
 
       {drawOfferedByOpponent && !isGameOver && (
@@ -162,7 +220,10 @@ function ChessGame({ token, botMode, theme, onBackToLobby }: { token: string; bo
         </div>
       )}
 
-      <CapturedPieces pieces={myLost} color={playerColor!} theme={theme} />
+      <div className="player-row">
+        <CapturedPieces pieces={opponentLost} color={opponentColor} theme={theme} />
+        <ClockDisplay timeMs={opponentDisplayMs} active={!isMyTurn && !isGameOver} />
+      </div>
 
       <Board
         board={board}
@@ -174,7 +235,10 @@ function ChessGame({ token, botMode, theme, onBackToLobby }: { token: string; bo
         onMove={sendMove}
       />
 
-      <CapturedPieces pieces={opponentLost} color={opponentColor} theme={theme} />
+      <div className="player-row">
+        <CapturedPieces pieces={myLost} color={playerColor!} theme={theme} />
+        <ClockDisplay timeMs={myDisplayMs} active={isMyTurn && !isGameOver} />
+      </div>
 
       {isGameOver && (
         <button className="back-to-lobby-btn" onClick={onBackToLobby}>Back to Lobby</button>

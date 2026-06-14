@@ -48,6 +48,14 @@ public class GameSession {
     private boolean resigned = false;
     private boolean resignedWhite;
     private boolean drawAgreed = false;
+    private boolean timedOut = false;
+    private boolean timedOutWhite;
+
+    private boolean clockEnabled = false;
+    private long requestedClockMs = Long.MIN_VALUE; // MIN_VALUE = not yet set
+    private long whiteRemainingMs;
+    private long blackRemainingMs;
+    private long turnStartEpochMs = 0;
 
     public GameSession(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -83,6 +91,32 @@ public class GameSession {
             botEnabled = true;
             botIsWhite = false;
             botStrategy = new RandomBotStrategy();
+            return true;
+        }
+        return false;
+    }
+
+    public synchronized boolean isClockCompatible(long clockMs) {
+        return requestedClockMs == Long.MIN_VALUE || requestedClockMs == clockMs;
+    }
+
+    public synchronized void setupClock(long initialTimeMs) {
+        if (requestedClockMs == Long.MIN_VALUE) {
+            requestedClockMs = initialTimeMs;
+        }
+        if (clockEnabled || initialTimeMs <= 0) return;
+        clockEnabled = true;
+        whiteRemainingMs = initialTimeMs;
+        blackRemainingMs = initialTimeMs;
+    }
+
+    public synchronized boolean handleFlag(boolean isWhiteFlagged) {
+        if (!clockEnabled || timedOut) return false;
+        long elapsed = turnStartEpochMs > 0 ? System.currentTimeMillis() - turnStartEpochMs : 0;
+        long remaining = (isWhiteFlagged ? whiteRemainingMs : blackRemainingMs) - elapsed;
+        if (remaining <= 0 && engine.isWhiteTurn() == isWhiteFlagged) {
+            timedOut = true;
+            timedOutWhite = isWhiteFlagged;
             return true;
         }
         return false;
@@ -133,7 +167,7 @@ public class GameSession {
     }
 
     public synchronized boolean isGameOver() {
-        if (resigned || drawAgreed) return true;
+        if (timedOut || resigned || drawAgreed) return true;
         GameStatus status = engine.getStatus();
         return status == GameStatus.CHECKMATE || status == GameStatus.STALEMATE
                 || status == GameStatus.THREEFOLD_REPETITION || status == GameStatus.FIFTY_MOVE_RULE
@@ -199,6 +233,7 @@ public class GameSession {
     public synchronized MoveResult applyMove(Position from, Position to) {
         APiece movingPiece = engine.getPiece(from.getRow(), from.getCol());
         APiece targetPiece = engine.getPiece(to.getRow(), to.getCol());
+        boolean wasWhiteTurn = engine.isWhiteTurn();
 
         MoveResult result = engine.applyMove(from, to);
 
@@ -209,6 +244,16 @@ public class GameSession {
             } else if (movingPiece.isPawn() && from.getCol() != to.getCol()) {
                 // en passant — the passed-through square is empty but a pawn is captured
                 recordCapture(movingPiece.isWhite(), PieceType.PAWN);
+            }
+            if (clockEnabled && turnStartEpochMs > 0) {
+                long now = System.currentTimeMillis();
+                long elapsed = now - turnStartEpochMs;
+                if (wasWhiteTurn) {
+                    whiteRemainingMs = Math.max(0, whiteRemainingMs - elapsed);
+                } else {
+                    blackRemainingMs = Math.max(0, blackRemainingMs - elapsed);
+                }
+                turnStartEpochMs = now;
             }
         }
         return result;
@@ -233,6 +278,9 @@ public class GameSession {
     }
 
     public synchronized void broadcastBoardState() throws IOException {
+        if (clockEnabled && turnStartEpochMs == 0) {
+            turnStartEpochMs = System.currentTimeMillis();
+        }
         ServerMessage msg = buildBoardUpdate();
         sendTo(whiteSession, msg);
         sendTo(blackSession, msg);
@@ -250,7 +298,9 @@ public class GameSession {
 
     private ServerMessage buildBoardUpdate() {
         GameStatus currentStatus;
-        if (resigned) {
+        if (timedOut) {
+            currentStatus = GameStatus.TIMEOUT;
+        } else if (resigned) {
             currentStatus = GameStatus.RESIGNED;
         } else if (drawAgreed) {
             currentStatus = GameStatus.DRAW_AGREED;
@@ -261,7 +311,8 @@ public class GameSession {
                 && currentStatus != GameStatus.THREEFOLD_REPETITION
                 && currentStatus != GameStatus.FIFTY_MOVE_RULE
                 && currentStatus != GameStatus.INSUFFICIENT_MATERIAL
-                && currentStatus != GameStatus.DRAW_AGREED;
+                && currentStatus != GameStatus.DRAW_AGREED
+                && currentStatus != GameStatus.TIMEOUT;
 
         PieceDto[][] board = new PieceDto[BOARD_SIZE][BOARD_SIZE];
         List<LegalMove> legalMoves = new ArrayList<>();
@@ -281,14 +332,19 @@ public class GameSession {
         }
 
         String turn;
-        if (resigned) {
+        if (timedOut) {
+            turn = timedOutWhite ? "WHITE" : "BLACK";
+        } else if (resigned) {
             turn = resignedWhite ? "WHITE" : "BLACK";
         } else {
             turn = engine.isWhiteTurn() ? "WHITE" : "BLACK";
         }
         List<String> capturedW = capturedByWhite.stream().map(Enum::name).toList();
         List<String> capturedB = capturedByBlack.stream().map(Enum::name).toList();
-        return ServerMessage.boardUpdate(board, turn, currentStatus.name(), legalMoves, lastMove, capturedW, capturedB);
+        Long whiteTime = clockEnabled ? whiteRemainingMs : null;
+        Long blackTime = clockEnabled ? blackRemainingMs : null;
+        return ServerMessage.boardUpdate(board, turn, currentStatus.name(), legalMoves, lastMove,
+                capturedW, capturedB, whiteTime, blackTime);
     }
 
     private void sendTo(WebSocketSession ws, ServerMessage message) throws IOException {

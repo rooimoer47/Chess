@@ -1,6 +1,6 @@
 export type PieceType = 'PAWN' | 'KNIGHT' | 'BISHOP' | 'ROOK' | 'QUEEN' | 'KING';
 export type Color = 'WHITE' | 'BLACK';
-export type GameStatus = 'IN_PROGRESS' | 'CHECK' | 'CHECKMATE' | 'STALEMATE' | 'RESIGNED' | 'THREEFOLD_REPETITION' | 'FIFTY_MOVE_RULE' | 'INSUFFICIENT_MATERIAL' | 'DRAW_AGREED';
+export type GameStatus = 'IN_PROGRESS' | 'CHECK' | 'CHECKMATE' | 'STALEMATE' | 'RESIGNED' | 'THREEFOLD_REPETITION' | 'FIFTY_MOVE_RULE' | 'INSUFFICIENT_MATERIAL' | 'DRAW_AGREED' | 'TIMEOUT';
 
 export interface Piece {
   type: PieceType;
@@ -23,7 +23,7 @@ export interface LastMove {
 
 export type ServerMessage =
   | { type: 'WAITING'; color: Color }
-  | { type: 'BOARD_UPDATE'; board: (Piece | null)[][]; currentTurn: Color; status: GameStatus; legalMoves: LegalMove[]; lastMove?: LastMove; capturedByWhite: string[]; capturedByBlack: string[] }
+  | { type: 'BOARD_UPDATE'; board: (Piece | null)[][]; currentTurn: Color; status: GameStatus; legalMoves: LegalMove[]; lastMove?: LastMove; capturedByWhite: string[]; capturedByBlack: string[]; whiteTimeMs?: number; blackTimeMs?: number }
   | { type: 'PROMOTION_NEEDED'; promotionRow: number; promotionCol: number }
   | { type: 'DRAW_OFFERED' }
   | { type: 'DRAW_DECLINED' }

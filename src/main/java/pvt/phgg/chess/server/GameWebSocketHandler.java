@@ -33,10 +33,21 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionEstablished(WebSocketSession ws) throws Exception {
         String username = (String) ws.getAttributes().get("username");
 
+        long clockMs = 0;
+        String clockParam = (String) ws.getAttributes().get("clockMs");
+        if (clockParam != null) {
+            try { clockMs = Long.parseLong(clockParam); } catch (NumberFormatException ignored) {}
+        }
+
         PlayerRole role = sessionManager.rejoin(ws, username);
         boolean isRejoin = role != null;
 
         if (!isRejoin) {
+            if (!sessionManager.isClockCompatibleForJoin(clockMs)) {
+                sendTo(ws, ServerMessage.error("Your opponent is waiting with a different time control."));
+                ws.close();
+                return;
+            }
             role = sessionManager.join(ws, username);
         }
 
@@ -49,14 +60,15 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         LOGGER.info("Player {} as {}: {}", isRejoin ? "reconnected" : "connected", role, ws.getId());
         sendTo(ws, ServerMessage.waiting(role.name()));
 
+        GameSession session = sessionManager.getSession();
+
         if (!isRejoin) {
             boolean botMode = Boolean.TRUE.equals(ws.getAttributes().get("botMode"));
             if (botMode) {
                 sessionManager.joinBot();
             }
+            session.setupClock(clockMs);
         }
-
-        GameSession session = sessionManager.getSession();
         if (session.isFull()) {
             LOGGER.info(isRejoin ? "Player rejoined — game resuming" : "Both players connected — game starting");
             session.broadcastBoardState();
@@ -80,6 +92,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             case "RESIGN"       -> handleResign(ws, session, role);
             case "OFFER_DRAW"   -> handleOfferDraw(ws, session, role);
             case "RESPOND_DRAW" -> handleRespondDraw(session, role, msg);
+            case "FLAG"         -> handleFlag(session, role);
             default             -> sendTo(ws, ServerMessage.error("Unknown message type: " + msg.type()));
         }
     }
@@ -199,6 +212,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
         }
         return null;
+    }
+
+    private void handleFlag(GameSession session, PlayerRole role) throws IOException {
+        if (session.handleFlag(role == PlayerRole.WHITE)) {
+            session.broadcastBoardState();
+        }
     }
 
     private void sendTo(WebSocketSession ws, ServerMessage message) throws IOException {

@@ -3,12 +3,20 @@ import { useState } from 'react';
 export const THEMES = ['classic', 'generated'] as const;
 export type Theme = typeof THEMES[number];
 
+export const CLOCK_OPTIONS = [
+  { label: 'No Clock', ms: 0 },
+  { label: '1 min', ms: 60_000 },
+  { label: '10 min', ms: 600_000 },
+] as const;
+
 interface Props {
   username: string;
   botMode: boolean;
   theme: Theme;
+  clockMs: number;
   onChangeBotMode: (bot: boolean) => void;
   onChangeTheme: (theme: Theme) => void;
+  onChangeClockMs: (ms: number) => void;
   onStartGame: () => void;
   onLogout: () => void;
 }
@@ -80,7 +88,7 @@ function ThemePicker({ theme, onChangeTheme, onClose }: { theme: Theme; onChange
   );
 }
 
-export function LobbyScreen({ username, botMode, theme, onChangeBotMode, onChangeTheme, onStartGame, onLogout }: Props) {
+export function LobbyScreen({ username, botMode, theme, clockMs, onChangeBotMode, onChangeTheme, onChangeClockMs, onStartGame, onLogout }: Props) {
   const [themePickerOpen, setThemePickerOpen] = useState(false);
 
   return (
@@ -97,6 +105,22 @@ export function LobbyScreen({ username, botMode, theme, onChangeBotMode, onChang
           <button type="button" className={`mode-btn${botMode ? ' mode-btn-active' : ''}`} onClick={() => onChangeBotMode(true)}>
             vs Bot
           </button>
+        </div>
+      </div>
+
+      <div className="lobby-section">
+        <span className="lobby-label">Time Control</span>
+        <div className="mode-toggle">
+          {CLOCK_OPTIONS.map(opt => (
+            <button
+              key={opt.ms}
+              type="button"
+              className={`mode-btn${clockMs === opt.ms ? ' mode-btn-active' : ''}`}
+              onClick={() => onChangeClockMs(opt.ms)}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
       </div>
 

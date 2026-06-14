@@ -106,7 +106,7 @@ public class GameEngine {
         MoveResult.Type type = switch (status) {
             case IN_PROGRESS, RESIGNED -> MoveResult.Type.VALID;
             case CHECK                -> MoveResult.Type.CHECK;
-            case CHECKMATE            -> MoveResult.Type.CHECKMATE;
+            case CHECKMATE, TIMEOUT            -> MoveResult.Type.CHECKMATE;
             case STALEMATE            -> MoveResult.Type.STALEMATE;
             case THREEFOLD_REPETITION, FIFTY_MOVE_RULE, INSUFFICIENT_MATERIAL, DRAW_AGREED -> MoveResult.Type.DRAW;
         };

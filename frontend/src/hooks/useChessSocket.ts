@@ -18,9 +18,13 @@ export interface GameState {
   statusMessage: string | null;
   drawOfferedByOpponent: boolean;
   drawOfferPending: boolean;
+  whiteTimeMs: number | null;
+  blackTimeMs: number | null;
+  serverUpdateTime: number | null;
+  serverError: string | null;
 }
 
-export function useChessSocket(token: string, botMode = false) {
+export function useChessSocket(token: string, botMode = false, clockMs = 0) {
   const [state, setState] = useState<GameState>({
     connected: false,
     gameStarted: false,
@@ -36,6 +40,10 @@ export function useChessSocket(token: string, botMode = false) {
     statusMessage: null,
     drawOfferedByOpponent: false,
     drawOfferPending: false,
+    whiteTimeMs: null,
+    blackTimeMs: null,
+    serverUpdateTime: null,
+    serverError: null,
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -43,7 +51,8 @@ export function useChessSocket(token: string, botMode = false) {
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const botParam = botMode ? '&bot=true' : '';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/game?token=${encodeURIComponent(token)}${botParam}`);
+    const clockParam = clockMs > 0 ? `&clock=${clockMs}` : '';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/game?token=${encodeURIComponent(token)}${botParam}${clockParam}`);
     wsRef.current = ws;
 
     ws.onopen = () => setState(s => ({ ...s, connected: true }));
@@ -60,14 +69,18 @@ export function useChessSocket(token: string, botMode = false) {
           break;
 
         case 'BOARD_UPDATE': {
+          const isOver = msg.status === 'CHECKMATE' || msg.status === 'STALEMATE' || msg.status === 'RESIGNED'
+            || msg.status === 'THREEFOLD_REPETITION' || msg.status === 'FIFTY_MOVE_RULE'
+            || msg.status === 'INSUFFICIENT_MATERIAL' || msg.status === 'DRAW_AGREED' || msg.status === 'TIMEOUT';
           const message =
-            msg.status === 'CHECKMATE'            ? `Checkmate! ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
+            msg.status === 'CHECKMATE'             ? `Checkmate! ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
             : msg.status === 'STALEMATE'           ? 'Draw — stalemate!'
             : msg.status === 'RESIGNED'            ? `${msg.currentTurn} resigned. ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
             : msg.status === 'THREEFOLD_REPETITION'? 'Draw — threefold repetition!'
             : msg.status === 'FIFTY_MOVE_RULE'     ? 'Draw — fifty-move rule!'
             : msg.status === 'INSUFFICIENT_MATERIAL'? 'Draw — insufficient material!'
             : msg.status === 'DRAW_AGREED'         ? 'Draw by agreement!'
+            : msg.status === 'TIMEOUT'             ? `${msg.currentTurn === 'WHITE' ? 'White' : 'Black'} ran out of time! ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
             : msg.status === 'CHECK'               ? `${msg.currentTurn} is in check!`
             : null;
           setState(s => ({
@@ -76,7 +89,7 @@ export function useChessSocket(token: string, botMode = false) {
             board: msg.board,
             currentTurn: msg.currentTurn,
             status: msg.status,
-            legalMoves: msg.status === 'CHECKMATE' || msg.status === 'STALEMATE' || msg.status === 'RESIGNED' || msg.status === 'THREEFOLD_REPETITION' || msg.status === 'FIFTY_MOVE_RULE' || msg.status === 'INSUFFICIENT_MATERIAL' || msg.status === 'DRAW_AGREED' ? [] : msg.legalMoves,
+            legalMoves: isOver ? [] : msg.legalMoves,
             drawOfferedByOpponent: false,
             drawOfferPending: false,
             lastMove: msg.lastMove ?? null,
@@ -84,6 +97,9 @@ export function useChessSocket(token: string, botMode = false) {
             capturedByBlack: msg.capturedByBlack,
             promotionPending: null,
             statusMessage: message,
+            whiteTimeMs: msg.whiteTimeMs ?? null,
+            blackTimeMs: msg.blackTimeMs ?? null,
+            serverUpdateTime: Date.now(),
           }));
           break;
         }
@@ -109,7 +125,7 @@ export function useChessSocket(token: string, botMode = false) {
           break;
 
         case 'ERROR':
-          console.error('Server error:', msg.message);
+          setState(s => ({ ...s, serverError: msg.message ?? 'Server error' }));
           break;
       }
     };
@@ -139,5 +155,9 @@ export function useChessSocket(token: string, botMode = false) {
     setState(s => ({ ...s, drawOfferedByOpponent: false }));
   }, []);
 
-  return { ...state, sendMove, sendPromotion, sendResign, sendDrawOffer, sendDrawResponse };
+  const sendFlag = useCallback(() => {
+    wsRef.current?.send(JSON.stringify({ type: 'FLAG' }));
+  }, []);
+
+  return { ...state, sendMove, sendPromotion, sendResign, sendDrawOffer, sendDrawResponse, sendFlag };
 }

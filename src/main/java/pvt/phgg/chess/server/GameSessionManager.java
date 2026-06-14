@@ -24,6 +24,11 @@ public class GameSessionManager {
         return activeSession.rejoin(ws, username);
     }
 
+    public synchronized boolean isClockCompatibleForJoin(long clockMs) {
+        if (activeSession.isGameOver()) return true;
+        return activeSession.isClockCompatible(clockMs);
+    }
+
     public synchronized PlayerRole join(WebSocketSession ws, String username) {
         if (activeSession.isGameOver()) {
             activeSession = new GameSession(objectMapper);

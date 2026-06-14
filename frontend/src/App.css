@@ -219,6 +219,43 @@ body {
   color: #fff;
 }
 
+.player-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: min(576px, 100vw - 16px);
+}
+
+.clock {
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  min-width: 78px;
+  text-align: center;
+}
+
+.clock-active {
+  color: #f0f0f0;
+  background: #2a2a2a;
+}
+
+.clock-inactive {
+  color: #555;
+}
+
+.clock-low {
+  color: #e06060;
+  animation: clock-pulse 1s ease-in-out infinite;
+}
+
+@keyframes clock-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
 .captured-pieces {
   display: flex;
   flex-wrap: wrap;
