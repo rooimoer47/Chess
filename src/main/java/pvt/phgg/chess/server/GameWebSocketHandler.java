@@ -36,7 +36,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         long clockMs = 0;
         String clockParam = (String) ws.getAttributes().get("clockMs");
         if (clockParam != null) {
-            try { clockMs = Long.parseLong(clockParam); } catch (NumberFormatException ignored) {}
+            try { clockMs = Long.parseLong(clockParam); }
+            catch (NumberFormatException e) { LOGGER.warn("Invalid clock parameter '{}', defaulting to 0", clockParam); }
         }
 
         PlayerRole role = sessionManager.rejoin(ws, username);
