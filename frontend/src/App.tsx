@@ -4,36 +4,87 @@ import { Board } from './components/Board';
 import { CapturedPieces } from './components/CapturedPieces';
 import { PromotionDialog } from './components/PromotionDialog';
 import { LoginScreen } from './components/LoginScreen';
+import { LobbyScreen } from './components/LobbyScreen';
+import type { Theme } from './components/LobbyScreen';
 import './App.css';
+
+type Screen = 'login' | 'lobby' | 'game';
 
 export default function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('chess_token'));
+  const [username, setUsername] = useState(() => localStorage.getItem('chess_username') ?? '');
+  const [screen, setScreen] = useState<Screen>(() => localStorage.getItem('chess_token') ? 'lobby' : 'login');
   const [botMode, setBotMode] = useState(() => localStorage.getItem('chess_bot_mode') === 'true');
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('chess_theme') as Theme | null) ?? 'classic');
   const [gameKey, setGameKey] = useState(0);
 
-  if (!token) {
-    return <LoginScreen onLogin={(t, bot) => {
-      localStorage.setItem('chess_token', t);
-      localStorage.setItem('chess_bot_mode', String(bot));
-      setToken(t);
-      setBotMode(bot);
-    }} />;
-  }
-
-  const handlePlayAgain = (newBotMode: boolean) => {
-    localStorage.setItem('chess_bot_mode', String(newBotMode));
-    setBotMode(newBotMode);
-    setGameKey(k => k + 1);
+  const handleLogin = (t: string, u: string) => {
+    localStorage.setItem('chess_token', t);
+    localStorage.setItem('chess_username', u);
+    setToken(t);
+    setUsername(u);
+    setScreen('lobby');
   };
 
-  return <ChessGame key={gameKey} token={token} botMode={botMode} onPlayAgain={handlePlayAgain} />;
+  const handleLogout = () => {
+    localStorage.removeItem('chess_token');
+    localStorage.removeItem('chess_username');
+    localStorage.removeItem('chess_bot_mode');
+    localStorage.removeItem('chess_theme');
+    setToken(null);
+    setUsername('');
+    setScreen('login');
+  };
+
+  const handleBotModeChange = (bot: boolean) => {
+    localStorage.setItem('chess_bot_mode', String(bot));
+    setBotMode(bot);
+  };
+
+  const handleThemeChange = (t: Theme) => {
+    localStorage.setItem('chess_theme', t);
+    setTheme(t);
+  };
+
+  const handleStartGame = () => {
+    setGameKey(k => k + 1);
+    setScreen('game');
+  };
+
+  const handleBackToLobby = () => {
+    setScreen('lobby');
+  };
+
+  if (screen === 'login' || !token) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
+  if (screen === 'lobby') {
+    return (
+      <LobbyScreen
+        username={username}
+        botMode={botMode}
+        theme={theme}
+        onChangeBotMode={handleBotModeChange}
+        onChangeTheme={handleThemeChange}
+        onStartGame={handleStartGame}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  return (
+    <ChessGame
+      key={gameKey}
+      token={token}
+      botMode={botMode}
+      theme={theme}
+      onBackToLobby={handleBackToLobby}
+    />
+  );
 }
 
-const THEMES = ['classic', 'generated'] as const;
-type Theme = typeof THEMES[number];
-
-function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: boolean; onPlayAgain: (botMode: boolean) => void }) {
-  const [theme, setTheme] = useState<Theme>('classic');
+function ChessGame({ token, botMode, theme, onBackToLobby }: { token: string; botMode: boolean; theme: Theme; onBackToLobby: () => void }) {
   const {
     connected,
     gameStarted,
@@ -72,9 +123,7 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
   const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE' || status === 'RESIGNED' || status === 'THREEFOLD_REPETITION' || status === 'FIFTY_MOVE_RULE' || status === 'INSUFFICIENT_MATERIAL' || status === 'DRAW_AGREED';
   const isMyTurn = currentTurn === playerColor;
 
-  // Pieces of my color captured by opponent (shown at top)
-  const myLost      = playerColor === 'WHITE' ? capturedByBlack : capturedByWhite;
-  // Opponent's pieces I captured (shown at bottom)
+  const myLost       = playerColor === 'WHITE' ? capturedByBlack : capturedByWhite;
   const opponentLost = playerColor === 'WHITE' ? capturedByWhite : capturedByBlack;
   const opponentColor = playerColor === 'WHITE' ? 'BLACK' : 'WHITE';
 
@@ -82,16 +131,6 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
     <div className="app">
       <div className="info-bar">
         <span>You: <strong>{playerColor}</strong></span>
-        <select
-          className="theme-select"
-          value={theme}
-          onChange={e => setTheme(e.target.value as Theme)}
-          aria-label="Piece theme"
-        >
-          {THEMES.map(t => (
-            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-          ))}
-        </select>
         <span className={`turn-indicator ${isMyTurn ? 'my-turn' : ''}`}>
           {isGameOver ? '—' : isMyTurn ? 'Your turn' : "Opponent's turn"}
         </span>
@@ -138,13 +177,7 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
       <CapturedPieces pieces={opponentLost} color={opponentColor} theme={theme} />
 
       {isGameOver && (
-        <div className="play-again">
-          <span>Play again?</span>
-          <div className="mode-toggle">
-            <button type="button" className="mode-btn" onClick={() => onPlayAgain(false)}>vs Human</button>
-            <button type="button" className="mode-btn" onClick={() => onPlayAgain(true)}>vs Bot</button>
-          </div>
-        </div>
+        <button className="back-to-lobby-btn" onClick={onBackToLobby}>Back to Lobby</button>
       )}
 
       {promotionPending && playerColor && (
