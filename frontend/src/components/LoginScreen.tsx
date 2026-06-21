@@ -4,19 +4,28 @@ interface Props {
   onLogin: (token: string, botMode: boolean) => void;
 }
 
+type Tab = 'login' | 'register';
+
 export function LoginScreen({ onLogin }: Props) {
+  const [tab, setTab] = useState<Tab>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [botMode, setBotMode] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const switchTab = (t: Tab) => {
+    setTab(t);
+    setError('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    const endpoint = tab === 'login' ? '/api/auth/login' : '/api/auth/register';
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -25,7 +34,8 @@ export function LoginScreen({ onLogin }: Props) {
         const { token } = await res.json() as { token: string };
         onLogin(token, botMode);
       } else {
-        setError('Invalid username or password');
+        const text = await res.text();
+        setError(text || (tab === 'login' ? 'Invalid username or password' : 'Registration failed'));
       }
     } catch {
       setError('Could not connect to server');
@@ -37,6 +47,22 @@ export function LoginScreen({ onLogin }: Props) {
   return (
     <div className="screen">
       <h2 className="login-title">Chess</h2>
+      <div className="login-tabs">
+        <button
+          type="button"
+          className={`login-tab${tab === 'login' ? ' login-tab-active' : ''}`}
+          onClick={() => switchTab('login')}
+        >
+          Sign In
+        </button>
+        <button
+          type="button"
+          className={`login-tab${tab === 'register' ? ' login-tab-active' : ''}`}
+          onClick={() => switchTab('register')}
+        >
+          Create Account
+        </button>
+      </div>
       <form className="login-form" onSubmit={handleSubmit}>
         <input
           className="login-input"
@@ -52,7 +78,7 @@ export function LoginScreen({ onLogin }: Props) {
           value={password}
           onChange={e => setPassword(e.target.value)}
           placeholder="Password"
-          autoComplete="current-password"
+          autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
           required
         />
         <div className="mode-toggle">
@@ -65,7 +91,9 @@ export function LoginScreen({ onLogin }: Props) {
         </div>
         {error && <p className="login-error">{error}</p>}
         <button className="login-button" type="submit" disabled={loading}>
-          {loading ? 'Logging in…' : 'Play'}
+          {loading
+            ? (tab === 'login' ? 'Signing in…' : 'Creating account…')
+            : (tab === 'login' ? 'Play' : 'Register & Play')}
         </button>
       </form>
     </div>

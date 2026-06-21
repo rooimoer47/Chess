@@ -249,9 +249,34 @@ body {
 }
 
 .login-title {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   font-size: 2rem;
   letter-spacing: 0.05em;
+}
+
+.login-tabs {
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #555;
+  width: 260px;
+  margin-bottom: 16px;
+}
+
+.login-tab {
+  flex: 1;
+  padding: 9px;
+  border: none;
+  background: #2e2e2e;
+  color: #aaa;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.login-tab-active {
+  background: #444;
+  color: #eee;
+  font-weight: bold;
 }
 
 .login-form {
