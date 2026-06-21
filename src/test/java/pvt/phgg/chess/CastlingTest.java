@@ -128,6 +128,74 @@ class CastlingTest {
         assertFalse(hasMoveTo(moves, 0, 6), "Kingside castle should be blocked when f1 is attacked");
     }
 
+    // --- Castling blocked by pieces occupying the path ---
+
+    @Test
+    void kingsideCastlingBlockedByPieceOnF1() {
+        APiece[][] board = emptyBoard();
+        board[0][4] = new King(new Position(0, 4), true);
+        board[0][7] = new Rook(new Position(0, 7), true);
+        board[0][5] = new Bishop(new Position(0, 5), true); // f1 occupied
+        board[7][4] = new King(new Position(7, 4), false);
+        GameEngine engine = new GameEngine(board, true);
+
+        assertFalse(hasMoveTo(engine.getLegalMoves(p(0, 4)), 0, 6),
+                "Kingside castle should be blocked when f1 is occupied");
+    }
+
+    @Test
+    void kingsideCastlingBlockedByPieceOnG1() {
+        APiece[][] board = emptyBoard();
+        board[0][4] = new King(new Position(0, 4), true);
+        board[0][7] = new Rook(new Position(0, 7), true);
+        board[0][6] = new Knight(new Position(0, 6), true); // g1 occupied
+        board[7][4] = new King(new Position(7, 4), false);
+        GameEngine engine = new GameEngine(board, true);
+
+        assertFalse(hasMoveTo(engine.getLegalMoves(p(0, 4)), 0, 6),
+                "Kingside castle should be blocked when g1 is occupied");
+    }
+
+    @Test
+    void queensideCastlingBlockedByPieceOnD1() {
+        APiece[][] board = emptyBoard();
+        board[0][4] = new King(new Position(0, 4), true);
+        board[0][0] = new Rook(new Position(0, 0), true);
+        board[0][3] = new Queen(new Position(0, 3), true); // d1 occupied
+        board[7][4] = new King(new Position(7, 4), false);
+        GameEngine engine = new GameEngine(board, true);
+
+        assertFalse(hasMoveTo(engine.getLegalMoves(p(0, 4)), 0, 2),
+                "Queenside castle should be blocked when d1 is occupied");
+    }
+
+    @Test
+    void queensideCastlingBlockedByPieceOnC1() {
+        APiece[][] board = emptyBoard();
+        board[0][4] = new King(new Position(0, 4), true);
+        board[0][0] = new Rook(new Position(0, 0), true);
+        board[0][2] = new Bishop(new Position(0, 2), true); // c1 occupied
+        board[7][4] = new King(new Position(7, 4), false);
+        GameEngine engine = new GameEngine(board, true);
+
+        assertFalse(hasMoveTo(engine.getLegalMoves(p(0, 4)), 0, 2),
+                "Queenside castle should be blocked when c1 is occupied");
+    }
+
+    @Test
+    void queensideCastlingBlockedByPieceOnB1() {
+        // b1 is not a square the king passes through, but the rook must pass through it.
+        APiece[][] board = emptyBoard();
+        board[0][4] = new King(new Position(0, 4), true);
+        board[0][0] = new Rook(new Position(0, 0), true);
+        board[0][1] = new Knight(new Position(0, 1), true); // b1 occupied — blocks rook's path
+        board[7][4] = new King(new Position(7, 4), false);
+        GameEngine engine = new GameEngine(board, true);
+
+        assertFalse(hasMoveTo(engine.getLegalMoves(p(0, 4)), 0, 2),
+                "Queenside castle should be blocked when b1 is occupied");
+    }
+
     @Test
     void castlingBlockedWhenInCheck() {
         // Black rook on e-file gives check to white king — castling not allowed while in check.
