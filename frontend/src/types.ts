@@ -21,6 +21,23 @@ export interface LastMove {
   toCol: number;
 }
 
+export interface GameSummary {
+  id: number;
+  opponent: string;
+  playerColor: Color;
+  result: string | null;
+  winnerColor: Color | null;
+  mode: string;
+  startedAt: string;
+  endedAt: string | null;
+}
+
+export interface BoardSnapshot {
+  moveNumber: number;
+  board: (Piece | null)[][];
+  lastMove: LastMove | null;
+}
+
 export type ServerMessage =
   | { type: 'WAITING'; color: Color }
   | { type: 'BOARD_UPDATE'; board: (Piece | null)[][]; currentTurn: Color; status: GameStatus; legalMoves: LegalMove[]; lastMove?: LastMove; capturedByWhite: string[]; capturedByBlack: string[] }

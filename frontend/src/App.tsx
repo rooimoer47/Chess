@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useChessSocket } from './hooks/useChessSocket';
 import { Board } from './components/Board';
 import { CapturedPieces } from './components/CapturedPieces';
 import { PromotionDialog } from './components/PromotionDialog';
 import { LoginScreen } from './components/LoginScreen';
+import { HistoryPage } from './components/HistoryPage';
+import { ReplayViewer } from './components/ReplayViewer';
 import './App.css';
 
 export default function App() {
@@ -11,14 +14,18 @@ export default function App() {
   const [botMode, setBotMode] = useState(() => localStorage.getItem('chess_bot_mode') === 'true');
   const [gameKey, setGameKey] = useState(0);
 
-  if (!token) {
-    return <LoginScreen onLogin={(t, bot) => {
-      localStorage.setItem('chess_token', t);
-      localStorage.setItem('chess_bot_mode', String(bot));
-      setToken(t);
-      setBotMode(bot);
-    }} />;
-  }
+  const handleLogin = (t: string, bot: boolean) => {
+    localStorage.setItem('chess_token', t);
+    localStorage.setItem('chess_bot_mode', String(bot));
+    setToken(t);
+    setBotMode(bot);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('chess_token');
+    localStorage.removeItem('chess_bot_mode');
+    setToken(null);
+  };
 
   const handlePlayAgain = (newBotMode: boolean) => {
     localStorage.setItem('chess_bot_mode', String(newBotMode));
@@ -26,14 +33,39 @@ export default function App() {
     setGameKey(k => k + 1);
   };
 
-  return <ChessGame key={gameKey} token={token} botMode={botMode} onPlayAgain={handlePlayAgain} />;
+  if (!token) {
+    return (
+      <Routes>
+        <Route path="*" element={<LoginScreen onLogin={handleLogin} />} />
+      </Routes>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/game" replace />} />
+      <Route path="/game" element={
+        <ChessGame key={gameKey} token={token} botMode={botMode}
+          onPlayAgain={handlePlayAgain} onLogout={handleLogout} />
+      } />
+      <Route path="/history" element={<HistoryPage />} />
+      <Route path="/history/:gameId" element={<ReplayViewer />} />
+      <Route path="*" element={<Navigate to="/game" replace />} />
+    </Routes>
+  );
 }
 
 const THEMES = ['classic', 'generated'] as const;
 type Theme = typeof THEMES[number];
 
-function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: boolean; onPlayAgain: (botMode: boolean) => void }) {
+function ChessGame({ token, botMode, onPlayAgain, onLogout }: {
+  token: string;
+  botMode: boolean;
+  onPlayAgain: (botMode: boolean) => void;
+  onLogout: () => void;
+}) {
   const [theme, setTheme] = useState<Theme>('classic');
+  const navigate = useNavigate();
   const {
     connected,
     gameStarted,
@@ -69,12 +101,12 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
     );
   }
 
-  const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE' || status === 'RESIGNED' || status === 'THREEFOLD_REPETITION' || status === 'FIFTY_MOVE_RULE' || status === 'INSUFFICIENT_MATERIAL' || status === 'DRAW_AGREED';
+  const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE' || status === 'RESIGNED'
+    || status === 'THREEFOLD_REPETITION' || status === 'FIFTY_MOVE_RULE'
+    || status === 'INSUFFICIENT_MATERIAL' || status === 'DRAW_AGREED';
   const isMyTurn = currentTurn === playerColor;
 
-  // Pieces of my color captured by opponent (shown at top)
-  const myLost      = playerColor === 'WHITE' ? capturedByBlack : capturedByWhite;
-  // Opponent's pieces I captured (shown at bottom)
+  const myLost       = playerColor === 'WHITE' ? capturedByBlack : capturedByWhite;
   const opponentLost = playerColor === 'WHITE' ? capturedByWhite : capturedByBlack;
   const opponentColor = playerColor === 'WHITE' ? 'BLACK' : 'WHITE';
 
@@ -97,16 +129,15 @@ function ChessGame({ token, botMode, onPlayAgain }: { token: string; botMode: bo
         </span>
         {!isGameOver && (
           <>
-            <button
-              className="draw-btn"
-              onClick={sendDrawOffer}
-              disabled={drawOfferPending || drawOfferedByOpponent}
-            >
+            <button className="draw-btn" onClick={sendDrawOffer}
+              disabled={drawOfferPending || drawOfferedByOpponent}>
               {drawOfferPending ? 'Draw offered…' : 'Offer Draw'}
             </button>
             <button className="resign-btn" onClick={sendResign}>Resign</button>
           </>
         )}
+        <button className="history-btn" onClick={() => navigate('/history')}>My Games</button>
+        <button className="logout-btn" onClick={onLogout}>Logout</button>
       </div>
 
       {statusMessage && (

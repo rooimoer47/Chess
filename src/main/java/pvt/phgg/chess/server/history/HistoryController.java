@@ -4,8 +4,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
+import pvt.phgg.chess.GameEngine;
+import pvt.phgg.chess.MoveResult;
+import pvt.phgg.chess.Position;
+import pvt.phgg.chess.PromotionChoice;
 import pvt.phgg.chess.server.auth.JwtUtil;
+import pvt.phgg.chess.server.dto.LastMoveDto;
+import pvt.phgg.chess.server.dto.PieceDto;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -91,6 +98,53 @@ public class HistoryController {
                 gameId);
 
         return ResponseEntity.ok(moves);
+    }
+
+    @GetMapping("/games/{gameId}/boards")
+    public ResponseEntity<Object> getGameBoards(
+            @PathVariable long gameId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        if (extractUsername(authHeader) == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+
+        List<GameMoveDto> moves = jdbcTemplate.query(GAME_MOVES_SQL,
+                (rs, rowNum) -> new GameMoveDto(
+                        rs.getInt("move_number"),
+                        rs.getInt("from_row"),
+                        rs.getInt("from_col"),
+                        rs.getInt("to_row"),
+                        rs.getInt("to_col"),
+                        rs.getString("promotion_choice")),
+                gameId);
+
+        GameEngine engine = new GameEngine();
+        List<BoardSnapshotDto> snapshots = new ArrayList<>();
+        snapshots.add(boardSnapshot(engine, 0, null));
+
+        for (GameMoveDto move : moves) {
+            Position from = new Position(move.fromRow(), move.fromCol());
+            Position to   = new Position(move.toRow(),   move.toCol());
+            MoveResult result = engine.applyMove(from, to);
+            if (result.type() == MoveResult.Type.PROMOTION_NEEDED && move.promotionChoice() != null) {
+                engine.applyPromotion(to, PromotionChoice.valueOf(move.promotionChoice()));
+            }
+            snapshots.add(boardSnapshot(engine, move.moveNumber(),
+                    new LastMoveDto(move.fromRow(), move.fromCol(), move.toRow(), move.toCol())));
+        }
+
+        return ResponseEntity.ok(snapshots);
+    }
+
+    private BoardSnapshotDto boardSnapshot(GameEngine engine, int moveNumber, LastMoveDto lastMove) {
+        PieceDto[][] board = new PieceDto[8][8];
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                board[row][col] = PieceDto.from(engine.getPiece(row, col));
+            }
+        }
+        return new BoardSnapshotDto(moveNumber, board, lastMove);
     }
 
     private String extractUsername(String authHeader) {
