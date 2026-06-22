@@ -1,5 +1,6 @@
 package pvt.phgg.chess.server.history;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -54,11 +55,8 @@ public class HistoryController {
     }
 
     @GetMapping("/users/{username}/games")
-    public ResponseEntity<Object> getUserGames(
-            @PathVariable String username,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-
-        String tokenUsername = extractUsername(authHeader);
+    public ResponseEntity<Object> getUserGames(@PathVariable String username, HttpServletRequest request) {
+        String tokenUsername = extractUsername(request);
         if (tokenUsername == null || !tokenUsername.equals(username)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         }
@@ -79,11 +77,8 @@ public class HistoryController {
     }
 
     @GetMapping("/games/{gameId}/moves")
-    public ResponseEntity<Object> getGameMoves(
-            @PathVariable long gameId,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-
-        if (extractUsername(authHeader) == null) {
+    public ResponseEntity<Object> getGameMoves(@PathVariable long gameId, HttpServletRequest request) {
+        if (extractUsername(request) == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         }
 
@@ -101,11 +96,8 @@ public class HistoryController {
     }
 
     @GetMapping("/games/{gameId}/boards")
-    public ResponseEntity<Object> getGameBoards(
-            @PathVariable long gameId,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-
-        if (extractUsername(authHeader) == null) {
+    public ResponseEntity<Object> getGameBoards(@PathVariable long gameId, HttpServletRequest request) {
+        if (extractUsername(request) == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         }
 
@@ -147,9 +139,8 @@ public class HistoryController {
         return new BoardSnapshotDto(moveNumber, board, lastMove);
     }
 
-    private String extractUsername(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
-        String token = authHeader.substring(7);
-        return jwtUtil.isValid(token) ? jwtUtil.extractUsername(token) : null;
+    private String extractUsername(HttpServletRequest request) {
+        String token = jwtUtil.extractFromCookies(request.getCookies());
+        return (token != null && jwtUtil.isValid(token)) ? jwtUtil.extractUsername(token) : null;
     }
 }

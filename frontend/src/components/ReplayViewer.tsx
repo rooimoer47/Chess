@@ -17,12 +17,7 @@ export function ReplayViewer() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('chess_token');
-    if (!token) { navigate('/'); return; }
-
-    fetch(`/api/games/${gameId}/boards`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    fetch(`/api/games/${gameId}/boards`)
       .then(r => r.ok ? r.json() as Promise<BoardSnapshot[]> : Promise.reject('Failed to load game'))
       .then(data => { setSnapshots(data); setLoading(false); })
       .catch(e => { setError(String(e)); setLoading(false); });

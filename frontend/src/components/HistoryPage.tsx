@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { GameSummary } from '../types';
-import { usernameFromToken } from '../utils/token';
 
 function formatResult(game: GameSummary): { label: string; cls: string } {
   if (!game.result) return { label: 'In progress', cls: '' };
@@ -20,24 +19,18 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export function HistoryPage() {
+export function HistoryPage({ username }: { username: string }) {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('chess_token');
-    const username = token ? usernameFromToken(token) : null;
-    if (!token || !username) { navigate('/'); return; }
-
-    fetch(`/api/users/${username}/games`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    fetch(`/api/users/${username}/games`)
       .then(r => r.ok ? r.json() as Promise<GameSummary[]> : Promise.reject('Failed to load games'))
       .then(data => { setGames(data); setLoading(false); })
       .catch(e => { setError(String(e)); setLoading(false); });
-  }, [navigate]);
+  }, [username]);
 
   return (
     <div className="history-page">

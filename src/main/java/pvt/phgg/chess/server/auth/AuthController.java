@@ -1,15 +1,17 @@
 package pvt.phgg.chess.server.auth;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import pvt.phgg.chess.server.user.UserService;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -26,18 +28,20 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Object> login(@RequestBody AuthRequest request) {
+    public ResponseEntity<Object> login(@RequestBody AuthRequest request, HttpServletResponse response) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.username(), request.password()));
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
-        return ResponseEntity.ok(new AuthResponse(jwtUtil.generateToken(request.username())));
+        String token = jwtUtil.generateToken(request.username());
+        response.addHeader(HttpHeaders.SET_COOKIE, jwtUtil.createAuthCookie(token).toString());
+        return ResponseEntity.ok(Map.of("username", request.username()));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<Object> register(@RequestBody AuthRequest request) {
+    public ResponseEntity<Object> register(@RequestBody AuthRequest request, HttpServletResponse response) {
         String username = request.username() == null ? "" : request.username().trim();
         String password = request.password() == null ? "" : request.password();
 
@@ -53,6 +57,23 @@ public class AuthController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
-        return ResponseEntity.ok(new AuthResponse(jwtUtil.generateToken(username)));
+        String token = jwtUtil.generateToken(username);
+        response.addHeader(HttpHeaders.SET_COOKIE, jwtUtil.createAuthCookie(token).toString());
+        return ResponseEntity.ok(Map.of("username", username));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<Object> me(HttpServletRequest request) {
+        String token = jwtUtil.extractFromCookies(request.getCookies());
+        if (token == null || !jwtUtil.isValid(token)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
+        }
+        return ResponseEntity.ok(Map.of("username", jwtUtil.extractUsername(token)));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        response.addHeader(HttpHeaders.SET_COOKIE, jwtUtil.clearAuthCookie().toString());
+        return ResponseEntity.ok().build();
     }
 }

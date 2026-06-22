@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 interface Props {
-  onLogin: (token: string, botMode: boolean) => void;
+  onLogin: (username: string, botMode: boolean) => void;
 }
 
 type Tab = 'login' | 'register';
@@ -31,8 +31,8 @@ export function LoginScreen({ onLogin }: Props) {
         body: JSON.stringify({ username, password }),
       });
       if (res.ok) {
-        const { token } = await res.json() as { token: string };
-        onLogin(token, botMode);
+        const { username: u } = await res.json() as { username: string };
+        onLogin(u, botMode);
       } else {
         const text = await res.text();
         setError(text || (tab === 'login' ? 'Invalid username or password' : 'Registration failed'));

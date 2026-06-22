@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useChessSocket } from './hooks/useChessSocket';
 import { Board } from './components/Board';
@@ -7,35 +7,32 @@ import { PromotionDialog } from './components/PromotionDialog';
 import { LoginScreen } from './components/LoginScreen';
 import { HistoryPage } from './components/HistoryPage';
 import { ReplayViewer } from './components/ReplayViewer';
-import { isTokenExpired } from './utils/token';
 import './App.css';
 
-function loadToken(): string | null {
-  const t = localStorage.getItem('chess_token');
-  if (t && isTokenExpired(t)) {
-    localStorage.removeItem('chess_token');
-    localStorage.removeItem('chess_bot_mode');
-    return null;
-  }
-  return t;
-}
-
 export default function App() {
-  const [token, setToken] = useState<string | null>(loadToken);
+  const [username, setUsername] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [botMode, setBotMode] = useState(() => localStorage.getItem('chess_bot_mode') === 'true');
   const [gameKey, setGameKey] = useState(0);
 
-  const handleLogin = (t: string, bot: boolean) => {
-    localStorage.setItem('chess_token', t);
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() as Promise<{ username: string }> : null)
+      .then(data => { if (data) setUsername(data.username); })
+      .catch(() => {})
+      .finally(() => setAuthChecked(true));
+  }, []);
+
+  const handleLogin = (u: string, bot: boolean) => {
     localStorage.setItem('chess_bot_mode', String(bot));
-    setToken(t);
+    setUsername(u);
     setBotMode(bot);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('chess_token');
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     localStorage.removeItem('chess_bot_mode');
-    setToken(null);
+    setUsername(null);
   };
 
   const handlePlayAgain = (newBotMode: boolean) => {
@@ -44,7 +41,9 @@ export default function App() {
     setGameKey(k => k + 1);
   };
 
-  if (!token) {
+  if (!authChecked) return null;
+
+  if (!username) {
     return (
       <Routes>
         <Route path="*" element={<LoginScreen onLogin={handleLogin} />} />
@@ -56,10 +55,10 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/game" replace />} />
       <Route path="/game" element={
-        <ChessGame key={gameKey} token={token} botMode={botMode}
+        <ChessGame key={gameKey} username={username} botMode={botMode}
           onPlayAgain={handlePlayAgain} onLogout={handleLogout} onAuthFailed={handleLogout} />
       } />
-      <Route path="/history" element={<HistoryPage />} />
+      <Route path="/history" element={<HistoryPage username={username} />} />
       <Route path="/history/:gameId" element={<ReplayViewer />} />
       <Route path="*" element={<Navigate to="/game" replace />} />
     </Routes>
@@ -69,8 +68,8 @@ export default function App() {
 const THEMES = ['classic', 'generated'] as const;
 type Theme = typeof THEMES[number];
 
-function ChessGame({ token, botMode, onPlayAgain, onLogout, onAuthFailed }: {
-  token: string;
+function ChessGame({ username, botMode, onPlayAgain, onLogout, onAuthFailed }: {
+  username: string;
   botMode: boolean;
   onPlayAgain: (botMode: boolean) => void;
   onLogout: () => void;
@@ -98,7 +97,7 @@ function ChessGame({ token, botMode, onPlayAgain, onLogout, onAuthFailed }: {
     sendDrawResponse,
     drawOfferedByOpponent,
     drawOfferPending,
-  } = useChessSocket(token, botMode, onAuthFailed);
+  } = useChessSocket(botMode, onAuthFailed);
 
   if (!connected) {
     return <div className="screen"><p>Connecting to server…</p></div>;
@@ -125,7 +124,7 @@ function ChessGame({ token, botMode, onPlayAgain, onLogout, onAuthFailed }: {
   return (
     <div className="app">
       <div className="info-bar">
-        <span>You: <strong>{playerColor}</strong></span>
+        <span>You: <strong>{username}</strong></span>
         <select
           className="theme-select"
           value={theme}
