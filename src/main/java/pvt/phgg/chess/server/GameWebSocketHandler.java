@@ -13,6 +13,7 @@ import pvt.phgg.chess.Position;
 import pvt.phgg.chess.PromotionChoice;
 import pvt.phgg.chess.server.dto.ClientMessage;
 import pvt.phgg.chess.server.dto.ServerMessage;
+import pvt.phgg.chess.server.user.UserService;
 
 import java.io.IOException;
 
@@ -23,10 +24,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     private final GameSessionManager sessionManager;
     private final ObjectMapper objectMapper;
+    private final UserService userService;
 
-    public GameWebSocketHandler(GameSessionManager sessionManager, ObjectMapper objectMapper) {
+    public GameWebSocketHandler(GameSessionManager sessionManager, ObjectMapper objectMapper, UserService userService) {
         this.sessionManager = sessionManager;
         this.objectMapper = objectMapper;
+        this.userService = userService;
     }
 
     @Override
@@ -68,6 +71,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession ws, TextMessage raw) throws Exception {
+        Long userId = (Long) ws.getAttributes().get("userId");
+        if (userId != null) {
+            userService.updateLastActive(userId);
+        }
+
         ClientMessage msg = objectMapper.readValue(raw.getPayload(), ClientMessage.class);
         GameSession session = sessionManager.getSession();
         PlayerRole role = session.roleOf(ws);

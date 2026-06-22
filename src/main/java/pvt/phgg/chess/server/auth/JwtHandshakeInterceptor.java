@@ -8,6 +8,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
+import pvt.phgg.chess.server.user.UserService;
 
 import java.util.Map;
 
@@ -15,9 +16,11 @@ import java.util.Map;
 public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
     private final JwtUtil jwtUtil;
+    private final UserService userService;
 
-    public JwtHandshakeInterceptor(JwtUtil jwtUtil) {
+    public JwtHandshakeInterceptor(JwtUtil jwtUtil, UserService userService) {
         this.jwtUtil = jwtUtil;
+        this.userService = userService;
     }
 
     @Override
@@ -26,8 +29,11 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         if (request instanceof ServletServerHttpRequest servletRequest) {
             String token = servletRequest.getServletRequest().getParameter("token");
             if (token != null && jwtUtil.isValid(token)) {
-                attributes.put("username", jwtUtil.extractUsername(token));
+                String username = jwtUtil.extractUsername(token);
+                attributes.put("username", username);
                 attributes.put("botMode", "true".equals(servletRequest.getServletRequest().getParameter("bot")));
+                userService.findByUsername(username)
+                        .ifPresent(u -> attributes.put("userId", u.getId()));
                 return true;
             }
         }
@@ -38,6 +44,5 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
     @Override
     public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
             WebSocketHandler wsHandler, @Nullable Exception exception) {
-        // No post-handshake processing required
     }
 }

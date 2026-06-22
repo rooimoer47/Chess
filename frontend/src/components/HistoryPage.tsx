@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { GameSummary } from '../types';
-
-function usernameFromToken(token: string): string | null {
-  try {
-    return JSON.parse(atob(token.split('.')[1])).sub as string;
-  } catch {
-    return null;
-  }
-}
+import { usernameFromToken } from '../utils/token';
 
 function formatResult(game: GameSummary): { label: string; cls: string } {
   if (!game.result) return { label: 'In progress', cls: '' };

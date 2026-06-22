@@ -7,10 +7,21 @@ import { PromotionDialog } from './components/PromotionDialog';
 import { LoginScreen } from './components/LoginScreen';
 import { HistoryPage } from './components/HistoryPage';
 import { ReplayViewer } from './components/ReplayViewer';
+import { isTokenExpired } from './utils/token';
 import './App.css';
 
+function loadToken(): string | null {
+  const t = localStorage.getItem('chess_token');
+  if (t && isTokenExpired(t)) {
+    localStorage.removeItem('chess_token');
+    localStorage.removeItem('chess_bot_mode');
+    return null;
+  }
+  return t;
+}
+
 export default function App() {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('chess_token'));
+  const [token, setToken] = useState<string | null>(loadToken);
   const [botMode, setBotMode] = useState(() => localStorage.getItem('chess_bot_mode') === 'true');
   const [gameKey, setGameKey] = useState(0);
 
@@ -46,7 +57,7 @@ export default function App() {
       <Route path="/" element={<Navigate to="/game" replace />} />
       <Route path="/game" element={
         <ChessGame key={gameKey} token={token} botMode={botMode}
-          onPlayAgain={handlePlayAgain} onLogout={handleLogout} />
+          onPlayAgain={handlePlayAgain} onLogout={handleLogout} onAuthFailed={handleLogout} />
       } />
       <Route path="/history" element={<HistoryPage />} />
       <Route path="/history/:gameId" element={<ReplayViewer />} />
@@ -58,11 +69,12 @@ export default function App() {
 const THEMES = ['classic', 'generated'] as const;
 type Theme = typeof THEMES[number];
 
-function ChessGame({ token, botMode, onPlayAgain, onLogout }: {
+function ChessGame({ token, botMode, onPlayAgain, onLogout, onAuthFailed }: {
   token: string;
   botMode: boolean;
   onPlayAgain: (botMode: boolean) => void;
   onLogout: () => void;
+  onAuthFailed: () => void;
 }) {
   const [theme, setTheme] = useState<Theme>('classic');
   const navigate = useNavigate();
@@ -86,7 +98,7 @@ function ChessGame({ token, botMode, onPlayAgain, onLogout }: {
     sendDrawResponse,
     drawOfferedByOpponent,
     drawOfferPending,
-  } = useChessSocket(token, botMode);
+  } = useChessSocket(token, botMode, onAuthFailed);
 
   if (!connected) {
     return <div className="screen"><p>Connecting to server…</p></div>;

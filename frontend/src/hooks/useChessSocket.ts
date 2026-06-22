@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Piece, LegalMove, LastMove, Color, GameStatus, ServerMessage } from '../types';
+import { isTokenExpired } from '../utils/token';
 
 const EMPTY_BOARD: (Piece | null)[][] = Array(8).fill(null).map(() => Array(8).fill(null));
 
@@ -20,7 +21,7 @@ export interface GameState {
   drawOfferPending: boolean;
 }
 
-export function useChessSocket(token: string, botMode = false) {
+export function useChessSocket(token: string, botMode = false, onAuthFailed?: () => void) {
   const [state, setState] = useState<GameState>({
     connected: false,
     gameStarted: false,
@@ -39,6 +40,8 @@ export function useChessSocket(token: string, botMode = false) {
   });
 
   const wsRef = useRef<WebSocket | null>(null);
+  const onAuthFailedRef = useRef(onAuthFailed);
+  onAuthFailedRef.current = onAuthFailed;
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -46,10 +49,18 @@ export function useChessSocket(token: string, botMode = false) {
     const ws = new WebSocket(`${protocol}//${window.location.host}/ws/game?token=${encodeURIComponent(token)}${botParam}`);
     wsRef.current = ws;
 
-    ws.onopen = () => setState(s => ({ ...s, connected: true }));
+    let didOpen = false;
+    ws.onopen = () => { didOpen = true; setState(s => ({ ...s, connected: true })); };
 
-    ws.onclose = () =>
+    ws.onclose = () => {
+      // If the socket never opened, the server likely rejected the handshake.
+      // Treat it as an auth failure if the token is expired.
+      if (!didOpen && isTokenExpired(token)) {
+        onAuthFailedRef.current?.();
+        return;
+      }
       setState(s => ({ ...s, connected: false, statusMessage: 'Disconnected from server.', legalMoves: [] }));
+    };
 
     ws.onmessage = (event: MessageEvent) => {
       const msg: ServerMessage = JSON.parse(event.data as string);
