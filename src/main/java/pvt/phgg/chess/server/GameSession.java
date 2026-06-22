@@ -144,6 +144,18 @@ public class GameSession {
         return whiteUsername != null && blackUsername != null;
     }
 
+    public synchronized boolean isGameOver() {
+        if (resigned || drawAgreed) return true;
+        GameStatus status = engine.getStatus();
+        return status == GameStatus.CHECKMATE || status == GameStatus.STALEMATE
+                || status == GameStatus.THREEFOLD_REPETITION || status == GameStatus.FIFTY_MOVE_RULE
+                || status == GameStatus.INSUFFICIENT_MATERIAL || status == GameStatus.TIMEOUT;
+    }
+
+    public synchronized boolean isClockCompatible(long clockMs) {
+        return true;
+    }
+
     public synchronized boolean isEmpty() {
         if (botEnabled) {
             return botIsWhite
@@ -359,7 +371,7 @@ public class GameSession {
         }
         List<String> capturedW = capturedByWhite.stream().map(Enum::name).toList();
         List<String> capturedB = capturedByBlack.stream().map(Enum::name).toList();
-        return ServerMessage.boardUpdate(board, turn, currentStatus.name(), legalMoves, lastMove, capturedW, capturedB);
+        return ServerMessage.boardUpdate(board, turn, currentStatus.name(), legalMoves, lastMove, capturedW, capturedB, null, null);
     }
 
     private void sendTo(WebSocketSession ws, ServerMessage message) throws IOException {

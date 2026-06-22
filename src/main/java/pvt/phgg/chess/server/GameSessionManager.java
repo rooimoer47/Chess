@@ -38,7 +38,7 @@ public class GameSessionManager {
 
     public synchronized PlayerRole join(WebSocketSession ws, String username) {
         if (activeSession.isGameOver()) {
-            activeSession = new GameSession(objectMapper);
+            activeSession = new GameSession(objectMapper, gameRecorder);
         }
         if (activeSession.isFull()) {
             return null;
