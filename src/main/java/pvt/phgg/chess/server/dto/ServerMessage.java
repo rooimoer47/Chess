@@ -20,7 +20,9 @@ public record ServerMessage(
         List<String> capturedByBlack,
         Integer promotionRow,
         Integer promotionCol,
-        String message
+        String message,
+        Long whiteTimeMs,
+        Long blackTimeMs
 ) {
 
     @Override
@@ -28,7 +30,7 @@ public record ServerMessage(
         return this == o || (o instanceof ServerMessage(
                 var oType, var oColor, var oBoard, var oCurrentTurn, var oStatus,
                 var oLegalMoves, var oLastMove, var oCapturedByWhite, var oCapturedByBlack,
-                var oPromotionRow, var oPromotionCol, var oMessage)
+                var oPromotionRow, var oPromotionCol, var oMessage, var oWhiteTimeMs, var oBlackTimeMs)
                 && Objects.equals(type, oType)
                 && Objects.equals(color, oColor)
                 && Arrays.deepEquals(board, oBoard)
@@ -40,14 +42,16 @@ public record ServerMessage(
                 && Objects.equals(capturedByBlack, oCapturedByBlack)
                 && Objects.equals(promotionRow, oPromotionRow)
                 && Objects.equals(promotionCol, oPromotionCol)
-                && Objects.equals(message, oMessage));
+                && Objects.equals(message, oMessage)
+                && Objects.equals(whiteTimeMs, oWhiteTimeMs)
+                && Objects.equals(blackTimeMs, oBlackTimeMs));
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(type, color, Arrays.deepHashCode(board), currentTurn, status,
                 legalMoves, lastMove, capturedByWhite, capturedByBlack,
-                promotionRow, promotionCol, message);
+                promotionRow, promotionCol, message, whiteTimeMs, blackTimeMs);
     }
 
     @Override
@@ -64,7 +68,9 @@ public record ServerMessage(
                 + ", capturedByBlack=" + capturedByBlack
                 + ", promotionRow=" + promotionRow
                 + ", promotionCol=" + promotionCol
-                + ", message=" + message + "]";
+                + ", message=" + message
+                + ", whiteTimeMs=" + whiteTimeMs
+                + ", blackTimeMs=" + blackTimeMs + "]";
     }
 
     public static ServerMessage waiting(String color) {
@@ -73,10 +79,12 @@ public record ServerMessage(
 
     public static ServerMessage boardUpdate(PieceDto[][] board, String currentTurn, String status,
                                             List<LegalMove> legalMoves, LastMoveDto lastMove,
-                                            List<String> capturedByWhite, List<String> capturedByBlack) {
+                                            List<String> capturedByWhite, List<String> capturedByBlack,
+                                            Long whiteTimeMs, Long blackTimeMs) {
         return new Builder("BOARD_UPDATE")
                 .board(board).currentTurn(currentTurn).status(status).legalMoves(legalMoves).lastMove(lastMove)
                 .capturedByWhite(capturedByWhite).capturedByBlack(capturedByBlack)
+                .whiteTimeMs(whiteTimeMs).blackTimeMs(blackTimeMs)
                 .build();
     }
 
@@ -113,6 +121,8 @@ public record ServerMessage(
         private Integer promotionRow;
         private Integer promotionCol;
         private String message;
+        private Long whiteTimeMs;
+        private Long blackTimeMs;
 
         Builder(String type) { this.type = type; }
 
@@ -127,11 +137,13 @@ public record ServerMessage(
         Builder promotionRow(Integer v)          { this.promotionRow = v; return this; }
         Builder promotionCol(Integer v)          { this.promotionCol = v; return this; }
         Builder message(String v)                { this.message = v; return this; }
+        Builder whiteTimeMs(Long v)              { this.whiteTimeMs = v; return this; }
+        Builder blackTimeMs(Long v)              { this.blackTimeMs = v; return this; }
 
         ServerMessage build() {
             return new ServerMessage(type, color, board, currentTurn, status,
                     legalMoves, lastMove, capturedByWhite, capturedByBlack,
-                    promotionRow, promotionCol, message);
+                    promotionRow, promotionCol, message, whiteTimeMs, blackTimeMs);
         }
     }
 }
