@@ -10,6 +10,7 @@ import pvt.phgg.chess.server.dto.LastMoveDto;
 import pvt.phgg.chess.server.dto.LegalMove;
 import pvt.phgg.chess.server.dto.PieceDto;
 import pvt.phgg.chess.server.dto.ServerMessage;
+import pvt.phgg.chess.server.game.GameRecorder;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ public class GameSession {
 
     private final ObjectMapper objectMapper;
     private final GameEngine engine = new GameEngine();
+    private final GameRecorder gameRecorder;  // null in unit-test context
 
     // Q > R > B > N > P
     private static final Comparator<PieceType> PIECE_ORDER = Comparator.comparingInt(p -> switch (p) {
@@ -39,6 +41,8 @@ public class GameSession {
     private WebSocketSession blackSession;
     private String whiteUsername;
     private String blackUsername;
+    private Long whitePlayerId;
+    private Long blackPlayerId;
     private LastMoveDto lastMove;
     private final List<PieceType> capturedByWhite = new ArrayList<>();
     private final List<PieceType> capturedByBlack = new ArrayList<>();
@@ -49,22 +53,42 @@ public class GameSession {
     private boolean resignedWhite;
     private boolean drawAgreed = false;
 
+    // Game recording state
+    private Long gameId;
+    private int moveCount = 0;
+    private Position pendingPromotionFrom;
+    private Position pendingPromotionTo;
+    private boolean pendingPromotionWasWhite;
+
+    // Used by unit tests — no recording
     public GameSession(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+        this.gameRecorder = null;
+    }
+
+    public GameSession(ObjectMapper objectMapper, GameRecorder gameRecorder) {
+        this.objectMapper = objectMapper;
+        this.gameRecorder = gameRecorder;
     }
 
     public synchronized PlayerRole join(WebSocketSession ws, String username) {
+        return join(ws, username, null);
+    }
+
+    public synchronized PlayerRole join(WebSocketSession ws, String username, Long userId) {
         if (username.equals(whiteUsername) || username.equals(blackUsername)) {
             return null;
         }
-        if (whiteSession == null) {
+        if (whiteSession == null && whiteUsername == null) {
             whiteSession = ws;
             whiteUsername = username;
+            whitePlayerId = userId;
             return PlayerRole.WHITE;
         }
-        if (blackSession == null) {
+        if (blackSession == null && blackUsername == null) {
             blackSession = ws;
             blackUsername = username;
+            blackPlayerId = userId;
             return PlayerRole.BLACK;
         }
         return null;
@@ -86,6 +110,12 @@ public class GameSession {
             return true;
         }
         return false;
+    }
+
+    public synchronized void onGameStart() {
+        if (gameRecorder == null || gameId != null) return;
+        String mode = botEnabled ? "BOT" : "HUMAN";
+        gameId = gameRecorder.startGame(whitePlayerId, blackPlayerId, mode);
     }
 
     public synchronized boolean isBotTurn() {
@@ -116,12 +146,10 @@ public class GameSession {
 
     public synchronized boolean isEmpty() {
         if (botEnabled) {
-            // Bot game: reset only when the human's slot is fully vacated
             return botIsWhite
                     ? (blackSession == null && blackUsername == null)
                     : (whiteSession == null && whiteUsername == null);
         }
-        // Human game: reset only when both slots are fully vacated
         return whiteSession == null && blackSession == null
                 && whiteUsername == null && blackUsername == null;
     }
@@ -159,6 +187,9 @@ public class GameSession {
         if (!resigned) {
             resigned = true;
             resignedWhite = isWhite;
+            if (gameRecorder != null && gameId != null) {
+                gameRecorder.endGame(gameId, "RESIGNED", isWhite ? "BLACK" : "WHITE");
+            }
         }
     }
 
@@ -168,6 +199,9 @@ public class GameSession {
         if (botEnabled) {
             if (ThreadLocalRandom.current().nextBoolean()) {
                 drawAgreed = true;
+                if (gameRecorder != null && gameId != null) {
+                    gameRecorder.endGame(gameId, "DRAW_AGREED", null);
+                }
                 return DrawOfferOutcome.ACCEPTED;
             }
             return DrawOfferOutcome.DECLINED;
@@ -179,6 +213,9 @@ public class GameSession {
 
     public synchronized void acceptDraw() {
         drawAgreed = true;
+        if (gameRecorder != null && gameId != null) {
+            gameRecorder.endGame(gameId, "DRAW_AGREED", null);
+        }
     }
 
     public synchronized void sendDrawDeclinedTo(boolean isWhite) throws IOException {
@@ -186,6 +223,7 @@ public class GameSession {
     }
 
     public synchronized MoveResult applyMove(Position from, Position to) {
+        boolean wasWhiteTurn = engine.isWhiteTurn();
         APiece movingPiece = engine.getPiece(from.getRow(), from.getCol());
         APiece targetPiece = engine.getPiece(to.getRow(), to.getCol());
 
@@ -196,8 +234,19 @@ public class GameSession {
             if (targetPiece.isPositionOccupied()) {
                 recordCapture(movingPiece.isWhite(), targetPiece.getPieceType());
             } else if (movingPiece.isPawn() && from.getCol() != to.getCol()) {
-                // en passant — the passed-through square is empty but a pawn is captured
                 recordCapture(movingPiece.isWhite(), PieceType.PAWN);
+            }
+            if (gameRecorder != null && gameId != null) {
+                if (result.type() == MoveResult.Type.PROMOTION_NEEDED) {
+                    pendingPromotionFrom = from;
+                    pendingPromotionTo = to;
+                    pendingPromotionWasWhite = wasWhiteTurn;
+                } else {
+                    gameRecorder.recordMove(gameId, ++moveCount, from, to, null);
+                    if (isTerminalResult(result.type())) {
+                        endRecording(result.type(), wasWhiteTurn);
+                    }
+                }
             }
         }
         return result;
@@ -210,7 +259,40 @@ public class GameSession {
     }
 
     public synchronized MoveResult applyPromotion(Position pos, PromotionChoice choice) {
-        return engine.applyPromotion(pos, choice);
+        MoveResult result = engine.applyPromotion(pos, choice);
+        if (gameRecorder != null && gameId != null && pendingPromotionFrom != null) {
+            gameRecorder.recordMove(gameId, ++moveCount, pendingPromotionFrom, pendingPromotionTo, choice.name());
+            boolean wasWhite = pendingPromotionWasWhite;
+            pendingPromotionFrom = null;
+            pendingPromotionTo = null;
+            if (isTerminalResult(result.type())) {
+                endRecording(result.type(), wasWhite);
+            }
+        }
+        return result;
+    }
+
+    private boolean isTerminalResult(MoveResult.Type type) {
+        return type == MoveResult.Type.CHECKMATE
+                || type == MoveResult.Type.STALEMATE
+                || type == MoveResult.Type.DRAW;
+    }
+
+    private void endRecording(MoveResult.Type type, boolean whiteMadeLastMove) {
+        String result;
+        String winner;
+        if (type == MoveResult.Type.CHECKMATE) {
+            result = "CHECKMATE";
+            winner = whiteMadeLastMove ? "WHITE" : "BLACK";
+        } else if (type == MoveResult.Type.STALEMATE) {
+            result = "STALEMATE";
+            winner = null;
+        } else {
+            // DRAW — engine.getStatus() returns the specific reason
+            result = engine.getStatus().name();
+            winner = null;
+        }
+        gameRecorder.endGame(gameId, result, winner);
     }
 
     public synchronized pvt.phgg.chess.piece.APiece getPiece(int row, int col) {

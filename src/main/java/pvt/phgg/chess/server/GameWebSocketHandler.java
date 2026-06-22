@@ -59,6 +59,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         GameSession session = sessionManager.getSession();
         if (session.isFull()) {
             LOGGER.info(isRejoin ? "Player rejoined — game resuming" : "Both players connected — game starting");
+            if (!isRejoin) {
+                sessionManager.onGameStart();
+            }
             session.broadcastBoardState();
         }
     }

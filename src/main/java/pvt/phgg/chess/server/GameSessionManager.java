@@ -3,17 +3,24 @@ package pvt.phgg.chess.server;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
+import pvt.phgg.chess.server.game.GameRecorder;
+import pvt.phgg.chess.server.user.UserService;
 
 import java.io.IOException;
+
 @Component
 public class GameSessionManager {
 
     private final ObjectMapper objectMapper;
+    private final GameRecorder gameRecorder;
+    private final UserService userService;
     private GameSession activeSession;
 
-    public GameSessionManager(ObjectMapper objectMapper) {
+    public GameSessionManager(ObjectMapper objectMapper, GameRecorder gameRecorder, UserService userService) {
         this.objectMapper = objectMapper;
-        this.activeSession = new GameSession(objectMapper);
+        this.gameRecorder = gameRecorder;
+        this.userService = userService;
+        this.activeSession = new GameSession(objectMapper, gameRecorder);
     }
 
     public synchronized GameSession getSession() {
@@ -28,17 +35,24 @@ public class GameSessionManager {
         if (activeSession.isFull()) {
             return null;
         }
-        return activeSession.join(ws, username);
+        Long userId = userService.findByUsername(username)
+                .map(u -> u.getId())
+                .orElse(null);
+        return activeSession.join(ws, username, userId);
     }
 
     public synchronized boolean joinBot() {
         return activeSession.joinBot();
     }
 
+    public synchronized void onGameStart() {
+        activeSession.onGameStart();
+    }
+
     public synchronized void disconnect(WebSocketSession ws) throws IOException {
         activeSession.disconnect(ws);
         if (activeSession.isEmpty()) {
-            activeSession = new GameSession(objectMapper);
+            activeSession = new GameSession(objectMapper, gameRecorder);
         }
     }
 }

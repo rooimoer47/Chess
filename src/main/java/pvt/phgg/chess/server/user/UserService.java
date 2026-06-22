@@ -21,6 +21,10 @@ public class UserService implements UserDetailsService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    public java.util.Optional<AppUser> findByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
+
     public AppUser register(String username, String password) {
         if (userRepository.findByUsername(username).isPresent()) {
             throw new IllegalArgumentException("Username already taken");
