@@ -2,6 +2,7 @@
 /.idea/*
 /Chess.iml
 /app.log
+/logs/
 /dependency-reduced-pom.xml
 /.env
 /nginx/nginx.conf
