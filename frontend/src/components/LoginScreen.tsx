@@ -33,6 +33,8 @@ export function LoginScreen({ onLogin }: Props) {
       if (res.ok) {
         const { username: u } = await res.json() as { username: string };
         onLogin(u, botMode);
+      } else if (res.status >= 500) {
+        setError('Something went wrong on the server. Please try again.');
       } else {
         const text = await res.text();
         setError(text || (tab === 'login' ? 'Invalid username or password' : 'Registration failed'));
