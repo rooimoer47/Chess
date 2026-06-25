@@ -31,4 +31,13 @@ public class GameMove {
         this.promotionChoice = promotionChoice;
         this.playedAt = OffsetDateTime.now();
     }
+
+    public long getGameId() { return gameId; }
+    public int getMoveNumber() { return moveNumber; }
+    public int getFromRow() { return fromRow; }
+    public int getFromCol() { return fromCol; }
+    public int getToRow() { return toRow; }
+    public int getToCol() { return toCol; }
+    public String getPromotionChoice() { return promotionChoice; }
+    public OffsetDateTime getPlayedAt() { return playedAt; }
 }

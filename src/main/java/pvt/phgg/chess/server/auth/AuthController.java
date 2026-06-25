@@ -17,6 +17,8 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    private static final String USERNAME_KEY = "username";
+
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final UserService userService;
@@ -37,7 +39,7 @@ public class AuthController {
         }
         String token = jwtUtil.generateToken(request.username());
         response.addHeader(HttpHeaders.SET_COOKIE, jwtUtil.createAuthCookie(token).toString());
-        return ResponseEntity.ok(Map.of("username", request.username()));
+        return ResponseEntity.ok(Map.of(USERNAME_KEY, request.username()));
     }
 
     @PostMapping("/register")
@@ -45,7 +47,7 @@ public class AuthController {
         String username = request.username() == null ? "" : request.username().trim();
         String password = request.password() == null ? "" : request.password();
 
-        if (username.length() < 3 || username.length() > 20 || !username.matches("[a-zA-Z0-9_]+")) {
+        if (username.length() < 3 || username.length() > 20 || !username.matches("\\w+")) {
             return ResponseEntity.badRequest().body("Username must be 3-20 characters: letters, digits, or underscores");
         }
         if (password.length() < 8 || password.length() > 64) {
@@ -59,7 +61,7 @@ public class AuthController {
         }
         String token = jwtUtil.generateToken(username);
         response.addHeader(HttpHeaders.SET_COOKIE, jwtUtil.createAuthCookie(token).toString());
-        return ResponseEntity.ok(Map.of("username", username));
+        return ResponseEntity.ok(Map.of(USERNAME_KEY, username));
     }
 
     @GetMapping("/me")
@@ -68,7 +70,7 @@ public class AuthController {
         if (token == null || !jwtUtil.isValid(token)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
         }
-        return ResponseEntity.ok(Map.of("username", jwtUtil.extractUsername(token)));
+        return ResponseEntity.ok(Map.of(USERNAME_KEY, jwtUtil.extractUsername(token)));
     }
 
     @PostMapping("/logout")

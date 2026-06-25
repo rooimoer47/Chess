@@ -28,4 +28,11 @@ public class Game {
     }
 
     public Long getId() { return id; }
+    public Long getWhitePlayerId() { return whitePlayerId; }
+    public Long getBlackPlayerId() { return blackPlayerId; }
+    public String getMode() { return mode; }
+    public String getResult() { return result; }
+    public String getWinnerColor() { return winnerColor; }
+    public OffsetDateTime getStartedAt() { return startedAt; }
+    public OffsetDateTime getEndedAt() { return endedAt; }
 }

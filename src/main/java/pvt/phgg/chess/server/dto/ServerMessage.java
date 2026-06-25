@@ -1,7 +1,6 @@
 package pvt.phgg.chess.server.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import org.springframework.lang.NonNull;
 
 import java.util.Arrays;
 import java.util.List;
@@ -55,7 +54,6 @@ public record ServerMessage(
     }
 
     @Override
-    @NonNull
     public String toString() {
         return "ServerMessage[type=" + type
                 + ", color=" + color

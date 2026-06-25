@@ -46,6 +46,8 @@ public class HistoryController {
             ORDER BY move_number
             """;
 
+    private static final String UNAUTHORIZED = "Unauthorized";
+
     private final JdbcTemplate jdbcTemplate;
     private final JwtUtil jwtUtil;
 
@@ -58,7 +60,7 @@ public class HistoryController {
     public ResponseEntity<Object> getUserGames(@PathVariable String username, HttpServletRequest request) {
         String tokenUsername = extractUsername(request);
         if (tokenUsername == null || !tokenUsername.equals(username)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(UNAUTHORIZED);
         }
 
         List<GameSummaryDto> games = jdbcTemplate.query(USER_GAMES_SQL,
@@ -79,7 +81,7 @@ public class HistoryController {
     @GetMapping("/games/{gameId}/moves")
     public ResponseEntity<Object> getGameMoves(@PathVariable long gameId, HttpServletRequest request) {
         if (extractUsername(request) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(UNAUTHORIZED);
         }
 
         List<GameMoveDto> moves = jdbcTemplate.query(GAME_MOVES_SQL,
@@ -98,7 +100,7 @@ public class HistoryController {
     @GetMapping("/games/{gameId}/boards")
     public ResponseEntity<Object> getGameBoards(@PathVariable long gameId, HttpServletRequest request) {
         if (extractUsername(request) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(UNAUTHORIZED);
         }
 
         List<GameMoveDto> moves = jdbcTemplate.query(GAME_MOVES_SQL,

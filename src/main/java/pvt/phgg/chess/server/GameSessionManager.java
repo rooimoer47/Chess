@@ -4,6 +4,7 @@ import tools.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 import pvt.phgg.chess.server.game.GameRecorder;
+import pvt.phgg.chess.server.user.AppUser;
 import pvt.phgg.chess.server.user.UserService;
 
 import java.io.IOException;
@@ -32,9 +33,9 @@ public class GameSessionManager {
         return activeSession.rejoin(ws, username);
     }
 
-    public synchronized boolean isClockCompatibleForJoin(long clockMs) {
+    public synchronized boolean isClockCompatibleForJoin() {
         if (activeSession.isGameOver()) return true;
-        return activeSession.isClockCompatible(clockMs);
+        return activeSession.isClockCompatible();
     }
 
     public synchronized PlayerRole join(WebSocketSession ws, String username) {
@@ -45,7 +46,7 @@ public class GameSessionManager {
             return null;
         }
         Long userId = userService.findByUsername(username)
-                .map(u -> u.getId())
+                .map(AppUser::getId)
                 .orElse(null);
         return activeSession.join(ws, username, userId);
     }

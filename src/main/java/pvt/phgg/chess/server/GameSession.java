@@ -23,6 +23,8 @@ import pvt.phgg.chess.server.bot.RandomBotStrategy;
 public class GameSession {
 
     private static final int BOARD_SIZE = 8;
+    private static final String WHITE = "WHITE";
+    private static final String BLACK = "BLACK";
 
     private final ObjectMapper objectMapper;
     private final GameEngine engine = new GameEngine();
@@ -152,7 +154,7 @@ public class GameSession {
                 || status == GameStatus.INSUFFICIENT_MATERIAL || status == GameStatus.TIMEOUT;
     }
 
-    public synchronized boolean isClockCompatible(long clockMs) {
+    public synchronized boolean isClockCompatible() {
         return true;
     }
 
@@ -200,7 +202,7 @@ public class GameSession {
             resigned = true;
             resignedWhite = isWhite;
             if (gameRecorder != null && gameId != null) {
-                gameRecorder.endGame(gameId, "RESIGNED", isWhite ? "BLACK" : "WHITE");
+                gameRecorder.endGame(gameId, "RESIGNED", isWhite ? BLACK : WHITE);
             }
         }
     }
@@ -291,18 +293,14 @@ public class GameSession {
     }
 
     private void endRecording(MoveResult.Type type, boolean whiteMadeLastMove) {
-        String result;
-        String winner;
+        String result = switch (type) {
+            case CHECKMATE -> "CHECKMATE";
+            case STALEMATE -> "STALEMATE";
+            default -> engine.getStatus().name();
+        };
+        String winner = null;
         if (type == MoveResult.Type.CHECKMATE) {
-            result = "CHECKMATE";
-            winner = whiteMadeLastMove ? "WHITE" : "BLACK";
-        } else if (type == MoveResult.Type.STALEMATE) {
-            result = "STALEMATE";
-            winner = null;
-        } else {
-            // DRAW — engine.getStatus() returns the specific reason
-            result = engine.getStatus().name();
-            winner = null;
+            winner = whiteMadeLastMove ? WHITE : BLACK;
         }
         gameRecorder.endGame(gameId, result, winner);
     }
@@ -365,9 +363,9 @@ public class GameSession {
 
         String turn;
         if (resigned) {
-            turn = resignedWhite ? "WHITE" : "BLACK";
+            turn = resignedWhite ? WHITE : BLACK;
         } else {
-            turn = engine.isWhiteTurn() ? "WHITE" : "BLACK";
+            turn = engine.isWhiteTurn() ? WHITE : BLACK;
         }
         List<String> capturedW = capturedByWhite.stream().map(Enum::name).toList();
         List<String> capturedB = capturedByBlack.stream().map(Enum::name).toList();

@@ -25,7 +25,7 @@ class GameSessionTest {
     private FakeWebSocketSession blackWs;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         session = new GameSession(objectMapper);
         whiteWs = new FakeWebSocketSession("white");
         blackWs = new FakeWebSocketSession("black");
@@ -176,12 +176,12 @@ class GameSessionTest {
         @Override public InetSocketAddress getLocalAddress() { return null; }
         @Override public InetSocketAddress getRemoteAddress() { return null; }
         @Override public String getAcceptedProtocol() { return null; }
-        @Override public void setTextMessageSizeLimit(int limit) {}
+        @Override public void setTextMessageSizeLimit(int limit) { /* stub */ }
         @Override public int getTextMessageSizeLimit() { return 0; }
-        @Override public void setBinaryMessageSizeLimit(int limit) {}
+        @Override public void setBinaryMessageSizeLimit(int limit) { /* stub */ }
         @Override public int getBinaryMessageSizeLimit() { return 0; }
         @Override public List<WebSocketExtension> getExtensions() { return List.of(); }
-        @Override public void close() {}
-        @Override public void close(CloseStatus status) {}
+        @Override public void close() { /* stub */ }
+        @Override public void close(CloseStatus status) { /* stub */ }
     }
 }
