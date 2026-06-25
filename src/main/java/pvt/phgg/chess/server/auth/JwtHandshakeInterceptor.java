@@ -1,5 +1,7 @@
 package pvt.phgg.chess.server.auth;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
@@ -15,6 +17,8 @@ import java.util.Map;
 @Component
 public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(JwtHandshakeInterceptor.class);
+
     private final JwtUtil jwtUtil;
     private final UserService userService;
 
@@ -29,15 +33,25 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         if (request instanceof ServletServerHttpRequest servletRequest) {
             var req = servletRequest.getServletRequest();
             String token = jwtUtil.extractFromCookies(req.getCookies());
-            if (token != null && jwtUtil.isValid(token)) {
-                String username = jwtUtil.extractUsername(token);
-                attributes.put("username", username);
-                attributes.put("botMode", "true".equals(req.getParameter("bot")));
-                userService.findByUsername(username)
-                        .ifPresent(u -> attributes.put("userId", u.getId()));
-                return true;
+            if (token == null) {
+                LOGGER.warn("WS handshake rejected: no jwt cookie (cookies={})", req.getCookies() == null ? "null" : req.getCookies().length);
+                response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                return false;
             }
+            if (!jwtUtil.isValid(token)) {
+                LOGGER.warn("WS handshake rejected: jwt token invalid");
+                response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                return false;
+            }
+            String username = jwtUtil.extractUsername(token);
+            attributes.put("username", username);
+            attributes.put("botMode", "true".equals(req.getParameter("bot")));
+            userService.findByUsername(username)
+                    .ifPresent(u -> attributes.put("userId", u.getId()));
+            LOGGER.debug("WS handshake accepted for user: {}", username);
+            return true;
         }
+        LOGGER.warn("WS handshake rejected: request is not a ServletServerHttpRequest");
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         return false;
     }

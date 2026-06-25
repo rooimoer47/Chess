@@ -51,8 +51,9 @@ export function useChessSocket(botMode = false, onAuthFailed?: () => void) {
     let didOpen = false;
     ws.onopen = () => { didOpen = true; setState(s => ({ ...s, connected: true })); };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       if (!didOpen) {
+        console.warn('WS closed before open — code:', event.code, 'reason:', event.reason);
         onAuthFailedRef.current?.();
         return;
       }
