@@ -28,6 +28,7 @@ public class GameSessionManager {
     }
 
     public synchronized PlayerRole rejoin(WebSocketSession ws, String username) {
+        if (activeSession.isGameOver()) return null;
         return activeSession.rejoin(ws, username);
     }
 
