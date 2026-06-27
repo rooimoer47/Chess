@@ -191,7 +191,6 @@ function ChessGame({ username, botType, theme, onChangeTheme, onLogout, onAuthFa
             <button className="resign-btn" onClick={sendResign}>Resign</button>
           </>
         )}
-        <button className="history-btn" onClick={() => navigate('/history')}>My Games</button>
         <button className="logout-btn" onClick={onLogout}>Logout</button>
       </div>
 

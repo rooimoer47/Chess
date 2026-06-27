@@ -10,6 +10,20 @@ export const CLOCK_OPTIONS = [
   { label: '10 min', ms: 600_000 },
 ] as const;
 
+const OPPONENTS = [
+  { type: '',        icon: '👤', label: 'Human',   stars: '',    desc: '' },
+  { type: 'random',  icon: '🎲', label: 'Random',  stars: '',    desc: 'Random moves' },
+  { type: 'alan',    icon: '🤖', label: 'Alan',    stars: '★',   desc: 'Alan Turing — father of computing' },
+  { type: 'barbara', icon: '🤖', label: 'Barbara', stars: '★★',  desc: 'Barbara Liskov — OOP pioneer' },
+  { type: 'claude',  icon: '🤖', label: 'Claude',  stars: '★★★', desc: 'Claude Shannon — inventor of computer chess' },
+] as const;
+
+const COLOR_PREFS = [
+  { value: 'WHITE',  label: 'Always White' },
+  { value: 'RANDOM', label: 'Random' },
+  { value: 'BLACK',  label: 'Always Black' },
+] as const;
+
 interface Props {
   username: string;
   botType: string;
@@ -90,7 +104,7 @@ function ThemePicker({ theme, onChangeTheme, onClose }: { theme: Theme; onChange
   );
 }
 
-export function LobbyScreen({ username, botType, theme, colorPreference: _colorPreference, clockMs, onChangeBotType, onChangeTheme, onChangeColorPreference: _onChangeColorPreference, onChangeClockMs, onLogout }: Props) {
+export function LobbyScreen({ username, botType, theme, colorPreference, clockMs, onChangeBotType, onChangeTheme, onChangeColorPreference, onChangeClockMs, onLogout }: Props) {
   const [themePickerOpen, setThemePickerOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -101,14 +115,68 @@ export function LobbyScreen({ username, botType, theme, colorPreference: _colorP
 
       <div className="lobby-section">
         <span className="lobby-label">Opponent</span>
-        <div className="mode-toggle">
-          <button type="button" className={`mode-btn${botType === '' ? ' mode-btn-active' : ''}`} onClick={() => onChangeBotType('')}>
-            vs Human
-          </button>
-          <button type="button" className={`mode-btn${botType !== '' ? ' mode-btn-active' : ''}`} onClick={() => onChangeBotType('random')}>
-            vs Bot
-          </button>
+        <div className="opponent-cards">
+          {OPPONENTS.map(opp => (
+            <label
+              key={opp.type}
+              className={`opponent-card${botType === opp.type ? ' opponent-card-active' : ''}`}
+            >
+              <input
+                type="radio"
+                name="opponent"
+                value={opp.type}
+                checked={botType === opp.type}
+                onChange={() => onChangeBotType(opp.type)}
+              />
+              <span className="opponent-card-icon">{opp.icon}</span>
+              <span className="opponent-card-label">{opp.label}</span>
+              {opp.stars && <span className="opponent-card-stars">{opp.stars}</span>}
+              {opp.desc && <span className="opponent-card-desc">{opp.desc}</span>}
+            </label>
+          ))}
         </div>
+      </div>
+
+      <div className="lobby-section">
+        <span className="lobby-label">Play as</span>
+        <div className="color-pref-row">
+          {COLOR_PREFS.map(pref => (
+            <label
+              key={pref.value}
+              className={`color-pref-option${colorPreference === pref.value ? ' color-pref-active' : ''}`}
+            >
+              <input
+                type="radio"
+                name="colorPref"
+                value={pref.value}
+                checked={colorPreference === pref.value}
+                onChange={() => onChangeColorPreference(pref.value)}
+              />
+              {pref.value === 'RANDOM' ? (
+                <div className="pawn-split-wrap">
+                  <img className="pawn-split-half pawn-split-white" src={`/images/${theme}/pawn_white.png`} alt="" draggable={false} />
+                  <img className="pawn-split-half pawn-split-black" src={`/images/${theme}/pawn_black.png`} alt="" draggable={false} />
+                </div>
+              ) : (
+                <img
+                  className="color-pref-pawn"
+                  src={`/images/${theme}/pawn_${pref.value.toLowerCase()}.png`}
+                  alt={pref.label}
+                  draggable={false}
+                />
+              )}
+              <span className="color-pref-label">{pref.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="lobby-section">
+        <span className="lobby-label">Piece Theme</span>
+        <button className="theme-current-btn" onClick={() => setThemePickerOpen(true)}>
+          <span>{theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
+          <span className="theme-current-chevron">▾</span>
+        </button>
       </div>
 
       <div className="lobby-section">
@@ -127,15 +195,8 @@ export function LobbyScreen({ username, botType, theme, colorPreference: _colorP
         </div>
       </div>
 
-      <div className="lobby-section">
-        <span className="lobby-label">Piece Theme</span>
-        <button className="theme-current-btn" onClick={() => setThemePickerOpen(true)}>
-          <span>{theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
-          <span className="theme-current-chevron">▾</span>
-        </button>
-      </div>
-
       <button className="start-btn" onClick={() => navigate('/game')}>Start Game</button>
+      <button className="lobby-games-btn" onClick={() => navigate('/history')}>My Games</button>
       <button className="logout-btn" type="button" onClick={onLogout}>Log out</button>
 
       {themePickerOpen && (
