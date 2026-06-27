@@ -1,4 +1,5 @@
 /target/*
+/pom.xml.versionsBackup
 /.idea/*
 /Chess.iml
 /app.log
@@ -8,3 +9,4 @@
 /nginx/nginx.conf
 /src/main/resources/static/
 /PHASE2.md
+/LOBBY_AND_CLAUDE_BOT.md
