@@ -44,7 +44,8 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             }
             String username = jwtUtil.extractUsername(token);
             attributes.put("username", username);
-            attributes.put("botMode", "true".equals(req.getParameter("bot")));
+            String botParam = req.getParameter("bot");
+            attributes.put("botType", botParam != null ? botParam : "none");
             userService.findByUsername(username)
                     .ifPresent(u -> attributes.put("userId", u.getId()));
             LOGGER.debug("WS handshake accepted for user: {}", username);

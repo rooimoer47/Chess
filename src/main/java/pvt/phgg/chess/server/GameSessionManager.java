@@ -51,8 +51,8 @@ public class GameSessionManager {
         return activeSession.join(ws, username, userId);
     }
 
-    public synchronized boolean joinBot() {
-        return activeSession.joinBot();
+    public synchronized boolean joinBot(String botType) {
+        return activeSession.joinBot(botType);
     }
 
     public synchronized void onGameStart() {

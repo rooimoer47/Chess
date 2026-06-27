@@ -96,22 +96,30 @@ public class GameSession {
         return null;
     }
 
-    public synchronized boolean joinBot() {
+    public synchronized boolean joinBot(String botType) {
+        BotStrategy strategy = selectStrategy(botType);
         if (whiteSession == null && whiteUsername == null) {
             whiteUsername = "BOT";
             botEnabled = true;
             botIsWhite = true;
-            botStrategy = new RandomBotStrategy();
+            botStrategy = strategy;
             return true;
         }
         if (blackSession == null && blackUsername == null) {
             blackUsername = "BOT";
             botEnabled = true;
             botIsWhite = false;
-            botStrategy = new RandomBotStrategy();
+            botStrategy = strategy;
             return true;
         }
         return false;
+    }
+
+    private static BotStrategy selectStrategy(String botType) {
+        return switch (botType) {
+            // alan (depth 2), barbara (depth 3), claude (depth 4) wired in Step 4
+            default -> new RandomBotStrategy();
+        };
     }
 
     public synchronized void onGameStart() {

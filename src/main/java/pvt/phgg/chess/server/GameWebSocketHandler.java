@@ -53,9 +53,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         sendTo(ws, ServerMessage.waiting(role.name()));
 
         if (!isRejoin) {
-            boolean botMode = Boolean.TRUE.equals(ws.getAttributes().get("botMode"));
-            if (botMode) {
-                sessionManager.joinBot();
+            String botType = (String) ws.getAttributes().get("botType");
+            if (!"none".equals(botType)) {
+                sessionManager.joinBot(botType);
             }
         }
 
