@@ -294,6 +294,7 @@ body {
   color: #aaa;
   font-size: 0.95rem;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .login-tab-active {
