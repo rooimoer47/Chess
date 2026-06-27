@@ -35,7 +35,7 @@ export function HistoryPage({ username }: { username: string }) {
   return (
     <div className="history-page">
       <div className="history-header">
-        <button className="back-btn" onClick={() => navigate('/game')}>← Back to Game</button>
+        <button className="back-btn" onClick={() => navigate('/lobby')}>← Back to Lobby</button>
         <h2>My Games</h2>
       </div>
 
