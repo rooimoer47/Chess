@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export const THEMES = ['classic', 'generated'] as const;
 export type Theme = typeof THEMES[number];
@@ -11,13 +12,14 @@ export const CLOCK_OPTIONS = [
 
 interface Props {
   username: string;
-  botMode: boolean;
+  botType: string;
   theme: Theme;
+  colorPreference: string;
   clockMs: number;
-  onChangeBotMode: (bot: boolean) => void;
+  onChangeBotType: (type: string) => void;
   onChangeTheme: (theme: Theme) => void;
+  onChangeColorPreference: (pref: string) => void;
   onChangeClockMs: (ms: number) => void;
-  onStartGame: () => void;
   onLogout: () => void;
 }
 
@@ -88,8 +90,9 @@ function ThemePicker({ theme, onChangeTheme, onClose }: { theme: Theme; onChange
   );
 }
 
-export function LobbyScreen({ username, botMode, theme, clockMs, onChangeBotMode, onChangeTheme, onChangeClockMs, onStartGame, onLogout }: Props) {
+export function LobbyScreen({ username, botType, theme, colorPreference: _colorPreference, clockMs, onChangeBotType, onChangeTheme, onChangeColorPreference: _onChangeColorPreference, onChangeClockMs, onLogout }: Props) {
   const [themePickerOpen, setThemePickerOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="lobby">
@@ -99,10 +102,10 @@ export function LobbyScreen({ username, botMode, theme, clockMs, onChangeBotMode
       <div className="lobby-section">
         <span className="lobby-label">Opponent</span>
         <div className="mode-toggle">
-          <button type="button" className={`mode-btn${!botMode ? ' mode-btn-active' : ''}`} onClick={() => onChangeBotMode(false)}>
+          <button type="button" className={`mode-btn${botType === '' ? ' mode-btn-active' : ''}`} onClick={() => onChangeBotType('')}>
             vs Human
           </button>
-          <button type="button" className={`mode-btn${botMode ? ' mode-btn-active' : ''}`} onClick={() => onChangeBotMode(true)}>
+          <button type="button" className={`mode-btn${botType !== '' ? ' mode-btn-active' : ''}`} onClick={() => onChangeBotType('random')}>
             vs Bot
           </button>
         </div>
@@ -132,7 +135,7 @@ export function LobbyScreen({ username, botMode, theme, clockMs, onChangeBotMode
         </button>
       </div>
 
-      <button className="start-btn" onClick={onStartGame}>Start Game</button>
+      <button className="start-btn" onClick={() => navigate('/game')}>Start Game</button>
       <button className="logout-btn" type="button" onClick={onLogout}>Log out</button>
 
       {themePickerOpen && (

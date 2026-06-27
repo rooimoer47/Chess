@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 interface Props {
-  onLogin: (username: string, botMode: boolean) => void;
+  onLogin: (username: string) => void;
 }
 
 type Tab = 'login' | 'register';
@@ -10,7 +10,6 @@ export function LoginScreen({ onLogin }: Props) {
   const [tab, setTab] = useState<Tab>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [botMode, setBotMode] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -32,7 +31,7 @@ export function LoginScreen({ onLogin }: Props) {
       });
       if (res.ok) {
         const { username: u } = await res.json() as { username: string };
-        onLogin(u, botMode);
+        onLogin(u);
       } else if (res.status >= 500) {
         setError('Something went wrong on the server. Please try again.');
       } else {
@@ -83,14 +82,6 @@ export function LoginScreen({ onLogin }: Props) {
           autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
           required
         />
-        <div className="mode-toggle">
-          <button type="button" className={`mode-btn${!botMode ? ' mode-btn-active' : ''}`} onClick={() => setBotMode(false)}>
-            vs Human
-          </button>
-          <button type="button" className={`mode-btn${botMode ? ' mode-btn-active' : ''}`} onClick={() => setBotMode(true)}>
-            vs Bot
-          </button>
-        </div>
         {error && <p className="login-error">{error}</p>}
         <button className="login-button" type="submit" disabled={loading}>
           {loading
