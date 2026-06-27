@@ -40,7 +40,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         boolean isRejoin = role != null;
 
         if (!isRejoin) {
-            role = sessionManager.join(ws, username);
+            String colorPreference = (String) ws.getAttributes().getOrDefault("colorPreference", "RANDOM");
+            role = sessionManager.join(ws, username, colorPreference);
         }
 
         if (role == null) {

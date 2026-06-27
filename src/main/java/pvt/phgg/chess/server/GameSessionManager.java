@@ -38,7 +38,7 @@ public class GameSessionManager {
         return activeSession.isClockCompatible();
     }
 
-    public synchronized PlayerRole join(WebSocketSession ws, String username) {
+    public synchronized PlayerRole join(WebSocketSession ws, String username, String colorPreference) {
         if (activeSession.isGameOver()) {
             activeSession = new GameSession(objectMapper, gameRecorder);
         }
@@ -48,7 +48,7 @@ public class GameSessionManager {
         Long userId = userService.findByUsername(username)
                 .map(AppUser::getId)
                 .orElse(null);
-        return activeSession.join(ws, username, userId);
+        return activeSession.join(ws, username, userId, colorPreference);
     }
 
     public synchronized boolean joinBot(String botType) {

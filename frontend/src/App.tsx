@@ -99,6 +99,7 @@ export default function App() {
         <ChessGame
           username={username}
           botType={botType}
+          colorPreference={colorPreference}
           theme={theme}
           onChangeTheme={handleChangeTheme}
           onLogout={handleLogout}
@@ -112,9 +113,10 @@ export default function App() {
   );
 }
 
-function ChessGame({ username, botType, theme, onChangeTheme, onLogout, onAuthFailed }: {
+function ChessGame({ username, botType, colorPreference, theme, onChangeTheme, onLogout, onAuthFailed }: {
   username: string;
   botType: string;
+  colorPreference: string;
   theme: Theme;
   onChangeTheme: (t: Theme) => void;
   onLogout: () => void;
@@ -141,7 +143,7 @@ function ChessGame({ username, botType, theme, onChangeTheme, onLogout, onAuthFa
     sendDrawResponse,
     drawOfferedByOpponent,
     drawOfferPending,
-  } = useChessSocket(botType, onAuthFailed);
+  } = useChessSocket(botType, colorPreference, onAuthFailed);
 
   if (!connected) {
     return <div className="screen"><p>Connecting to server…</p></div>;

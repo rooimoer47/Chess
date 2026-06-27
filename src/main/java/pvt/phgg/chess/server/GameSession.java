@@ -75,13 +75,27 @@ public class GameSession {
     }
 
     public synchronized PlayerRole join(WebSocketSession ws, String username) {
-        return join(ws, username, null);
+        return join(ws, username, null, "RANDOM");
     }
 
-    public synchronized PlayerRole join(WebSocketSession ws, String username, Long userId) {
+    public synchronized PlayerRole join(WebSocketSession ws, String username, Long userId, String colorPreference) {
         if (username.equals(whiteUsername) || username.equals(blackUsername)) {
             return null;
         }
+        // Try preferred colour first (RANDOM and WHITE both try white first)
+        if (!"BLACK".equals(colorPreference) && whiteSession == null && whiteUsername == null) {
+            whiteSession = ws;
+            whiteUsername = username;
+            whitePlayerId = userId;
+            return PlayerRole.WHITE;
+        }
+        if (!"WHITE".equals(colorPreference) && blackSession == null && blackUsername == null) {
+            blackSession = ws;
+            blackUsername = username;
+            blackPlayerId = userId;
+            return PlayerRole.BLACK;
+        }
+        // Preferred slot taken — assign whatever is still open
         if (whiteSession == null && whiteUsername == null) {
             whiteSession = ws;
             whiteUsername = username;

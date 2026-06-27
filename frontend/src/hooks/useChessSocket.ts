@@ -20,7 +20,7 @@ export interface GameState {
   drawOfferPending: boolean;
 }
 
-export function useChessSocket(botType = '', onAuthFailed?: () => void) {
+export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthFailed?: () => void) {
   const [state, setState] = useState<GameState>({
     connected: false,
     gameStarted: false,
@@ -44,8 +44,11 @@ export function useChessSocket(botType = '', onAuthFailed?: () => void) {
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const botParam = botType ? `?bot=${botType}` : '';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/game${botParam}`);
+    const params = new URLSearchParams();
+    if (botType) params.set('bot', botType);
+    if (colorPreference !== 'RANDOM') params.set('color', colorPreference);
+    const query = params.size ? `?${params.toString()}` : '';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/game${query}`);
     wsRef.current = ws;
 
     let didOpen = false;
@@ -124,7 +127,7 @@ export function useChessSocket(botType = '', onAuthFailed?: () => void) {
     };
 
     return () => ws.close();
-  }, [botType]);
+  }, [botType, colorPreference]);
 
   const sendMove = useCallback((fromRow: number, fromCol: number, toRow: number, toCol: number) => {
     wsRef.current?.send(JSON.stringify({ type: 'MOVE', fromRow, fromCol, toRow, toCol }));
