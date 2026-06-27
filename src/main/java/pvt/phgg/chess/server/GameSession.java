@@ -18,6 +18,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import pvt.phgg.chess.server.bot.BotStrategy;
+import pvt.phgg.chess.server.bot.MinimaxBotStrategy;
 import pvt.phgg.chess.server.bot.RandomBotStrategy;
 
 public class GameSession {
@@ -117,8 +118,10 @@ public class GameSession {
 
     private static BotStrategy selectStrategy(String botType) {
         return switch (botType) {
-            // alan (depth 2), barbara (depth 3), claude (depth 4) wired in Step 4
-            default -> new RandomBotStrategy();
+            case "alan"    -> new MinimaxBotStrategy(2);
+            case "barbara" -> new MinimaxBotStrategy(3);
+            case "claude"  -> new MinimaxBotStrategy(4);
+            default        -> new RandomBotStrategy();
         };
     }
 
@@ -247,6 +250,9 @@ public class GameSession {
     }
 
     public synchronized MoveResult applyMove(Position from, Position to) {
+        if (botEnabled && !isBotTurn()) {
+            botStrategy.recordOpponentMove(from.getRow(), from.getCol(), to.getRow(), to.getCol());
+        }
         boolean wasWhiteTurn = engine.isWhiteTurn();
         APiece movingPiece = engine.getPiece(from.getRow(), from.getCol());
         APiece targetPiece = engine.getPiece(to.getRow(), to.getCol());

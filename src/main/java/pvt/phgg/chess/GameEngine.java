@@ -32,6 +32,15 @@ public class GameEngine {
         this.halfMoveClock = halfMoveClock;
     }
 
+    public GameEngine(GameEngine source) {
+        APiece[][] deep = source.boardState.deepCopy(source.board);
+        for (int r = 0; r < BOARD_SIZE; r++)
+            System.arraycopy(deep[r], 0, board[r], 0, BOARD_SIZE);
+        this.whiteTurn = source.whiteTurn;
+        this.halfMoveClock = source.halfMoveClock;
+        this.positionHistory.putAll(source.positionHistory);
+    }
+
     // --- Public API ---
 
     public List<Position> getLegalMoves(Position from) {
