@@ -124,6 +124,7 @@ public class GameSession {
         return botEnabled && engine.isWhiteTurn() == botIsWhite;
     }
 
+    @SuppressWarnings("java:S2245") // ThreadLocalRandom is fine for non-security game logic
     public synchronized void maybeBotDrawOffer() throws IOException {
         if (!botEnabled) return;
         if (ThreadLocalRandom.current().nextDouble() < 0.05) {
@@ -209,6 +210,7 @@ public class GameSession {
 
     public enum DrawOfferOutcome { ACCEPTED, DECLINED, SENT_TO_OPPONENT }
 
+    @SuppressWarnings("java:S2245") // ThreadLocalRandom is fine for non-security game logic
     public synchronized DrawOfferOutcome offerDraw(boolean isWhite) throws IOException {
         if (botEnabled) {
             if (ThreadLocalRandom.current().nextBoolean()) {

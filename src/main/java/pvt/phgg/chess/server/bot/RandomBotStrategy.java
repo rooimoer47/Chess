@@ -12,6 +12,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class RandomBotStrategy implements BotStrategy {
 
     @Override
+    @SuppressWarnings("java:S2245") // ThreadLocalRandom is fine for non-security game logic
     public Position[] chooseMove(GameEngine engine, boolean isWhite) {
         List<Position[]> allMoves = new ArrayList<>();
         List<Position[]> checkMoves = new ArrayList<>();
