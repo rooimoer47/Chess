@@ -36,6 +36,18 @@ public class UserService implements UserDetailsService {
         jdbcTemplate.update("UPDATE users SET last_active_at = now() WHERE id = ?", userId);
     }
 
+    public UserPreferencesDto getPreferences(String username) {
+        return userRepository.findByUsername(username)
+                .map(u -> new UserPreferencesDto(u.getTheme(), u.getColorPreference()))
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+    }
+
+    public void updatePreferences(String username, String theme, String colorPreference) {
+        jdbcTemplate.update(
+                "UPDATE users SET theme = ?, color_preference = ? WHERE username = ?",
+                theme, colorPreference, username);
+    }
+
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return userRepository.findByUsername(username)

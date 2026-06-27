@@ -18,6 +18,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import pvt.phgg.chess.server.bot.BotStrategy;
+import pvt.phgg.chess.server.bot.MinimaxBotStrategy;
 import pvt.phgg.chess.server.bot.RandomBotStrategy;
 
 public class GameSession {
@@ -74,13 +75,27 @@ public class GameSession {
     }
 
     public synchronized PlayerRole join(WebSocketSession ws, String username) {
-        return join(ws, username, null);
+        return join(ws, username, null, "RANDOM");
     }
 
-    public synchronized PlayerRole join(WebSocketSession ws, String username, Long userId) {
+    public synchronized PlayerRole join(WebSocketSession ws, String username, Long userId, String colorPreference) {
         if (username.equals(whiteUsername) || username.equals(blackUsername)) {
             return null;
         }
+        // Try preferred colour first (RANDOM and WHITE both try white first)
+        if (!"BLACK".equals(colorPreference) && whiteSession == null && whiteUsername == null) {
+            whiteSession = ws;
+            whiteUsername = username;
+            whitePlayerId = userId;
+            return PlayerRole.WHITE;
+        }
+        if (!"WHITE".equals(colorPreference) && blackSession == null && blackUsername == null) {
+            blackSession = ws;
+            blackUsername = username;
+            blackPlayerId = userId;
+            return PlayerRole.BLACK;
+        }
+        // Preferred slot taken — assign whatever is still open
         if (whiteSession == null && whiteUsername == null) {
             whiteSession = ws;
             whiteUsername = username;
@@ -96,22 +111,32 @@ public class GameSession {
         return null;
     }
 
-    public synchronized boolean joinBot() {
+    public synchronized boolean joinBot(String botType) {
+        BotStrategy strategy = selectStrategy(botType);
         if (whiteSession == null && whiteUsername == null) {
             whiteUsername = "BOT";
             botEnabled = true;
             botIsWhite = true;
-            botStrategy = new RandomBotStrategy();
+            botStrategy = strategy;
             return true;
         }
         if (blackSession == null && blackUsername == null) {
             blackUsername = "BOT";
             botEnabled = true;
             botIsWhite = false;
-            botStrategy = new RandomBotStrategy();
+            botStrategy = strategy;
             return true;
         }
         return false;
+    }
+
+    private static BotStrategy selectStrategy(String botType) {
+        return switch (botType) {
+            case "alan"    -> new MinimaxBotStrategy(2);
+            case "barbara" -> new MinimaxBotStrategy(3);
+            case "claude"  -> new MinimaxBotStrategy(4);
+            default        -> new RandomBotStrategy();
+        };
     }
 
     public synchronized void onGameStart() {
@@ -239,6 +264,9 @@ public class GameSession {
     }
 
     public synchronized MoveResult applyMove(Position from, Position to) {
+        if (botEnabled && !isBotTurn()) {
+            botStrategy.recordOpponentMove(from.getRow(), from.getCol(), to.getRow(), to.getCol());
+        }
         boolean wasWhiteTurn = engine.isWhiteTurn();
         APiece movingPiece = engine.getPiece(from.getRow(), from.getCol());
         APiece targetPiece = engine.getPiece(to.getRow(), to.getCol());

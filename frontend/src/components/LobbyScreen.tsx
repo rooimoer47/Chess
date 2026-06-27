@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ThemePicker, THEMES, type Theme } from './ThemePicker';
 
-export const THEMES = ['classic', 'generated'] as const;
-export type Theme = typeof THEMES[number];
+export { THEMES, type Theme };
 
 export const CLOCK_OPTIONS = [
   { label: 'No Clock', ms: 0 },
@@ -9,87 +10,37 @@ export const CLOCK_OPTIONS = [
   { label: '10 min', ms: 600_000 },
 ] as const;
 
+const OPPONENTS = [
+  { type: '',        icon: '👤', label: 'Human',   stars: '',    desc: '' },
+  { type: 'random',  icon: '🎲', label: 'Random',  stars: '',    desc: 'Random moves' },
+  { type: 'alan',    icon: '🤖', label: 'Alan',    stars: '★',   desc: 'Alan Turing — father of computing' },
+  { type: 'barbara', icon: '🤖', label: 'Barbara', stars: '★★',  desc: 'Barbara Liskov — OOP pioneer' },
+  { type: 'claude',  icon: '🤖', label: 'Claude',  stars: '★★★', desc: 'Claude Shannon — inventor of computer chess' },
+] as const;
+
+const COLOR_PREFS = [
+  { value: 'WHITE',  label: 'Always White' },
+  { value: 'RANDOM', label: 'Random' },
+  { value: 'BLACK',  label: 'Always Black' },
+] as const;
+
 interface Props {
   username: string;
-  botMode: boolean;
+  botType: string;
   theme: Theme;
+  colorPreference: string;
   clockMs: number;
-  onChangeBotMode: (bot: boolean) => void;
+  onChangeBotType: (type: string) => void;
   onChangeTheme: (theme: Theme) => void;
+  onChangeColorPreference: (pref: string) => void;
   onChangeClockMs: (ms: number) => void;
-  onStartGame: () => void;
   onLogout: () => void;
 }
 
-function pieceAt(row: number, col: number): { type: string; color: string } | null {
-  if (row >= 2 && row <= 5) return null;
-  const color = row >= 6 ? 'black' : 'white';
-  if (row === 1 || row === 6) return { type: 'pawn', color };
-  const types = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
-  return { type: types[col], color };
-}
 
-function StaticBoard({ theme }: { theme: string }) {
-  const rows = [7, 6, 5, 4, 3, 2, 1, 0];
-  const cols = [0, 1, 2, 3, 4, 5, 6, 7];
-  return (
-    <div className="board" style={{ cursor: 'default' }}>
-      {rows.map(row =>
-        cols.map(col => {
-          const isLight = (row + col) % 2 === 0;
-          const piece = pieceAt(row, col);
-          return (
-            <div
-              key={`${row}-${col}`}
-              className="square"
-              style={{ background: isLight ? '#f0d9b5' : '#b58863', cursor: 'default' }}
-            >
-              {piece && (
-                <img
-                  src={`/images/${theme}/${piece.type}_${piece.color}.png`}
-                  alt=""
-                  className="piece"
-                  draggable={false}
-                />
-              )}
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-}
-
-function ThemePicker({ theme, onChangeTheme, onClose }: { theme: Theme; onChangeTheme: (t: Theme) => void; onClose: () => void }) {
-  return (
-    <div className="theme-picker-overlay" onClick={onClose}>
-      <div className="theme-picker-dialog" onClick={e => e.stopPropagation()}>
-        <div className="theme-picker-header">
-          <span>Pick a Theme</span>
-          <button className="theme-picker-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="theme-picker-body">
-          <StaticBoard theme={theme} />
-          <div className="theme-picker-options">
-            {THEMES.map(t => (
-              <button
-                key={t}
-                type="button"
-                className={`theme-picker-option${theme === t ? ' theme-picker-option-active' : ''}`}
-                onClick={() => onChangeTheme(t)}
-              >
-                {t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function LobbyScreen({ username, botMode, theme, clockMs, onChangeBotMode, onChangeTheme, onChangeClockMs, onStartGame, onLogout }: Props) {
+export function LobbyScreen({ username, botType, theme, colorPreference, clockMs, onChangeBotType, onChangeTheme, onChangeColorPreference, onChangeClockMs, onLogout }: Props) {
   const [themePickerOpen, setThemePickerOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="lobby">
@@ -98,14 +49,68 @@ export function LobbyScreen({ username, botMode, theme, clockMs, onChangeBotMode
 
       <div className="lobby-section">
         <span className="lobby-label">Opponent</span>
-        <div className="mode-toggle">
-          <button type="button" className={`mode-btn${!botMode ? ' mode-btn-active' : ''}`} onClick={() => onChangeBotMode(false)}>
-            vs Human
-          </button>
-          <button type="button" className={`mode-btn${botMode ? ' mode-btn-active' : ''}`} onClick={() => onChangeBotMode(true)}>
-            vs Bot
-          </button>
+        <div className="opponent-cards">
+          {OPPONENTS.map(opp => (
+            <label
+              key={opp.type}
+              className={`opponent-card${botType === opp.type ? ' opponent-card-active' : ''}`}
+            >
+              <input
+                type="radio"
+                name="opponent"
+                value={opp.type}
+                checked={botType === opp.type}
+                onChange={() => onChangeBotType(opp.type)}
+              />
+              <span className="opponent-card-icon">{opp.icon}</span>
+              <span className="opponent-card-label">{opp.label}</span>
+              {opp.stars && <span className="opponent-card-stars">{opp.stars}</span>}
+              {opp.desc && <span className="opponent-card-desc">{opp.desc}</span>}
+            </label>
+          ))}
         </div>
+      </div>
+
+      <div className="lobby-section">
+        <span className="lobby-label">Play as</span>
+        <div className="color-pref-row">
+          {COLOR_PREFS.map(pref => (
+            <label
+              key={pref.value}
+              className={`color-pref-option${colorPreference === pref.value ? ' color-pref-active' : ''}`}
+            >
+              <input
+                type="radio"
+                name="colorPref"
+                value={pref.value}
+                checked={colorPreference === pref.value}
+                onChange={() => onChangeColorPreference(pref.value)}
+              />
+              {pref.value === 'RANDOM' ? (
+                <div className="pawn-split-wrap">
+                  <img className="pawn-split-half pawn-split-white" src={`/images/${theme}/pawn_white.png`} alt="" draggable={false} />
+                  <img className="pawn-split-half pawn-split-black" src={`/images/${theme}/pawn_black.png`} alt="" draggable={false} />
+                </div>
+              ) : (
+                <img
+                  className="color-pref-pawn"
+                  src={`/images/${theme}/pawn_${pref.value.toLowerCase()}.png`}
+                  alt={pref.label}
+                  draggable={false}
+                />
+              )}
+              <span className="color-pref-label">{pref.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="lobby-section">
+        <span className="lobby-label">Piece Theme</span>
+        <button className="theme-current-btn" onClick={() => setThemePickerOpen(true)}>
+          <span>{theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
+          <span className="theme-current-chevron">▾</span>
+        </button>
       </div>
 
       <div className="lobby-section">
@@ -124,15 +129,8 @@ export function LobbyScreen({ username, botMode, theme, clockMs, onChangeBotMode
         </div>
       </div>
 
-      <div className="lobby-section">
-        <span className="lobby-label">Piece Theme</span>
-        <button className="theme-current-btn" onClick={() => setThemePickerOpen(true)}>
-          <span>{theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
-          <span className="theme-current-chevron">▾</span>
-        </button>
-      </div>
-
-      <button className="start-btn" onClick={onStartGame}>Start Game</button>
+      <button className="start-btn" onClick={() => navigate('/game')}>Start Game</button>
+      <button className="lobby-games-btn" onClick={() => navigate('/history')}>My Games</button>
       <button className="logout-btn" type="button" onClick={onLogout}>Log out</button>
 
       {themePickerOpen && (

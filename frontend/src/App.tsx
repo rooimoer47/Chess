@@ -5,6 +5,8 @@ import { Board } from './components/Board';
 import { CapturedPieces } from './components/CapturedPieces';
 import { PromotionDialog } from './components/PromotionDialog';
 import { LoginScreen } from './components/LoginScreen';
+import { LobbyScreen } from './components/LobbyScreen';
+import { ThemePicker, type Theme } from './components/ThemePicker';
 import { HistoryPage } from './components/HistoryPage';
 import { ReplayViewer } from './components/ReplayViewer';
 import './App.css';
@@ -12,8 +14,10 @@ import './App.css';
 export default function App() {
   const [username, setUsername] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [botMode, setBotMode] = useState(() => localStorage.getItem('chess_bot_mode') === 'true');
-  const [gameKey, setGameKey] = useState(0);
+  const [botType, setBotType] = useState('');
+  const [theme, setTheme] = useState<Theme>('classic');
+  const [colorPreference, setColorPreference] = useState('RANDOM');
+  const [clockMs, setClockMs] = useState(0);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -23,22 +27,46 @@ export default function App() {
       .finally(() => setAuthChecked(true));
   }, []);
 
-  const handleLogin = (u: string, bot: boolean) => {
-    localStorage.setItem('chess_bot_mode', String(bot));
-    setUsername(u);
-    setBotMode(bot);
-  };
+  useEffect(() => {
+    if (!username) return;
+    fetch(`/api/users/${username}/preferences`)
+      .then(r => r.ok ? r.json() as Promise<{ theme: string; colorPreference: string }> : null)
+      .then(prefs => {
+        if (prefs) {
+          setTheme(prefs.theme as Theme);
+          setColorPreference(prefs.colorPreference);
+        }
+      })
+      .catch(() => {});
+  }, [username]);
+
+  const handleLogin = (u: string) => setUsername(u);
 
   const handleLogout = () => {
     fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-    localStorage.removeItem('chess_bot_mode');
     setUsername(null);
   };
 
-  const handlePlayAgain = (newBotMode: boolean) => {
-    localStorage.setItem('chess_bot_mode', String(newBotMode));
-    setBotMode(newBotMode);
-    setGameKey(k => k + 1);
+  const handleChangeTheme = (t: Theme) => {
+    setTheme(t);
+    if (username) {
+      fetch(`/api/users/${username}/preferences`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: t, colorPreference }),
+      }).catch(() => {});
+    }
+  };
+
+  const handleChangeColorPreference = (pref: string) => {
+    setColorPreference(pref);
+    if (username) {
+      fetch(`/api/users/${username}/preferences`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme, colorPreference: pref }),
+      }).catch(() => {});
+    }
   };
 
   if (!authChecked) return null;
@@ -53,29 +81,49 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/game" replace />} />
+      <Route path="/" element={<Navigate to="/lobby" replace />} />
+      <Route path="/lobby" element={
+        <LobbyScreen
+          username={username}
+          botType={botType}
+          theme={theme}
+          colorPreference={colorPreference}
+          clockMs={clockMs}
+          onChangeBotType={setBotType}
+          onChangeTheme={handleChangeTheme}
+          onChangeColorPreference={handleChangeColorPreference}
+          onChangeClockMs={setClockMs}
+          onLogout={handleLogout}
+        />
+      } />
       <Route path="/game" element={
-        <ChessGame key={gameKey} username={username} botMode={botMode}
-          onPlayAgain={handlePlayAgain} onLogout={handleLogout} onAuthFailed={handleLogout} />
+        <ChessGame
+          username={username}
+          botType={botType}
+          colorPreference={colorPreference}
+          theme={theme}
+          onChangeTheme={handleChangeTheme}
+          onLogout={handleLogout}
+          onAuthFailed={handleLogout}
+        />
       } />
       <Route path="/history" element={<HistoryPage username={username} />} />
       <Route path="/history/:gameId" element={<ReplayViewer />} />
-      <Route path="*" element={<Navigate to="/game" replace />} />
+      <Route path="*" element={<Navigate to="/lobby" replace />} />
     </Routes>
   );
 }
 
-const THEMES = ['classic', 'generated'] as const;
-type Theme = typeof THEMES[number];
-
-function ChessGame({ username, botMode, onPlayAgain, onLogout, onAuthFailed }: {
+function ChessGame({ username, botType, colorPreference, theme, onChangeTheme, onLogout, onAuthFailed }: {
   username: string;
-  botMode: boolean;
-  onPlayAgain: (botMode: boolean) => void;
+  botType: string;
+  colorPreference: string;
+  theme: Theme;
+  onChangeTheme: (t: Theme) => void;
   onLogout: () => void;
   onAuthFailed: () => void;
 }) {
-  const [theme, setTheme] = useState<Theme>('classic');
+  const [themePickerOpen, setThemePickerOpen] = useState(false);
   const navigate = useNavigate();
   const {
     connected,
@@ -97,7 +145,7 @@ function ChessGame({ username, botMode, onPlayAgain, onLogout, onAuthFailed }: {
     sendDrawResponse,
     drawOfferedByOpponent,
     drawOfferPending,
-  } = useChessSocket(botMode, onAuthFailed);
+  } = useChessSocket(botType, colorPreference, onAuthFailed);
 
   if (!connected) {
     return <div className="screen"><p>Connecting to server…</p></div>;
@@ -125,16 +173,9 @@ function ChessGame({ username, botMode, onPlayAgain, onLogout, onAuthFailed }: {
     <div className="app">
       <div className="info-bar">
         <span>You: <strong>{username}</strong></span>
-        <select
-          className="theme-select"
-          value={theme}
-          onChange={e => setTheme(e.target.value as Theme)}
-          aria-label="Piece theme"
-        >
-          {THEMES.map(t => (
-            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-          ))}
-        </select>
+        <button className="theme-game-btn" onClick={() => setThemePickerOpen(true)}>
+          {theme.charAt(0).toUpperCase() + theme.slice(1)} ▾
+        </button>
         <span className={`turn-indicator ${isMyTurn ? 'my-turn' : ''}`}>
           {isGameOver ? '—' : isMyTurn ? 'Your turn' : "Opponent's turn"}
         </span>
@@ -147,7 +188,6 @@ function ChessGame({ username, botMode, onPlayAgain, onLogout, onAuthFailed }: {
             <button className="resign-btn" onClick={sendResign}>Resign</button>
           </>
         )}
-        <button className="history-btn" onClick={() => navigate('/history')}>My Games</button>
         <button className="logout-btn" onClick={onLogout}>Logout</button>
       </div>
 
@@ -181,16 +221,22 @@ function ChessGame({ username, botMode, onPlayAgain, onLogout, onAuthFailed }: {
 
       {isGameOver && (
         <div className="play-again">
-          <span>Play again?</span>
-          <div className="mode-toggle">
-            <button type="button" className="mode-btn" onClick={() => onPlayAgain(false)}>vs Human</button>
-            <button type="button" className="mode-btn" onClick={() => onPlayAgain(true)}>vs Bot</button>
-          </div>
+          <button type="button" className="start-btn" onClick={() => navigate('/lobby')}>
+            Back to Lobby
+          </button>
         </div>
       )}
 
       {promotionPending && playerColor && (
         <PromotionDialog color={playerColor} theme={theme} onChoice={sendPromotion} />
+      )}
+
+      {themePickerOpen && (
+        <ThemePicker
+          theme={theme}
+          onChangeTheme={t => { onChangeTheme(t); setThemePickerOpen(false); }}
+          onClose={() => setThemePickerOpen(false)}
+        />
       )}
     </div>
   );

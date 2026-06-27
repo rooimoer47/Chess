@@ -294,6 +294,7 @@ body {
   color: #aaa;
   font-size: 0.95rem;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .login-tab-active {
@@ -555,7 +556,21 @@ body {
 
 /* ---- Nav buttons in game info-bar ---- */
 
-.history-btn,
+.theme-game-btn {
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid #666;
+  background: transparent;
+  color: #ccc;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.theme-game-btn:hover {
+  border-color: #7fc97f;
+  color: #fff;
+}
+
 .logout-btn {
   padding: 6px 12px;
   border-radius: 5px;
@@ -705,3 +720,158 @@ body {
 }
 
 .replay-controls button:hover { background: #3e3e3e; }
+
+/* ---- Opponent cards ---- */
+
+.opponent-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  max-width: 560px;
+}
+
+.opponent-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 12px 10px;
+  border-radius: 10px;
+  border: 2px solid #444;
+  background: #2a2a2a;
+  cursor: pointer;
+  min-width: 94px;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.opponent-card:hover {
+  border-color: #666;
+}
+
+.opponent-card-active {
+  border-color: #7fc97f;
+  background: #1a2e1a;
+}
+
+.opponent-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.opponent-card-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.opponent-card-label {
+  font-size: 0.95rem;
+  color: #ddd;
+  font-weight: 500;
+}
+
+.opponent-card-stars {
+  font-size: 0.75rem;
+  color: #f0d060;
+  letter-spacing: 0.04em;
+}
+
+.opponent-card-desc {
+  font-size: 0.68rem;
+  color: #777;
+  line-height: 1.35;
+  max-width: 86px;
+}
+
+/* ---- Colour preference ---- */
+
+.color-pref-row {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.color-pref-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.color-pref-option:hover {
+  border-color: #555;
+}
+
+.color-pref-active {
+  border-color: #7fc97f;
+}
+
+.color-pref-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.color-pref-pawn {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.pawn-split-wrap {
+  position: relative;
+  width: 52px;
+  height: 52px;
+}
+
+.pawn-split-half {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.pawn-split-white {
+  clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%);
+}
+
+.pawn-split-black {
+  clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);
+}
+
+.color-pref-label {
+  font-size: 0.75rem;
+  color: #888;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ---- Lobby utility buttons ---- */
+
+.lobby-games-btn {
+  padding: 8px 24px;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background: #2a2a2a;
+  color: #bbb;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.lobby-games-btn:hover {
+  background: #3a3a3a;
+  color: #eee;
+}
