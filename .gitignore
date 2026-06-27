@@ -8,5 +8,4 @@
 /.env
 /nginx/nginx.conf
 /src/main/resources/static/
-/PHASE2.md
-/LOBBY_AND_CLAUDE_BOT.md
+/docs/
