@@ -4,6 +4,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Table("games")
 public class Game {
@@ -24,7 +25,7 @@ public class Game {
         this.whitePlayerId = whitePlayerId;
         this.blackPlayerId = blackPlayerId;
         this.mode = mode;
-        this.startedAt = OffsetDateTime.now();
+        this.startedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     public Long getId() { return id; }

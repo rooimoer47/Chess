@@ -4,6 +4,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Table("users")
 public class AppUser {
@@ -20,8 +21,8 @@ public class AppUser {
     public AppUser(String username, String passwordHash) {
         this.username = username;
         this.passwordHash = passwordHash;
-        this.createdAt = OffsetDateTime.now();
-        this.lastActiveAt = OffsetDateTime.now();
+        this.createdAt = OffsetDateTime.now(ZoneOffset.UTC);
+        this.lastActiveAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     public Long getId() { return id; }

@@ -4,6 +4,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Table("game_moves")
 public class GameMove {
@@ -29,7 +30,7 @@ public class GameMove {
         this.toRow = toRow;
         this.toCol = toCol;
         this.promotionChoice = promotionChoice;
-        this.playedAt = OffsetDateTime.now();
+        this.playedAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
     public long getGameId() { return gameId; }
