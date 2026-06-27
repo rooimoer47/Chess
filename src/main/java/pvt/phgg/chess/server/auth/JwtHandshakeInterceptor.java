@@ -47,7 +47,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             String botParam = req.getParameter("bot");
             attributes.put("botType", botParam != null ? botParam : "none");
             String colorParam = req.getParameter("color");
-            attributes.put("colorPreference", java.util.Set.of("WHITE", "BLACK").contains(colorParam) ? colorParam : "RANDOM");
+            attributes.put("colorPreference", "WHITE".equals(colorParam) || "BLACK".equals(colorParam) ? colorParam : "RANDOM");
             userService.findByUsername(username)
                     .ifPresent(u -> attributes.put("userId", u.getId()));
             LOGGER.debug("WS handshake accepted for user: {}", username);
