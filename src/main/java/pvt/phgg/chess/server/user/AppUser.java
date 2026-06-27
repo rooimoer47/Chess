@@ -13,6 +13,8 @@ public class AppUser {
     private Long id;
     private String username;
     private String passwordHash;
+    private String theme = "classic";
+    private String colorPreference = "RANDOM";
     private OffsetDateTime createdAt;
     private OffsetDateTime lastActiveAt;
 
@@ -28,6 +30,8 @@ public class AppUser {
     public Long getId() { return id; }
     public String getUsername() { return username; }
     public String getPasswordHash() { return passwordHash; }
+    public String getTheme() { return theme; }
+    public String getColorPreference() { return colorPreference; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getLastActiveAt() { return lastActiveAt; }
 }
