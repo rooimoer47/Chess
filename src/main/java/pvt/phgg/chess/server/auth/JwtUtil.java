@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Date;
 
 @Component
@@ -31,10 +32,11 @@ public class JwtUtil {
     }
 
     public String generateToken(String username) {
+        Instant now = Instant.now();
         return Jwts.builder()
                 .subject(username)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expirationHours * 3_600_000L))
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(Duration.ofHours(expirationHours))))
                 .signWith(key())
                 .compact();
     }
