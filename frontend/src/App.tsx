@@ -5,7 +5,8 @@ import { Board } from './components/Board';
 import { CapturedPieces } from './components/CapturedPieces';
 import { PromotionDialog } from './components/PromotionDialog';
 import { LoginScreen } from './components/LoginScreen';
-import { LobbyScreen, THEMES, type Theme } from './components/LobbyScreen';
+import { LobbyScreen } from './components/LobbyScreen';
+import { ThemePicker, type Theme } from './components/ThemePicker';
 import { HistoryPage } from './components/HistoryPage';
 import { ReplayViewer } from './components/ReplayViewer';
 import './App.css';
@@ -122,6 +123,7 @@ function ChessGame({ username, botType, colorPreference, theme, onChangeTheme, o
   onLogout: () => void;
   onAuthFailed: () => void;
 }) {
+  const [themePickerOpen, setThemePickerOpen] = useState(false);
   const navigate = useNavigate();
   const {
     connected,
@@ -171,16 +173,9 @@ function ChessGame({ username, botType, colorPreference, theme, onChangeTheme, o
     <div className="app">
       <div className="info-bar">
         <span>You: <strong>{username}</strong></span>
-        <select
-          className="theme-select"
-          value={theme}
-          onChange={e => onChangeTheme(e.target.value as Theme)}
-          aria-label="Piece theme"
-        >
-          {THEMES.map(t => (
-            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-          ))}
-        </select>
+        <button className="theme-game-btn" onClick={() => setThemePickerOpen(true)}>
+          {theme.charAt(0).toUpperCase() + theme.slice(1)} ▾
+        </button>
         <span className={`turn-indicator ${isMyTurn ? 'my-turn' : ''}`}>
           {isGameOver ? '—' : isMyTurn ? 'Your turn' : "Opponent's turn"}
         </span>
@@ -234,6 +229,14 @@ function ChessGame({ username, botType, colorPreference, theme, onChangeTheme, o
 
       {promotionPending && playerColor && (
         <PromotionDialog color={playerColor} theme={theme} onChoice={sendPromotion} />
+      )}
+
+      {themePickerOpen && (
+        <ThemePicker
+          theme={theme}
+          onChangeTheme={t => { onChangeTheme(t); setThemePickerOpen(false); }}
+          onClose={() => setThemePickerOpen(false)}
+        />
       )}
     </div>
   );
