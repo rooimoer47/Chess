@@ -38,14 +38,14 @@ public class UserService implements UserDetailsService {
 
     public UserPreferencesDto getPreferences(String username) {
         return userRepository.findByUsername(username)
-                .map(u -> new UserPreferencesDto(u.getTheme(), u.getColorPreference()))
+                .map(u -> new UserPreferencesDto(u.getTheme(), u.getColorPreference(), u.getBoardTheme()))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
-    public void updatePreferences(String username, String theme, String colorPreference) {
+    public void updatePreferences(String username, String theme, String colorPreference, String boardTheme) {
         jdbcTemplate.update(
-                "UPDATE users SET theme = ?, color_preference = ? WHERE username = ?",
-                theme, colorPreference, username);
+                "UPDATE users SET theme = ?, color_preference = ?, board_theme = ? WHERE username = ?",
+                theme, colorPreference, boardTheme, username);
     }
 
     @Override

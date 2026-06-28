@@ -11,14 +11,16 @@ interface Props {
   isLegalDropTarget: boolean;
   isDraggingSource: boolean;
   theme: string;
+  lightColor: string;
+  darkColor: string;
   onMouseDown: (e: React.MouseEvent) => void;
   onMouseEnter: () => void;
 }
 
-export function Square({ row, col, piece, isSelected, isLegalTarget, isLastMove, isLegalDropTarget, isDraggingSource, theme, onMouseDown, onMouseEnter }: Props) {
+export function Square({ row, col, piece, isSelected, isLegalTarget, isLastMove, isLegalDropTarget, isDraggingSource, theme, lightColor, darkColor, onMouseDown, onMouseEnter }: Props) {
   const isLight = (row + col) % 2 === 0;
 
-  let background = isLight ? '#f0d9b5' : '#b58863';
+  let background = isLight ? lightColor : darkColor;
   if (isLastMove)       background = isLight ? '#f6f669' : '#baca2b';
   if (isSelected)       background = '#7fc97f';
   else if (isLegalDropTarget) background = isLight ? '#f5c518' : '#d4a900';

@@ -6,7 +6,7 @@ import { CapturedPieces } from './components/CapturedPieces';
 import { PromotionDialog } from './components/PromotionDialog';
 import { LoginScreen } from './components/LoginScreen';
 import { LobbyScreen } from './components/LobbyScreen';
-import { type Theme } from './components/ThemePicker';
+import { type Theme, type BoardTheme } from './components/ThemePicker';
 import { HistoryPage } from './components/HistoryPage';
 import { ReplayViewer } from './components/ReplayViewer';
 import './App.css';
@@ -16,6 +16,7 @@ export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [botType, setBotType] = useState('');
   const [theme, setTheme] = useState<Theme>('classic');
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>('classic');
   const [colorPreference, setColorPreference] = useState('RANDOM');
   const [clockMs, setClockMs] = useState(0);
 
@@ -30,11 +31,12 @@ export default function App() {
   useEffect(() => {
     if (!username) return;
     fetch(`/api/users/${username}/preferences`)
-      .then(r => r.ok ? r.json() as Promise<{ theme: string; colorPreference: string }> : null)
+      .then(r => r.ok ? r.json() as Promise<{ theme: string; colorPreference: string; boardTheme: string }> : null)
       .then(prefs => {
         if (prefs) {
           setTheme(prefs.theme as Theme);
           setColorPreference(prefs.colorPreference);
+          setBoardTheme(prefs.boardTheme as BoardTheme);
         }
       })
       .catch(() => {});
@@ -47,26 +49,29 @@ export default function App() {
     setUsername(null);
   };
 
-  const handleChangeTheme = (t: Theme) => {
-    setTheme(t);
+  const savePreferences = (t: Theme, bp: BoardTheme, cp: string) => {
     if (username) {
       fetch(`/api/users/${username}/preferences`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme: t, colorPreference }),
+        body: JSON.stringify({ theme: t, colorPreference: cp, boardTheme: bp }),
       }).catch(() => {});
     }
   };
 
+  const handleChangeTheme = (t: Theme) => {
+    setTheme(t);
+    savePreferences(t, boardTheme, colorPreference);
+  };
+
+  const handleChangeBoardTheme = (t: BoardTheme) => {
+    setBoardTheme(t);
+    savePreferences(theme, t, colorPreference);
+  };
+
   const handleChangeColorPreference = (pref: string) => {
     setColorPreference(pref);
-    if (username) {
-      fetch(`/api/users/${username}/preferences`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme, colorPreference: pref }),
-      }).catch(() => {});
-    }
+    savePreferences(theme, boardTheme, pref);
   };
 
   if (!authChecked) return null;
@@ -87,10 +92,12 @@ export default function App() {
           username={username}
           botType={botType}
           theme={theme}
+          boardTheme={boardTheme}
           colorPreference={colorPreference}
           clockMs={clockMs}
           onChangeBotType={setBotType}
           onChangeTheme={handleChangeTheme}
+          onChangeBoardTheme={handleChangeBoardTheme}
           onChangeColorPreference={handleChangeColorPreference}
           onChangeClockMs={setClockMs}
           onLogout={handleLogout}
@@ -102,6 +109,7 @@ export default function App() {
           botType={botType}
           colorPreference={colorPreference}
           theme={theme}
+          boardTheme={boardTheme}
           onLogout={handleLogout}
           onAuthFailed={handleLogout}
         />
@@ -113,11 +121,12 @@ export default function App() {
   );
 }
 
-function ChessGame({ username, botType, colorPreference, theme, onLogout, onAuthFailed }: {
+function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLogout, onAuthFailed }: {
   username: string;
   botType: string;
   colorPreference: string;
   theme: Theme;
+  boardTheme: BoardTheme;
   onLogout: () => void;
   onAuthFailed: () => void;
 }) {
@@ -208,6 +217,7 @@ function ChessGame({ username, botType, colorPreference, theme, onLogout, onAuth
         playerColor={playerColor!}
         isMyTurn={isMyTurn && !isGameOver}
         theme={theme}
+        boardTheme={boardTheme}
         onMove={sendMove}
       />
 
