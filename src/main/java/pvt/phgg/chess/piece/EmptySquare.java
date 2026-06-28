@@ -3,7 +3,6 @@ package pvt.phgg.chess.piece;
 import pvt.phgg.chess.BoardState;
 import pvt.phgg.chess.Position;
 
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,11 +20,6 @@ public class EmptySquare extends APiece {
     @Override
     public boolean isPositionOccupied() {
         return false;
-    }
-
-    @Override
-    public BufferedImage getImage(boolean selected) {
-        return null;
     }
 
     @Override
