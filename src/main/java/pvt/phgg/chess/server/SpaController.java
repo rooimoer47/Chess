@@ -1,19 +1,34 @@
 package pvt.phgg.chess.server;
 
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.resource.PathResourceResolver;
 
-// Serve index.html for all non-API, non-asset paths so React Router handles routing.
-// Spring MVC precedence ensures /api/** RestControllers always win over this catch-all.
-// WebSocket upgrade requests bypass the MVC dispatcher entirely so /ws/game is safe.
-@Controller
-public class SpaController {
-    @GetMapping(value = "/**", produces = "text/html")
-    @ResponseBody
-    public Resource index() {
-        return new ClassPathResource("static/index.html");
+import java.io.IOException;
+
+// Serve React SPA: real static files (JS, CSS, assets) are served as-is;
+// any path with no matching file falls back to index.html for client-side routing.
+// /api/** RestControllers and /ws/** WebSocket upgrades are unaffected — they
+// have higher handler priority than resource handlers.
+@Configuration
+public class SpaController implements WebMvcConfigurer {
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/**")
+                .addResourceLocations("classpath:/static/")
+                .resourceChain(true)
+                .addResolver(new PathResourceResolver() {
+                    @Override
+                    protected Resource getResource(String resourcePath, Resource location) throws IOException {
+                        Resource resource = location.createRelative(resourcePath);
+                        return resource.exists() && resource.isReadable()
+                                ? resource
+                                : new ClassPathResource("static/index.html");
+                    }
+                });
     }
 }
