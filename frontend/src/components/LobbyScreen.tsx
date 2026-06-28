@@ -109,8 +109,7 @@ export function LobbyScreen({ username, botType, theme, boardTheme, colorPrefere
       <div className="lobby-section">
         <span className="lobby-label">Appearance</span>
         <button className="theme-current-btn" onClick={() => setThemePickerOpen(true)}>
-          <span>{theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
-          <span className="theme-current-chevron">▾</span>
+          Theme
         </button>
       </div>
 
