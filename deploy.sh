@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
-source .env
+set -a; source .env; set +a
 
 echo "==> Generating nginx config for ${CHESS_DOMAIN}..."
 envsubst '${CHESS_DOMAIN}' < nginx/nginx.conf.template > nginx/nginx.conf
