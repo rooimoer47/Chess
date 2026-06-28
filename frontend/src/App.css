@@ -489,38 +489,6 @@ body {
   .theme-picker-body .board {
     width: 100%;
   }
-
-  .theme-picker-options {
-    flex-direction: row;
-    min-width: unset;
-  }
-
-  .theme-picker-option {
-    flex: 1;
-    text-align: center;
-  }
-}
-
-.theme-picker-option {
-  padding: 10px 14px;
-  border-radius: 6px;
-  border: 2px solid #444;
-  background: #2a2a2a;
-  color: #bbb;
-  font-size: 0.95rem;
-  cursor: pointer;
-  text-align: left;
-}
-
-.theme-picker-option:hover {
-  border-color: #666;
-  color: #eee;
-}
-
-.theme-picker-option-active {
-  border-color: #7fc97f;
-  color: #eee;
-  background: #1e2e1e;
 }
 
 .start-btn {
