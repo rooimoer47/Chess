@@ -80,16 +80,25 @@ export function ThemePicker({ theme, boardTheme, onChangeTheme, onChangeBoardThe
           <StaticBoard theme={theme} boardTheme={boardTheme} />
           <div className="theme-picker-options">
             <span className="theme-picker-section-label">Pieces</span>
-            {THEMES.map(t => (
-              <button
-                key={t}
-                type="button"
-                className={`theme-picker-option${theme === t ? ' theme-picker-option-active' : ''}`}
-                onClick={() => onChangeTheme(t)}
-              >
-                {t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
+            <div className="piece-theme-swatches">
+              {THEMES.map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`board-swatch-btn${theme === t ? ' board-swatch-btn-active' : ''}`}
+                  onClick={() => onChangeTheme(t)}
+                  title={t.charAt(0).toUpperCase() + t.slice(1)}
+                >
+                  <img
+                    src={`/images/${t}/knight_white.png`}
+                    alt={t}
+                    className="piece-theme-knight"
+                    draggable={false}
+                  />
+                  <span className="board-swatch-label">{t.charAt(0).toUpperCase() + t.slice(1)}</span>
+                </button>
+              ))}
+            </div>
             <span className="theme-picker-section-label" style={{ marginTop: 8 }}>Board</span>
             <div className="board-theme-swatches">
               {BOARD_THEMES.map(t => (

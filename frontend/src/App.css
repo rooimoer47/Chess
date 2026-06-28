@@ -952,3 +952,15 @@ body {
 .board-swatch-btn-active .board-swatch-label {
   color: #ccc;
 }
+
+.piece-theme-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.piece-theme-knight {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
