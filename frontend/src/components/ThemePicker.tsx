@@ -5,7 +5,7 @@ export const BOARD_THEMES = ['classic', 'forest', 'ocean', 'walnut'] as const;
 export type BoardTheme = typeof BOARD_THEMES[number];
 
 export const BOARD_COLORS: Record<BoardTheme, { light: string; dark: string; label: string }> = {
-  classic: { light: '#f0d9b5', dark: '#b58863', label: 'Classic' },
+  classic: { light: '#ffffff', dark: '#000000', label: 'Classic' },
   forest:  { light: '#eeeed2', dark: '#769656', label: 'Forest'  },
   ocean:   { light: '#d6e8f0', dark: '#5b8db8', label: 'Ocean'   },
   walnut:  { light: '#f2d9b0', dark: '#7b4f2e', label: 'Walnut'  },
