@@ -584,20 +584,6 @@ body {
 
 /* ---- Nav buttons in game info-bar ---- */
 
-.theme-game-btn {
-  padding: 3px 10px;
-  border-radius: 4px;
-  border: 1px solid #666;
-  background: transparent;
-  color: #ccc;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.theme-game-btn:hover {
-  border-color: #7fc97f;
-  color: #fff;
-}
 
 .logout-btn {
   padding: 6px 12px;
