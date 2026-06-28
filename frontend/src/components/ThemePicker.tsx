@@ -1,4 +1,5 @@
-export const THEMES = ['classic', 'generated'] as const;
+export const THEMES = ['classic'] as const;
+// 'generated' theme is hidden until better images are provided
 export type Theme = typeof THEMES[number];
 
 export const BOARD_THEMES = ['classic', 'forest', 'ocean', 'walnut'] as const;
