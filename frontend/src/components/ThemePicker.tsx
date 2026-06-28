@@ -1,5 +1,16 @@
-export const THEMES = ['classic', 'generated'] as const;
+export const THEMES = ['classic'] as const;
+// 'generated' theme is hidden until better images are provided
 export type Theme = typeof THEMES[number];
+
+export const BOARD_THEMES = ['classic', 'forest', 'ocean', 'walnut'] as const;
+export type BoardTheme = typeof BOARD_THEMES[number];
+
+export const BOARD_COLORS: Record<BoardTheme, { light: string; dark: string; label: string }> = {
+  classic: { light: '#ffffff', dark: '#000000', label: 'Classic' },
+  forest:  { light: '#eeeed2', dark: '#769656', label: 'Forest'  },
+  ocean:   { light: '#d6e8f0', dark: '#5b8db8', label: 'Ocean'   },
+  walnut:  { light: '#f2d9b0', dark: '#7b4f2e', label: 'Walnut'  },
+};
 
 function pieceAt(row: number, col: number): { type: string; color: string } | null {
   if (row >= 2 && row <= 5) return null;
@@ -9,7 +20,8 @@ function pieceAt(row: number, col: number): { type: string; color: string } | nu
   return { type: types[col], color };
 }
 
-function StaticBoard({ theme }: { theme: string }) {
+function StaticBoard({ theme, boardTheme }: { theme: string; boardTheme: BoardTheme }) {
+  const { light, dark } = BOARD_COLORS[boardTheme];
   const rows = [7, 6, 5, 4, 3, 2, 1, 0];
   const cols = [0, 1, 2, 3, 4, 5, 6, 7];
   return (
@@ -22,7 +34,7 @@ function StaticBoard({ theme }: { theme: string }) {
             <div
               key={`${row}-${col}`}
               className="square"
-              style={{ background: isLight ? '#f0d9b5' : '#b58863', cursor: 'default' }}
+              style={{ background: isLight ? light : dark, cursor: 'default' }}
             >
               {piece && (
                 <img
@@ -40,9 +52,22 @@ function StaticBoard({ theme }: { theme: string }) {
   );
 }
 
-export function ThemePicker({ theme, onChangeTheme, onClose }: {
+function BoardSwatch({ light, dark }: { light: string; dark: string }) {
+  return (
+    <div className="board-swatch">
+      <div style={{ background: light }} />
+      <div style={{ background: dark }} />
+      <div style={{ background: dark }} />
+      <div style={{ background: light }} />
+    </div>
+  );
+}
+
+export function ThemePicker({ theme, boardTheme, onChangeTheme, onChangeBoardTheme, onClose }: {
   theme: Theme;
+  boardTheme: BoardTheme;
   onChangeTheme: (t: Theme) => void;
+  onChangeBoardTheme: (t: BoardTheme) => void;
   onClose: () => void;
 }) {
   return (
@@ -53,18 +78,43 @@ export function ThemePicker({ theme, onChangeTheme, onClose }: {
           <button className="theme-picker-close" onClick={onClose}>✕</button>
         </div>
         <div className="theme-picker-body">
-          <StaticBoard theme={theme} />
+          <StaticBoard theme={theme} boardTheme={boardTheme} />
           <div className="theme-picker-options">
-            {THEMES.map(t => (
-              <button
-                key={t}
-                type="button"
-                className={`theme-picker-option${theme === t ? ' theme-picker-option-active' : ''}`}
-                onClick={() => onChangeTheme(t)}
-              >
-                {t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
+            <span className="theme-picker-section-label">Pieces</span>
+            <div className="piece-theme-swatches">
+              {THEMES.map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`board-swatch-btn${theme === t ? ' board-swatch-btn-active' : ''}`}
+                  onClick={() => onChangeTheme(t)}
+                  title={t.charAt(0).toUpperCase() + t.slice(1)}
+                >
+                  <img
+                    src={`/images/${t}/knight_white.png`}
+                    alt={t}
+                    className="piece-theme-knight"
+                    draggable={false}
+                  />
+                  <span className="board-swatch-label">{t.charAt(0).toUpperCase() + t.slice(1)}</span>
+                </button>
+              ))}
+            </div>
+            <span className="theme-picker-section-label" style={{ marginTop: 8 }}>Board</span>
+            <div className="board-theme-swatches">
+              {BOARD_THEMES.map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`board-swatch-btn${boardTheme === t ? ' board-swatch-btn-active' : ''}`}
+                  onClick={() => onChangeBoardTheme(t)}
+                  title={BOARD_COLORS[t].label}
+                >
+                  <BoardSwatch light={BOARD_COLORS[t].light} dark={BOARD_COLORS[t].dark} />
+                  <span className="board-swatch-label">{BOARD_COLORS[t].label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

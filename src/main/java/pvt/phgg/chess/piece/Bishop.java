@@ -1,48 +1,15 @@
 package pvt.phgg.chess.piece;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import pvt.phgg.chess.BoardState;
 import pvt.phgg.chess.Position;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Bishop extends APiece{
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Bishop.class);
     public Bishop(Position position, boolean white) {
         super(position, white);
-    }
-
-    @Override
-    public BufferedImage getImage(boolean selected) {
-        try {
-            if (this.isWhite()) {
-                if (selected) {
-                    return ImageIO.read(new File(ROOT+"/images/bishop_white_selected.png"));
-                }
-                else {
-                    return ImageIO.read(new File(ROOT+"/images/bishop_white.png"));
-                }
-            }
-            else {
-                if (selected) {
-                    return ImageIO.read(new File(ROOT+"/images/bishop_black_selected.png"));
-                }
-                else {
-                    return ImageIO.read(new File(ROOT+"/images/bishop_black.png"));
-                }
-            }
-
-        } catch (IOException e) {
-            LOGGER.error("Failed to load bishop image", e);
-            return null;
-        }
     }
 
     @Override

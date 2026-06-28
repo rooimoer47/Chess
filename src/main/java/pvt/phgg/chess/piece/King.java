@@ -1,48 +1,15 @@
 package pvt.phgg.chess.piece;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import pvt.phgg.chess.BoardState;
 import pvt.phgg.chess.Position;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class King extends APiece{
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(King.class);
     public King(Position position, boolean white) {
         super(position, white);
-    }
-
-    @Override
-    public BufferedImage getImage(boolean selected) {
-        try {
-            if (this.isWhite()) {
-                if (selected) {
-                    return ImageIO.read(new File(ROOT+"/images/king_white_selected.png"));
-                }
-                else {
-                    return ImageIO.read(new File(ROOT+"/images/king_white.png"));
-                }
-            }
-            else {
-                if (selected) {
-                    return ImageIO.read(new File(ROOT+"/images/king_black_selected.png"));
-                }
-                else {
-                    return ImageIO.read(new File(ROOT+"/images/king_black.png"));
-                }
-            }
-
-        } catch (IOException e) {
-            LOGGER.error("Failed to load king image", e);
-            return null;
-        }
     }
 
     public List<Position> getKingMovements(APiece[][] board, BoardState boardState) {

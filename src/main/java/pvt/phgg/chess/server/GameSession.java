@@ -185,13 +185,7 @@ public class GameSession {
     }
 
     public synchronized boolean isEmpty() {
-        if (botEnabled) {
-            return botIsWhite
-                    ? (blackSession == null && blackUsername == null)
-                    : (whiteSession == null && whiteUsername == null);
-        }
-        return whiteSession == null && blackSession == null
-                && whiteUsername == null && blackUsername == null;
+        return whiteSession == null && blackSession == null;
     }
 
     public synchronized PlayerRole roleOf(WebSocketSession ws) {

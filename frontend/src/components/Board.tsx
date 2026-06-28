@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Piece, LegalMove, LastMove, Color } from '../types';
 import { Square } from './Square';
+import { BOARD_COLORS, type BoardTheme } from './ThemePicker';
 
 interface Props {
   board: (Piece | null)[][];
@@ -9,6 +10,7 @@ interface Props {
   playerColor: Color;
   isMyTurn: boolean;
   theme: string;
+  boardTheme: BoardTheme;
   onMove: (fromRow: number, fromCol: number, toRow: number, toCol: number) => void;
 }
 
@@ -26,7 +28,8 @@ interface DragState {
 
 const DRAG_THRESHOLD = 5;
 
-export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, theme, onMove }: Props) {
+export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, theme, boardTheme, onMove }: Props) {
+  const { light: lightColor, dark: darkColor } = BOARD_COLORS[boardTheme];
   const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [dropTarget, setDropTarget] = useState<{ row: number; col: number } | null>(null);
@@ -200,6 +203,8 @@ export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, them
                 isLegalDropTarget={!!isLegalDropTarget}
                 isDraggingSource={!!(drag?.active && drag.hasPiece && drag.row === row && drag.col === col)}
                 theme={theme}
+                lightColor={lightColor}
+                darkColor={darkColor}
                 onMouseDown={e => handleSquareMouseDown(row, col, e)}
                 onMouseEnter={() => handleSquareMouseEnter(row, col)}
               />

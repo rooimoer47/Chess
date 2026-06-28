@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ThemePicker, THEMES, type Theme } from './ThemePicker';
+import { ThemePicker, THEMES, type Theme, type BoardTheme } from './ThemePicker';
 
-export { THEMES, type Theme };
+export { THEMES, type Theme, type BoardTheme };
 
 export const CLOCK_OPTIONS = [
   { label: 'No Clock', ms: 0 },
@@ -28,17 +28,18 @@ interface Props {
   username: string;
   botType: string;
   theme: Theme;
+  boardTheme: BoardTheme;
   colorPreference: string;
   clockMs: number;
   onChangeBotType: (type: string) => void;
   onChangeTheme: (theme: Theme) => void;
+  onChangeBoardTheme: (theme: BoardTheme) => void;
   onChangeColorPreference: (pref: string) => void;
   onChangeClockMs: (ms: number) => void;
   onLogout: () => void;
 }
 
-
-export function LobbyScreen({ username, botType, theme, colorPreference, clockMs, onChangeBotType, onChangeTheme, onChangeColorPreference, onChangeClockMs, onLogout }: Props) {
+export function LobbyScreen({ username, botType, theme, boardTheme, colorPreference, clockMs, onChangeBotType, onChangeTheme, onChangeBoardTheme, onChangeColorPreference, onChangeClockMs, onLogout }: Props) {
   const [themePickerOpen, setThemePickerOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -106,10 +107,9 @@ export function LobbyScreen({ username, botType, theme, colorPreference, clockMs
       </div>
 
       <div className="lobby-section">
-        <span className="lobby-label">Piece Theme</span>
+        <span className="lobby-label">Appearance</span>
         <button className="theme-current-btn" onClick={() => setThemePickerOpen(true)}>
-          <span>{theme.charAt(0).toUpperCase() + theme.slice(1)}</span>
-          <span className="theme-current-chevron">▾</span>
+          Theme
         </button>
       </div>
 
@@ -136,7 +136,9 @@ export function LobbyScreen({ username, botType, theme, colorPreference, clockMs
       {themePickerOpen && (
         <ThemePicker
           theme={theme}
+          boardTheme={boardTheme}
           onChangeTheme={onChangeTheme}
+          onChangeBoardTheme={onChangeBoardTheme}
           onClose={() => setThemePickerOpen(false)}
         />
       )}

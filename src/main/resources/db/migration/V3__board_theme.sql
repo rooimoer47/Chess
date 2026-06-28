@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN board_theme VARCHAR(20) NOT NULL DEFAULT 'classic';

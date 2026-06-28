@@ -15,6 +15,7 @@ public class AppUser {
     private String passwordHash;
     private String theme = "classic";
     private String colorPreference = "RANDOM";
+    private String boardTheme = "classic";
     private OffsetDateTime createdAt;
     private OffsetDateTime lastActiveAt;
 
@@ -32,6 +33,7 @@ public class AppUser {
     public String getPasswordHash() { return passwordHash; }
     public String getTheme() { return theme; }
     public String getColorPreference() { return colorPreference; }
+    public String getBoardTheme() { return boardTheme; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getLastActiveAt() { return lastActiveAt; }
 }

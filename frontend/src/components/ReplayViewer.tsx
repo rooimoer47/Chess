@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Board } from './Board';
+import type { BoardTheme } from './ThemePicker';
 import type { BoardSnapshot, Color } from '../types';
 
 const PLAY_INTERVAL_MS = 800;
@@ -66,6 +67,7 @@ export function ReplayViewer() {
           playerColor={viewAs}
           isMyTurn={false}
           theme={localStorage.getItem('chess_theme') ?? 'classic'}
+          boardTheme={(localStorage.getItem('chess_board_theme') ?? 'classic') as BoardTheme}
           onMove={() => {}}
         />
       )}

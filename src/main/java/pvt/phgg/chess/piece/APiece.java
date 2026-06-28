@@ -3,7 +3,6 @@ package pvt.phgg.chess.piece;
 import pvt.phgg.chess.BoardState;
 import pvt.phgg.chess.Position;
 
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,8 +11,6 @@ public abstract class APiece {
     private Position pos;
     private final boolean white;
     private boolean originalPosition = true;
-    protected static final String ROOT = "src/main/resources";
-
     protected APiece(Position pos) {
         this.pos = pos;
         this.white = false;
@@ -23,8 +20,6 @@ public abstract class APiece {
         this.pos = position;
         this.white = white;
     }
-
-    public abstract BufferedImage getImage(boolean selected);
 
     public abstract APiece copy();
 

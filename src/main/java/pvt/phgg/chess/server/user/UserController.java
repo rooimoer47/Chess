@@ -13,6 +13,7 @@ import java.util.Set;
 public class UserController {
 
     private static final Set<String> VALID_COLOR_PREFERENCES = Set.of("WHITE", "BLACK", "RANDOM");
+    private static final Set<String> VALID_BOARD_THEMES = Set.of("classic", "forest", "ocean", "walnut");
 
     private final UserService userService;
     private final JwtUtil jwtUtil;
@@ -43,7 +44,10 @@ public class UserController {
         if (!VALID_COLOR_PREFERENCES.contains(dto.colorPreference())) {
             return ResponseEntity.badRequest().build();
         }
-        userService.updatePreferences(username, dto.theme(), dto.colorPreference());
+        if (!VALID_BOARD_THEMES.contains(dto.boardTheme())) {
+            return ResponseEntity.badRequest().build();
+        }
+        userService.updatePreferences(username, dto.theme(), dto.colorPreference(), dto.boardTheme());
         return ResponseEntity.noContent().build();
     }
 

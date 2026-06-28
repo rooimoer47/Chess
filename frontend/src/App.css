@@ -411,10 +411,6 @@ body {
   background: #333;
 }
 
-.theme-current-chevron {
-  color: #888;
-  font-size: 0.8rem;
-}
 
 .theme-picker-overlay {
   position: fixed;
@@ -434,6 +430,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
 }
 
 .theme-picker-header {
@@ -465,6 +463,11 @@ body {
   align-items: flex-start;
 }
 
+.theme-picker-body .board {
+  width: min(240px, calc(100vw - 200px));
+  flex-shrink: 0;
+}
+
 .theme-picker-options {
   display: flex;
   flex-direction: column;
@@ -473,26 +476,15 @@ body {
   min-width: 110px;
 }
 
-.theme-picker-option {
-  padding: 10px 14px;
-  border-radius: 6px;
-  border: 2px solid #444;
-  background: #2a2a2a;
-  color: #bbb;
-  font-size: 0.95rem;
-  cursor: pointer;
-  text-align: left;
-}
+@media (max-width: 480px) {
+  .theme-picker-body {
+    flex-direction: column;
+    align-items: stretch;
+  }
 
-.theme-picker-option:hover {
-  border-color: #666;
-  color: #eee;
-}
-
-.theme-picker-option-active {
-  border-color: #7fc97f;
-  color: #eee;
-  background: #1e2e1e;
+  .theme-picker-body .board {
+    width: 100%;
+  }
 }
 
 .start-btn {
@@ -556,20 +548,6 @@ body {
 
 /* ---- Nav buttons in game info-bar ---- */
 
-.theme-game-btn {
-  padding: 3px 10px;
-  border-radius: 4px;
-  border: 1px solid #666;
-  background: transparent;
-  color: #ccc;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.theme-game-btn:hover {
-  border-color: #7fc97f;
-  color: #fff;
-}
 
 .logout-btn {
   padding: 6px 12px;
@@ -874,4 +852,79 @@ body {
 .lobby-games-btn:hover {
   background: #3a3a3a;
   color: #eee;
+}
+
+/* ---- Theme picker section label ---- */
+
+.theme-picker-section-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #666;
+  padding: 0 2px;
+}
+
+/* ---- Board color theme swatches ---- */
+
+.board-theme-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.board-swatch-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 2px solid #444;
+  background: #2a2a2a;
+  cursor: pointer;
+}
+
+.board-swatch-btn:hover {
+  border-color: #666;
+}
+
+.board-swatch-btn-active {
+  border-color: #7fc97f;
+  background: #1e2e1e;
+}
+
+.board-swatch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 36px;
+  height: 36px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.board-swatch div {
+  width: 100%;
+  height: 100%;
+}
+
+.board-swatch-label {
+  font-size: 0.68rem;
+  color: #999;
+  white-space: nowrap;
+}
+
+.board-swatch-btn-active .board-swatch-label {
+  color: #ccc;
+}
+
+.piece-theme-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.piece-theme-knight {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
 }
