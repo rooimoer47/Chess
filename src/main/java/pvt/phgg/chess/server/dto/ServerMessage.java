@@ -102,6 +102,18 @@ public record ServerMessage(
         return new Builder("OPPONENT_DISCONNECTED").build();
     }
 
+    public static ServerMessage rematchRequested() {
+        return new Builder("REMATCH_REQUESTED").build();
+    }
+
+    public static ServerMessage rematchStart(String color) {
+        return new Builder("REMATCH_START").color(color).build();
+    }
+
+    public static ServerMessage rematchDeclined() {
+        return new Builder("REMATCH_DECLINED").build();
+    }
+
     public static ServerMessage error(String message) {
         return new Builder("ERROR").message(message).build();
     }

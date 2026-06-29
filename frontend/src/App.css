@@ -928,3 +928,21 @@ body {
   height: 36px;
   object-fit: contain;
 }
+
+/* ---- Post-game rematch UI ---- */
+
+.play-again {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.rematch-status {
+  font-size: 0.95rem;
+  color: #aaa;
+}
+
+.rematch-declined {
+  color: #e06060;
+}

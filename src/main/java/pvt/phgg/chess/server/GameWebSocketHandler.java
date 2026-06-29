@@ -87,12 +87,14 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
 
         switch (msg.type()) {
-            case "MOVE"         -> handleMove(ws, session, role, msg);
-            case "PROMOTE"      -> handlePromotion(ws, session, role, msg);
-            case "RESIGN"       -> handleResign(ws, session, role);
-            case "OFFER_DRAW"   -> handleOfferDraw(ws, session, role);
-            case "RESPOND_DRAW" -> handleRespondDraw(session, role, msg);
-            default             -> sendTo(ws, ServerMessage.error("Unknown message type: " + msg.type()));
+            case "MOVE"           -> handleMove(ws, session, role, msg);
+            case "PROMOTE"        -> handlePromotion(ws, session, role, msg);
+            case "RESIGN"         -> handleResign(ws, session, role);
+            case "OFFER_DRAW"     -> handleOfferDraw(ws, session, role);
+            case "RESPOND_DRAW"   -> handleRespondDraw(session, role, msg);
+            case "REMATCH_REQUEST"-> handleRematchRequest(ws, session, role);
+            case "REMATCH_DECLINE"-> handleRematchDecline(ws);
+            default               -> sendTo(ws, ServerMessage.error("Unknown message type: " + msg.type()));
         }
     }
 
@@ -211,6 +213,33 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             }
         }
         return null;
+    }
+
+    private void handleRematchRequest(WebSocketSession ws, GameSession session, PlayerRole role) throws IOException {
+        if (!session.isGameOver()) {
+            session.sendError(ws, "Game is not over.");
+            return;
+        }
+        GameSession.RematchOutcome outcome = sessionManager.requestRematch(ws);
+        if (outcome == null) return;
+
+        switch (outcome) {
+            case WAITING -> session.sendRematchRequestedToOpponent(role == PlayerRole.WHITE);
+            case OPPONENT_GONE -> sendTo(ws, ServerMessage.rematchDeclined());
+            case STARTED -> {
+                GameSession newSession = sessionManager.getSession();
+                newSession.sendRematchStart();
+                newSession.onGameStart();
+                if (newSession.isBotTurn() && newSession.makeBotMove()) {
+                    // bot made its opening move
+                }
+                newSession.broadcastBoardState();
+            }
+        }
+    }
+
+    private void handleRematchDecline(WebSocketSession ws) throws IOException {
+        sessionManager.declineRematch(ws);
     }
 
     private void sendTo(WebSocketSession ws, ServerMessage message) throws IOException {

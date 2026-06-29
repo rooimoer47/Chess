@@ -1,14 +1,19 @@
 import type { Color } from '../types';
+import { BOARD_COLORS, type BoardTheme } from './ThemePicker';
 
 interface Props {
   color: Color;
   theme: string;
+  boardTheme: BoardTheme;
   onChoice: (choice: string) => void;
 }
 
 const CHOICES = ['QUEEN', 'ROOK', 'BISHOP', 'KNIGHT'] as const;
 
-export function PromotionDialog({ color, theme, onChoice }: Props) {
+export function PromotionDialog({ color, theme, boardTheme, onChoice }: Props) {
+  const { light, dark } = BOARD_COLORS[boardTheme];
+  const squareColor = color === 'WHITE' ? dark : light;
+
   return (
     <div className="promotion-overlay">
       <div className="promotion-dialog">
@@ -18,6 +23,7 @@ export function PromotionDialog({ color, theme, onChoice }: Props) {
             <img
               key={choice}
               className="promotion-piece"
+              style={{ background: squareColor }}
               src={`/images/${theme}/${choice.toLowerCase()}_${color.toLowerCase()}.png`}
               alt={choice}
               title={choice}

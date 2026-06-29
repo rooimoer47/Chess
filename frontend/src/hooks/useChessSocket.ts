@@ -18,6 +18,7 @@ export interface GameState {
   statusMessage: string | null;
   drawOfferedByOpponent: boolean;
   drawOfferPending: boolean;
+  rematchState: null | 'waiting' | 'declined';
 }
 
 export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthFailed?: () => void) {
@@ -36,6 +37,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
     statusMessage: null,
     drawOfferedByOpponent: false,
     drawOfferPending: false,
+    rematchState: null,
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -120,6 +122,34 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
           setState(s => ({ ...s, statusMessage: 'Opponent disconnected.', legalMoves: [] }));
           break;
 
+        case 'REMATCH_REQUESTED':
+          setState(s => ({ ...s, rematchState: 'waiting' }));
+          break;
+
+        case 'REMATCH_DECLINED':
+          setState(s => ({ ...s, rematchState: 'declined' }));
+          break;
+
+        case 'REMATCH_START':
+          setState({
+            connected: true,
+            gameStarted: true,
+            playerColor: msg.color as Color,
+            board: EMPTY_BOARD,
+            currentTurn: 'WHITE',
+            status: 'IN_PROGRESS',
+            legalMoves: [],
+            lastMove: null,
+            capturedByWhite: [],
+            capturedByBlack: [],
+            promotionPending: null,
+            statusMessage: null,
+            drawOfferedByOpponent: false,
+            drawOfferPending: false,
+            rematchState: null,
+          });
+          break;
+
         case 'ERROR':
           console.error('Server error:', msg.message);
           break;
@@ -151,5 +181,13 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
     setState(s => ({ ...s, drawOfferedByOpponent: false }));
   }, []);
 
-  return { ...state, sendMove, sendPromotion, sendResign, sendDrawOffer, sendDrawResponse };
+  const sendRematchRequest = useCallback(() => {
+    wsRef.current?.send(JSON.stringify({ type: 'REMATCH_REQUEST' }));
+  }, []);
+
+  const sendRematchDecline = useCallback(() => {
+    wsRef.current?.send(JSON.stringify({ type: 'REMATCH_DECLINE' }));
+  }, []);
+
+  return { ...state, sendMove, sendPromotion, sendResign, sendDrawOffer, sendDrawResponse, sendRematchRequest, sendRematchDecline };
 }

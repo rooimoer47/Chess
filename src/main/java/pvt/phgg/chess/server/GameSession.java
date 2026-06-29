@@ -52,9 +52,12 @@ public class GameSession {
     private boolean botEnabled = false;
     private boolean botIsWhite;
     private BotStrategy botStrategy;
+    private String botType = "none";
     private boolean resigned = false;
     private boolean resignedWhite;
     private boolean drawAgreed = false;
+    private boolean rematchRequestedByWhite = false;
+    private boolean rematchRequestedByBlack = false;
 
     // Game recording state
     private Long gameId;
@@ -111,13 +114,14 @@ public class GameSession {
         return null;
     }
 
-    public synchronized boolean joinBot(String botType) {
-        BotStrategy strategy = selectStrategy(botType);
+    public synchronized boolean joinBot(String type) {
+        BotStrategy strategy = selectStrategy(type);
         if (whiteSession == null && whiteUsername == null) {
             whiteUsername = "BOT";
             botEnabled = true;
             botIsWhite = true;
             botStrategy = strategy;
+            botType = type;
             return true;
         }
         if (blackSession == null && blackUsername == null) {
@@ -125,6 +129,7 @@ public class GameSession {
             botEnabled = true;
             botIsWhite = false;
             botStrategy = strategy;
+            botType = type;
             return true;
         }
         return false;
@@ -198,10 +203,18 @@ public class GameSession {
         PlayerRole role = roleOf(ws);
         if (role == PlayerRole.WHITE) {
             whiteSession = null;
-            sendTo(blackSession, ServerMessage.opponentDisconnected());
+            if (isGameOver()) {
+                if (rematchRequestedByBlack) sendTo(blackSession, ServerMessage.rematchDeclined());
+            } else {
+                sendTo(blackSession, ServerMessage.opponentDisconnected());
+            }
         } else if (role == PlayerRole.BLACK) {
             blackSession = null;
-            sendTo(whiteSession, ServerMessage.opponentDisconnected());
+            if (isGameOver()) {
+                if (rematchRequestedByWhite) sendTo(whiteSession, ServerMessage.rematchDeclined());
+            } else {
+                sendTo(whiteSession, ServerMessage.opponentDisconnected());
+            }
         }
     }
 
@@ -228,6 +241,64 @@ public class GameSession {
     }
 
     public enum DrawOfferOutcome { ACCEPTED, DECLINED, SENT_TO_OPPONENT }
+
+    public enum RematchOutcome { WAITING, STARTED, OPPONENT_GONE }
+
+    public synchronized RematchOutcome requestRematch(boolean isWhite) {
+        if (isWhite) rematchRequestedByWhite = true;
+        else rematchRequestedByBlack = true;
+        if (botEnabled) return RematchOutcome.STARTED;
+        if (rematchRequestedByWhite && rematchRequestedByBlack) return RematchOutcome.STARTED;
+        WebSocketSession opponentSession = isWhite ? blackSession : whiteSession;
+        if (opponentSession == null || !opponentSession.isOpen()) return RematchOutcome.OPPONENT_GONE;
+        return RematchOutcome.WAITING;
+    }
+
+    public synchronized GameSession createRematch(ObjectMapper mapper, GameRecorder recorder) {
+        GameSession next = new GameSession(mapper, recorder);
+        if (botEnabled) {
+            if (botIsWhite) {
+                next.whiteSession = blackSession;
+                next.whiteUsername = blackUsername;
+                next.whitePlayerId = blackPlayerId;
+                next.blackUsername = "BOT";
+            } else {
+                next.blackSession = whiteSession;
+                next.blackUsername = whiteUsername;
+                next.blackPlayerId = whitePlayerId;
+                next.whiteUsername = "BOT";
+            }
+            next.botEnabled = true;
+            next.botIsWhite = !botIsWhite;
+            next.botType = botType;
+            next.botStrategy = selectStrategy(botType);
+        } else {
+            next.whiteSession = blackSession;
+            next.whiteUsername = blackUsername;
+            next.whitePlayerId = blackPlayerId;
+            next.blackSession = whiteSession;
+            next.blackUsername = whiteUsername;
+            next.blackPlayerId = whitePlayerId;
+        }
+        return next;
+    }
+
+    public synchronized void sendRematchRequestedToOpponent(boolean requestorIsWhite) throws IOException {
+        sendTo(requestorIsWhite ? blackSession : whiteSession, ServerMessage.rematchRequested());
+    }
+
+    public synchronized void sendRematchStart() throws IOException {
+        sendTo(whiteSession, ServerMessage.rematchStart("WHITE"));
+        sendTo(blackSession, ServerMessage.rematchStart("BLACK"));
+    }
+
+    public synchronized void sendRematchDeclinedTo(boolean toWhite) throws IOException {
+        sendTo(toWhite ? whiteSession : blackSession, ServerMessage.rematchDeclined());
+    }
+
+    public synchronized boolean hasRematchRequest(boolean isWhite) {
+        return isWhite ? rematchRequestedByWhite : rematchRequestedByBlack;
+    }
 
     @SuppressWarnings("java:S2245") // ThreadLocalRandom is fine for non-security game logic
     public synchronized DrawOfferOutcome offerDraw(boolean isWhite) throws IOException {
