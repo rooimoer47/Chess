@@ -65,4 +65,25 @@ public class GameSessionManager {
             activeSession = new GameSession(objectMapper, gameRecorder);
         }
     }
+
+    public synchronized GameSession.RematchOutcome requestRematch(WebSocketSession ws) {
+        PlayerRole role = activeSession.roleOf(ws);
+        if (role == null) return null;
+        boolean isWhite = role == PlayerRole.WHITE;
+        GameSession.RematchOutcome outcome = activeSession.requestRematch(isWhite);
+        if (outcome == GameSession.RematchOutcome.STARTED) {
+            GameSession newSession = activeSession.createRematch(objectMapper, gameRecorder);
+            activeSession = newSession;
+        }
+        return outcome;
+    }
+
+    public synchronized void declineRematch(WebSocketSession ws) throws IOException {
+        PlayerRole role = activeSession.roleOf(ws);
+        if (role == null) return;
+        boolean opponentIsWhite = role != PlayerRole.WHITE;
+        if (activeSession.hasRematchRequest(opponentIsWhite)) {
+            activeSession.sendRematchDeclinedTo(opponentIsWhite);
+        }
+    }
 }

@@ -45,4 +45,7 @@ export type ServerMessage =
   | { type: 'DRAW_OFFERED' }
   | { type: 'DRAW_DECLINED' }
   | { type: 'OPPONENT_DISCONNECTED' }
+  | { type: 'REMATCH_REQUESTED' }
+  | { type: 'REMATCH_DECLINED' }
+  | { type: 'REMATCH_START'; color: Color }
   | { type: 'ERROR'; message: string };

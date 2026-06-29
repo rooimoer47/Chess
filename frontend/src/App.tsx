@@ -151,6 +151,9 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
     sendDrawResponse,
     drawOfferedByOpponent,
     drawOfferPending,
+    rematchState,
+    sendRematchRequest,
+    sendRematchDecline,
   } = useChessSocket(botType, colorPreference, onAuthFailed);
 
   if (!connected) {
@@ -225,9 +228,28 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
 
       {isGameOver && (
         <div className="play-again">
-          <button type="button" className="start-btn" onClick={() => navigate('/lobby')}>
-            Back to Lobby
-          </button>
+          {rematchState === 'waiting' ? (
+            <>
+              <p className="rematch-status">Waiting for opponent…</p>
+              <button type="button" className="lobby-games-btn" onClick={() => { sendRematchDecline(); navigate('/lobby'); }}>
+                Cancel
+              </button>
+            </>
+          ) : rematchState === 'declined' ? (
+            <>
+              <p className="rematch-status rematch-declined">Opponent did not want a rematch.</p>
+              <button type="button" className="start-btn" onClick={() => navigate('/lobby')}>
+                Back to Lobby
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="start-btn" onClick={sendRematchRequest}>Rematch</button>
+              <button type="button" className="lobby-games-btn" onClick={() => navigate('/lobby')}>
+                Back to Lobby
+              </button>
+            </>
+          )}
         </div>
       )}
 
