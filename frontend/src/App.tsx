@@ -254,7 +254,7 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
       )}
 
       {promotionPending && playerColor && (
-        <PromotionDialog color={playerColor} theme={theme} onChoice={sendPromotion} />
+        <PromotionDialog color={playerColor} theme={theme} boardTheme={boardTheme} onChoice={sendPromotion} />
       )}
 
     </div>
