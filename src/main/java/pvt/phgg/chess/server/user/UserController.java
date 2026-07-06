@@ -23,7 +23,7 @@ public class UserController {
         this.jwtUtil = jwtUtil;
     }
 
-    @GetMapping("/{username}/preferences")
+    @GetMapping("/{username:.+}/preferences")
     public ResponseEntity<Object> getPreferences(@PathVariable String username, HttpServletRequest request) {
         if (!isAuthorised(username, request)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -31,7 +31,7 @@ public class UserController {
         return ResponseEntity.ok(userService.getPreferences(username));
     }
 
-    @PutMapping("/{username}/preferences")
+    @PutMapping("/{username:.+}/preferences")
     public ResponseEntity<Void> updatePreferences(@PathVariable String username,
                                                   @RequestBody UserPreferencesDto dto,
                                                   HttpServletRequest request) {

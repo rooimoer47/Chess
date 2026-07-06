@@ -79,7 +79,7 @@ final class OpeningBook {
     @SuppressWarnings("java:S2245")
     static int[] lookup(String moveHistory) {
         List<int[]> candidates = BOOK.get(moveHistory);
-        if (candidates == null || candidates.isEmpty()) return null;
+        if (candidates == null || candidates.isEmpty()) return new int[0];
         return candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
     }
 

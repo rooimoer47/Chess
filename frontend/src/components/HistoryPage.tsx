@@ -26,7 +26,7 @@ export function HistoryPage({ username }: { username: string }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`/api/users/${username}/games`)
+    fetch(`/api/users/${encodeURIComponent(username)}/games`)
       .then(r => r.ok ? r.json() as Promise<GameSummary[]> : Promise.reject('Failed to load games'))
       .then(data => { setGames(data); setLoading(false); })
       .catch(e => { setError(String(e)); setLoading(false); });

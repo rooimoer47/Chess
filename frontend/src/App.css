@@ -29,7 +29,9 @@ body {
 
 .info-bar {
   display: flex;
-  gap: 32px;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  width: min(576px, 100vw - 16px);
   font-size: 1rem;
 }
 
