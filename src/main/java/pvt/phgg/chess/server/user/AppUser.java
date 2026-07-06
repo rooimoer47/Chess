@@ -16,6 +16,8 @@ public class AppUser {
     private String theme = "classic";
     private String colorPreference = "RANDOM";
     private String boardTheme = "classic";
+    private int elo = 1000;
+    private int gamesRated = 0;
     private OffsetDateTime createdAt;
     private OffsetDateTime lastActiveAt;
 
@@ -28,12 +30,19 @@ public class AppUser {
         this.lastActiveAt = OffsetDateTime.now(ZoneOffset.UTC);
     }
 
+    public AppUser(String username, String passwordHash, int startingElo) {
+        this(username, passwordHash);
+        this.elo = startingElo;
+    }
+
     public Long getId() { return id; }
     public String getUsername() { return username; }
     public String getPasswordHash() { return passwordHash; }
     public String getTheme() { return theme; }
     public String getColorPreference() { return colorPreference; }
     public String getBoardTheme() { return boardTheme; }
+    public int getElo() { return elo; }
+    public int getGamesRated() { return gamesRated; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getLastActiveAt() { return lastActiveAt; }
 }
