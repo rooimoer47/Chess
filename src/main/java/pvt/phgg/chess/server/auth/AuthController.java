@@ -47,11 +47,12 @@ public class AuthController {
         String username = request.username() == null ? "" : request.username().trim();
         String password = request.password() == null ? "" : request.password();
 
-        if (username.length() < 3 || username.length() > 20 || !username.matches("\\w+")) {
-            return ResponseEntity.badRequest().body("Username must be 3-20 characters: letters, digits, or underscores");
+        if (username.isEmpty() || username.length() > 100
+                || username.chars().anyMatch(c -> Character.isWhitespace(c) || "/\\?#".indexOf(c) >= 0)) {
+            return ResponseEntity.badRequest().body("Username must be 1-100 characters, no spaces or / \\ ? #");
         }
-        if (password.length() < 8 || password.length() > 64) {
-            return ResponseEntity.badRequest().body("Password must be 8-64 characters");
+        if (password.isEmpty() || password.length() > 64) {
+            return ResponseEntity.badRequest().body("Password must not be empty (max 64 characters)");
         }
 
         try {

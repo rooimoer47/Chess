@@ -30,7 +30,7 @@ export default function App() {
 
   useEffect(() => {
     if (!username) return;
-    fetch(`/api/users/${username}/preferences`)
+    fetch(`/api/users/${encodeURIComponent(username)}/preferences`)
       .then(r => r.ok ? r.json() as Promise<{ theme: string; colorPreference: string; boardTheme: string }> : null)
       .then(prefs => {
         if (prefs) {
@@ -51,7 +51,7 @@ export default function App() {
 
   const savePreferences = (t: Theme, bp: BoardTheme, cp: string) => {
     if (username) {
-      fetch(`/api/users/${username}/preferences`, {
+      fetch(`/api/users/${encodeURIComponent(username)}/preferences`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ theme: t, colorPreference: cp, boardTheme: bp }),

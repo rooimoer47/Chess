@@ -56,7 +56,7 @@ public class HistoryController {
         this.jwtUtil = jwtUtil;
     }
 
-    @GetMapping("/users/{username}/games")
+    @GetMapping("/users/{username:.+}/games")
     public ResponseEntity<Object> getUserGames(@PathVariable String username, HttpServletRequest request) {
         String tokenUsername = extractUsername(request);
         if (tokenUsername == null || !tokenUsername.equals(username)) {
