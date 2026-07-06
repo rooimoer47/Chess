@@ -9,10 +9,12 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
 
 import java.io.IOException;
 
-// Serve React SPA: real static files (JS, CSS, assets) are served as-is;
-// any path with no matching file falls back to index.html for client-side routing.
-// /api/** RestControllers and /ws/** WebSocket upgrades are unaffected — they
-// have higher handler priority than resource handlers.
+/**
+ * Serve React SPA: real static files (JS, CSS, assets) are served as-is;
+ * any path with no matching file falls back to index.html for client-side routing.
+ * /api/** RestControllers and /ws/** WebSocket upgrades are unaffected — they
+ * have higher handler priority than resource handlers.
+ */
 @Configuration
 public class SpaController implements WebMvcConfigurer {
 

@@ -100,7 +100,7 @@ public class MinimaxBotStrategy implements BotStrategy {
     @Override
     public Position[] chooseMove(GameEngine engine, boolean isWhite) {
         int[] bookMove = OpeningBook.lookup(moveHistory);
-        if (bookMove != null) {
+        if (bookMove.length > 0) {
             moveHistory += "" + bookMove[0] + bookMove[1] + bookMove[2] + bookMove[3];
             return new Position[]{new Position(bookMove[0], bookMove[1]),
                                    new Position(bookMove[2], bookMove[3])};
@@ -109,6 +109,7 @@ public class MinimaxBotStrategy implements BotStrategy {
         List<int[]> rootMoves = collectMoves(engine, isWhite);
         if (rootMoves.isEmpty()) return new Position[0];
 
+        @SuppressWarnings("java:S6218")
         record ScoredMove(int score, int[] move) {}
         final int searchDepth = depth;
 
@@ -123,8 +124,10 @@ public class MinimaxBotStrategy implements BotStrategy {
                 int score = alphabeta(copy, searchDepth - 1, -INF, INF, !isWhite);
                 return new ScoredMove(score, move);
             })
-            .reduce((a, b) -> isWhite ? (a.score() >= b.score() ? a : b)
-                                       : (a.score() <= b.score() ? a : b))
+            .reduce((a, b) -> {
+                if (isWhite) return a.score() >= b.score() ? a : b;
+                return a.score() <= b.score() ? a : b;
+            })
             .orElse(new ScoredMove(0, rootMoves.get(0)));
 
         int[] m = best.move();
