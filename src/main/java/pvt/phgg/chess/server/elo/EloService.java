@@ -1,6 +1,9 @@
 package pvt.phgg.chess.server.elo;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -8,6 +11,8 @@ import java.util.Map;
 
 @Service
 public class EloService {
+
+    private static final Logger log = LoggerFactory.getLogger(EloService.class);
 
     private static final int K_NEW  = 40;   // fewer than 30 rated games
     private static final int K_MID  = 20;   // 30+ games, elo < 2100
@@ -38,8 +43,17 @@ public class EloService {
         return Math.max(updated, eloProperties.min());
     }
 
+    @Async("eloExecutor")
     @Transactional
-    public void recordResult(long gameId) {
+    public void scheduleEloUpdate(long gameId) {
+        try {
+            recordResult(gameId);
+        } catch (Exception e) {
+            log.error("ELO update failed for game {}", gameId, e);
+        }
+    }
+
+    void recordResult(long gameId) {
         Map<String, Object> game = jdbcTemplate.queryForMap(
                 "SELECT white_player_id, black_player_id, mode, winner_color FROM games WHERE id = ?", gameId);
 
