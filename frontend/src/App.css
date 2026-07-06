@@ -644,6 +644,41 @@ body {
 
 .replay-btn:hover { background: #3e3e3e; color: #eee; }
 
+/* ---- ELO profile page ---- */
+
+.elo-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.elo-rating {
+  font-size: 3rem;
+  font-weight: bold;
+  letter-spacing: -1px;
+}
+
+.elo-provisional {
+  font-size: 1.8rem;
+  color: #888;
+  margin-left: 2px;
+}
+
+.elo-games {
+  color: #888;
+  font-size: 0.95rem;
+}
+
+.elo-chart {
+  margin-bottom: 28px;
+}
+
+.elo-range {
+  color: #aaa;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- Replay viewer ---- */
 
 .replay-page {
