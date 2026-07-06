@@ -379,6 +379,11 @@ body {
   color: #aaa;
 }
 
+.lobby-elo {
+  color: #888;
+  font-size: 0.9rem;
+}
+
 .lobby-section {
   display: flex;
   flex-direction: column;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemePicker, THEMES, type Theme, type BoardTheme } from './ThemePicker';
 
@@ -41,12 +41,25 @@ interface Props {
 
 export function LobbyScreen({ username, botType, theme, boardTheme, colorPreference, clockMs, onChangeBotType, onChangeTheme, onChangeBoardTheme, onChangeColorPreference, onChangeClockMs, onLogout }: Props) {
   const [themePickerOpen, setThemePickerOpen] = useState(false);
+  const [eloDisplay, setEloDisplay] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch(`/api/users/${encodeURIComponent(username)}/elo`)
+      .then(r => r.ok ? r.json() as Promise<{ elo: number; provisional: boolean }> : null)
+      .then(data => {
+        if (data) setEloDisplay(`${data.elo}${data.provisional ? '?' : ''}`);
+      })
+      .catch(() => { /* silently ignore — ELO is cosmetic */ });
+  }, [username]);
 
   return (
     <div className="lobby">
       <h1 className="lobby-title">Chess</h1>
-      <p className="lobby-welcome">Welcome, <strong>{username}</strong></p>
+      <p className="lobby-welcome">
+        Welcome, <strong>{username}</strong>
+        {eloDisplay && <span className="lobby-elo"> · ELO {eloDisplay}</span>}
+      </p>
 
       <div className="lobby-section">
         <span className="lobby-label">Opponent</span>
