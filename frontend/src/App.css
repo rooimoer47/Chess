@@ -876,6 +876,11 @@ body {
 
 /* ---- Lobby utility buttons ---- */
 
+.lobby-secondary-btns {
+  display: flex;
+  gap: 10px;
+}
+
 .lobby-games-btn {
   padding: 8px 24px;
   border-radius: 6px;

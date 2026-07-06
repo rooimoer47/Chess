@@ -8,6 +8,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { LobbyScreen } from './components/LobbyScreen';
 import { type Theme, type BoardTheme } from './components/ThemePicker';
 import { HistoryPage } from './components/HistoryPage';
+import { EloHistoryPage } from './components/EloHistoryPage';
 import { ReplayViewer } from './components/ReplayViewer';
 import './App.css';
 
@@ -116,6 +117,7 @@ export default function App() {
       } />
       <Route path="/history" element={<HistoryPage username={username} />} />
       <Route path="/history/:gameId" element={<ReplayViewer />} />
+      <Route path="/profile" element={<EloHistoryPage username={username} />} />
       <Route path="*" element={<Navigate to="/lobby" replace />} />
     </Routes>
   );

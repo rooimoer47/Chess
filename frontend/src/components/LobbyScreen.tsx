@@ -130,7 +130,10 @@ export function LobbyScreen({ username, botType, theme, boardTheme, colorPrefere
       </div>
 
       <button className="start-btn" onClick={() => navigate('/game')}>Start Game</button>
-      <button className="lobby-games-btn" onClick={() => navigate('/history')}>My Games</button>
+      <div className="lobby-secondary-btns">
+        <button className="lobby-games-btn" onClick={() => navigate('/history')}>My Games</button>
+        <button className="lobby-games-btn" onClick={() => navigate('/profile')}>ELO Profile</button>
+      </div>
       <button className="logout-btn" type="button" onClick={onLogout}>Log out</button>
 
       {themePickerOpen && (
