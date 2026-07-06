@@ -9,6 +9,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
+import pvt.phgg.chess.server.elo.EloProperties;
 import pvt.phgg.chess.server.user.UserService;
 
 import java.util.Map;
@@ -22,11 +23,14 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final UserService userService;
+    private final EloProperties eloProperties;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtUtil jwtUtil, UserService userService) {
+    public AuthController(AuthenticationManager authenticationManager, JwtUtil jwtUtil,
+                          UserService userService, EloProperties eloProperties) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.userService = userService;
+        this.eloProperties = eloProperties;
     }
 
     @PostMapping("/login")
@@ -55,8 +59,14 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Password must not be empty (max 64 characters)");
         }
 
+        Integer startingElo = request.startingElo();
+        if (startingElo != null && (startingElo < eloProperties.selfReportMin() || startingElo > eloProperties.selfReportMax())) {
+            return ResponseEntity.badRequest().body(
+                    "Starting ELO must be between " + eloProperties.selfReportMin() + " and " + eloProperties.selfReportMax());
+        }
+
         try {
-            userService.register(username, password);
+            userService.register(username, password, startingElo);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
