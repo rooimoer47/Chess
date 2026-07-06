@@ -13,6 +13,8 @@ import pvt.phgg.chess.server.game.GameRecorder;
 import pvt.phgg.chess.server.user.AppUser;
 import pvt.phgg.chess.server.user.UserService;
 
+import org.springframework.scheduling.annotation.Scheduled;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -140,13 +142,78 @@ public class GameSessionManager {
         }
     }
 
-    // Called by the scheduled task in Step 10 to widen windows over time
-    synchronized List<WaitingPlayer> getHumanQueue() {
-        return humanQueue;
+    @Scheduled(fixedDelay = 5000)
+    public synchronized void matchPendingPlayers() {
+        humanQueue.removeIf(p -> !p.ws().isOpen());
+        if (humanQueue.size() < 2) return;
+
+        Instant now = Instant.now();
+        boolean[] claimed = new boolean[humanQueue.size()];
+        List<WaitingPlayer[]> toMatch = new ArrayList<>();
+
+        for (int i = 0; i < humanQueue.size(); i++) {
+            if (claimed[i]) continue;
+            WaitingPlayer a = humanQueue.get(i);
+            int windowA = getWindow(a.joinedAt(), now);
+            int bestDiff = Integer.MAX_VALUE;
+            int bestJ = -1;
+
+            for (int j = i + 1; j < humanQueue.size(); j++) {
+                if (claimed[j]) continue;
+                WaitingPlayer b = humanQueue.get(j);
+                int diff = Math.abs(a.elo() - b.elo());
+                int window = Math.max(windowA, getWindow(b.joinedAt(), now));
+                if (diff <= window && diff < bestDiff) {
+                    bestDiff = diff;
+                    bestJ = j;
+                }
+            }
+
+            if (bestJ >= 0) {
+                claimed[i] = true;
+                claimed[bestJ] = true;
+                toMatch.add(new WaitingPlayer[]{humanQueue.get(i), humanQueue.get(bestJ)});
+            }
+        }
+
+        for (WaitingPlayer[] pair : toMatch) {
+            humanQueue.remove(pair[0]);
+            humanQueue.remove(pair[1]);
+            startScheduledMatch(pair[0], pair[1]);
+        }
     }
 
-    synchronized void registerSession(WebSocketSession ws, GameSession session) {
-        activeSessions.put(ws, session);
+    private void startScheduledMatch(WaitingPlayer a, WaitingPlayer b) {
+        log.info("Matched {} (ELO {}) vs {} (ELO {})", a.username(), a.elo(), b.username(), b.elo());
+
+        // Older arrival (a) gets their color preference honored
+        PlayerRole roleA = "BLACK".equals(a.colorPreference()) ? PlayerRole.BLACK : PlayerRole.WHITE;
+        PlayerRole roleB = roleA == PlayerRole.WHITE ? PlayerRole.BLACK : PlayerRole.WHITE;
+
+        GameSession session = new GameSession(objectMapper, gameRecorder);
+        if (roleA == PlayerRole.WHITE) {
+            session.join(a.ws(), a.username(), a.userId(), "WHITE");
+            session.join(b.ws(), b.username(), b.userId(), "BLACK");
+        } else {
+            session.join(b.ws(), b.username(), b.userId(), "WHITE");
+            session.join(a.ws(), a.username(), a.userId(), "BLACK");
+        }
+        activeSessions.put(a.ws(), session);
+        activeSessions.put(b.ws(), session);
+
+        sendMessage(a.ws(), ServerMessage.waiting(roleA.name()));
+        sendMessage(b.ws(), ServerMessage.waiting(roleB.name()));
+
+        try {
+            session.onGameStart();
+            session.broadcastBoardState();
+        } catch (Exception e) {
+            log.error("Failed to start scheduled game for {} vs {}", a.username(), b.username(), e);
+            activeSessions.remove(a.ws());
+            activeSessions.remove(b.ws());
+            sendMessage(a.ws(), ServerMessage.error("Failed to start game. Please reconnect."));
+            sendMessage(b.ws(), ServerMessage.error("Failed to start game. Please reconnect."));
+        }
     }
 
     // Exposed package-private for testing
