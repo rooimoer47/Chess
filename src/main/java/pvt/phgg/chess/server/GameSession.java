@@ -86,13 +86,13 @@ public class GameSession {
             return null;
         }
         // Try preferred colour first (RANDOM and WHITE both try white first)
-        if (!"BLACK".equals(colorPreference) && whiteSession == null && whiteUsername == null) {
+        if (!BLACK.equals(colorPreference) && whiteSession == null && whiteUsername == null) {
             whiteSession = ws;
             whiteUsername = username;
             whitePlayerId = userId;
             return PlayerRole.WHITE;
         }
-        if (!"WHITE".equals(colorPreference) && blackSession == null && blackUsername == null) {
+        if (!WHITE.equals(colorPreference) && blackSession == null && blackUsername == null) {
             blackSession = ws;
             blackUsername = username;
             blackPlayerId = userId;
@@ -288,8 +288,8 @@ public class GameSession {
     }
 
     public synchronized void sendRematchStart() throws IOException {
-        sendTo(whiteSession, ServerMessage.rematchStart("WHITE"));
-        sendTo(blackSession, ServerMessage.rematchStart("BLACK"));
+        sendTo(whiteSession, ServerMessage.rematchStart(WHITE));
+        sendTo(blackSession, ServerMessage.rematchStart(BLACK));
     }
 
     public synchronized void sendRematchDeclinedTo(boolean toWhite) throws IOException {
