@@ -154,6 +154,7 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
     rematchState,
     sendRematchRequest,
     sendRematchDecline,
+    waitSeconds,
   } = useChessSocket(botType, colorPreference, onAuthFailed);
 
   if (!connected) {
@@ -161,10 +162,13 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
   }
 
   if (!gameStarted) {
+    const waitLabel = waitSeconds !== null
+      ? `Searching for opponent… ${Math.floor(waitSeconds / 60)}:${String(waitSeconds % 60).padStart(2, '0')}`
+      : 'Waiting for opponent to connect…';
     return (
       <div className="screen">
         <p>You are: <strong>{playerColor ?? '…'}</strong></p>
-        <p>Waiting for opponent to connect…</p>
+        <p>{waitLabel}</p>
       </div>
     );
   }

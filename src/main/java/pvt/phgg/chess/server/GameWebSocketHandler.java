@@ -50,9 +50,6 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        LOGGER.info("Player {} as {}: {}", isRejoin ? "reconnected" : "connected", role, ws.getId());
-        sendTo(ws, ServerMessage.waiting(role.name()));
-
         if (!isRejoin) {
             String botType = (String) ws.getAttributes().get("botType");
             if (!"none".equals(botType)) {
@@ -61,6 +58,14 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
 
         GameSession session = sessionManager.getSession(ws);
+        LOGGER.info("Player {} as {}: {}", isRejoin ? "reconnected" : "connected", role, ws.getId());
+
+        if (session != null) {
+            sendTo(ws, ServerMessage.waiting(role.name()));
+        } else {
+            sendTo(ws, ServerMessage.waitingInQueue(role.name(), 0));
+        }
+
         if (session != null && session.isFull()) {
             LOGGER.info(isRejoin ? "Player rejoined — game resuming" : "Both players connected — game starting");
             if (!isRejoin) {

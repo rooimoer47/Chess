@@ -19,6 +19,7 @@ export interface GameState {
   drawOfferedByOpponent: boolean;
   drawOfferPending: boolean;
   rematchState: null | 'waiting' | 'declined';
+  waitSeconds: number | null;
 }
 
 export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthFailed?: () => void) {
@@ -38,6 +39,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
     drawOfferedByOpponent: false,
     drawOfferPending: false,
     rematchState: null,
+    waitSeconds: null,
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -70,7 +72,11 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
 
       switch (msg.type) {
         case 'WAITING':
-          setState(s => ({ ...s, playerColor: msg.color }));
+          setState(s => ({ ...s, playerColor: msg.color, waitSeconds: null }));
+          break;
+
+        case 'WAITING_QUEUE':
+          setState(s => ({ ...s, playerColor: msg.color, waitSeconds: msg.waitSeconds }));
           break;
 
         case 'BOARD_UPDATE': {
@@ -87,6 +93,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
           setState(s => ({
             ...s,
             gameStarted: true,
+            waitSeconds: null,
             board: msg.board,
             currentTurn: msg.currentTurn,
             status: msg.status,
@@ -147,6 +154,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
             drawOfferedByOpponent: false,
             drawOfferPending: false,
             rematchState: null,
+            waitSeconds: null,
           });
           break;
 

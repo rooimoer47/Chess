@@ -181,6 +181,14 @@ public class GameSessionManager {
             humanQueue.remove(pair[1]);
             startScheduledMatch(pair[0], pair[1]);
         }
+
+        // Update wait time for players still in queue
+        Instant afterMatch = Instant.now();
+        for (WaitingPlayer p : humanQueue) {
+            int waitSecs = (int) Duration.between(p.joinedAt(), afterMatch).getSeconds();
+            String color = "BLACK".equals(p.colorPreference()) ? "BLACK" : "WHITE";
+            sendMessage(p.ws(), ServerMessage.waitingInQueue(color, waitSecs));
+        }
     }
 
     private void startScheduledMatch(WaitingPlayer a, WaitingPlayer b) {
