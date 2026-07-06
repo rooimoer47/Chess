@@ -190,7 +190,7 @@ public class GameSession {
     }
 
     public synchronized boolean isEmpty() {
-        return whiteSession == null && blackSession == null;
+        return whiteUsername == null && blackUsername == null;
     }
 
     public synchronized PlayerRole roleOf(WebSocketSession ws) {
