@@ -10,11 +10,13 @@ export function LoginScreen({ onLogin }: Props) {
   const [tab, setTab] = useState<Tab>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [startingElo, setStartingElo] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const switchTab = (t: Tab) => {
     setTab(t);
+    setStartingElo('');
     setError('');
   };
 
@@ -27,7 +29,13 @@ export function LoginScreen({ onLogin }: Props) {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username,
+          password,
+          ...(tab === 'register' && startingElo.trim() !== '' && !isNaN(parseInt(startingElo, 10))
+            ? { startingElo: parseInt(startingElo, 10) }
+            : {}),
+        }),
       });
       if (res.ok) {
         const { username: u } = await res.json() as { username: string };
@@ -82,6 +90,17 @@ export function LoginScreen({ onLogin }: Props) {
           autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
           required
         />
+        {tab === 'register' && (
+          <input
+            className="login-input"
+            type="number"
+            value={startingElo}
+            onChange={e => setStartingElo(e.target.value)}
+            placeholder="Starting ELO (optional)"
+            min={400}
+            max={2800}
+          />
+        )}
         {error && <p className="login-error">{error}</p>}
         <button className="login-button" type="submit" disabled={loading}>
           {loading
