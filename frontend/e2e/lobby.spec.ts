@@ -76,13 +76,14 @@ test('wait time displayed while queued increases every second', async ({ page })
 });
 
 test.describe('waiting screen shows the chosen colour preference', () => {
-  const cases: { label: 'Always White' | 'Always Black' | 'Random'; expectedColor: 'WHITE' | 'BLACK' }[] = [
+  const cases: { label: 'Always White' | 'Always Black' | 'Random'; expectedColor: 'WHITE' | 'BLACK' | 'RANDOM' }[] = [
     { label: 'Always White', expectedColor: 'WHITE' },
     { label: 'Always Black', expectedColor: 'BLACK' },
-    // Nobody to pair with yet, so a lone Random queuer is shown White
-    // provisionally — the real coin toss only happens once matched with
-    // an opponent (see human-vs-human.spec.ts).
-    { label: 'Random', expectedColor: 'WHITE' },
+    // Nobody to pair with yet, so Random hasn't actually been resolved to a
+    // colour — the literal word is shown instead of a guessed one. The real
+    // coin toss only happens once matched with an opponent (see
+    // human-vs-human.spec.ts).
+    { label: 'Random', expectedColor: 'RANDOM' },
   ];
 
   for (const { label, expectedColor } of cases) {

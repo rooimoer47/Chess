@@ -83,7 +83,11 @@ public class GameSessionManager {
             return role;
         }
 
-        // Human game — look up player, try to match immediately
+        // Human game — prune stale/closed entries before searching (a
+        // disconnect can land in the queue before its close event is fully
+        // processed), then try to match immediately
+        humanQueue.removeIf(p -> !p.ws().isOpen());
+
         AppUser user = userService.findByUsername(username).orElse(null);
         int elo = user != null ? user.getElo() : eloProperties.defaultElo();
         Long userId = user != null ? user.getId() : null;

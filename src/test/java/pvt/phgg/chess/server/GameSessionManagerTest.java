@@ -179,6 +179,23 @@ class GameSessionManagerTest {
     }
 
     @Test
+    void join_humanGame_ignoresStaleClosedQueueEntry() {
+        // Simulates a player who disconnected before their close event was
+        // processed and their queue entry pruned — a real join must not get
+        // paired with this dead connection instead of a genuine opponent.
+        FakeWs ghost = new FakeWs("ghost", Map.of(), false); // isOpen() = false
+        FakeWs real = humanWs("real");
+        stubUser("ghost", 1L, 1000);
+        stubUser("alice", 2L, 1000);
+
+        manager.join(ghost, "ghost", "WHITE");
+        PlayerRole role = manager.join(real, "alice", "WHITE");
+
+        assertNull(manager.getSession(real), "Must not be matched against a stale/closed queue entry");
+        assertNotNull(role);
+    }
+
+    @Test
     void join_humanGame_eloTooFarApart_noImmediateMatch() {
         FakeWs ws1 = humanWs("a");
         FakeWs ws2 = humanWs("b");

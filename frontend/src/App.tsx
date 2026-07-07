@@ -167,9 +167,13 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
     const waitLabel = waitSeconds !== null
       ? `Searching for opponent… ${Math.floor(waitSeconds / 60)}:${String(waitSeconds % 60).padStart(2, '0')}`
       : 'Waiting for opponent to connect…';
+    // Nobody to pair with yet, so a Random preference hasn't actually been
+    // resolved to a colour — show the literal word rather than the
+    // provisional guess the server sends before a match exists.
+    const displayColor = colorPreference === 'RANDOM' ? 'RANDOM' : (playerColor ?? '…');
     return (
       <div className="screen">
-        <p>You are: <strong>{playerColor ?? '…'}</strong></p>
+        <p>You are: <strong>{displayColor}</strong></p>
         <p>{waitLabel}</p>
         <button type="button" className="lobby-games-btn" onClick={() => navigate('/lobby')}>
           Cancel
