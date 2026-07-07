@@ -143,7 +143,7 @@ public class GameSessionManager {
         }
     }
 
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = 1000)
     public synchronized void matchPendingPlayers() {
         humanQueue.removeIf(p -> !p.ws().isOpen());
         if (humanQueue.isEmpty()) return;
