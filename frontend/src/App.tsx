@@ -171,6 +171,9 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
       <div className="screen">
         <p>You are: <strong>{playerColor ?? '…'}</strong></p>
         <p>{waitLabel}</p>
+        <button type="button" className="lobby-games-btn" onClick={() => navigate('/lobby')}>
+          Cancel
+        </button>
       </div>
     );
   }

@@ -48,6 +48,17 @@ test('starting a human game with no opponent available shows a waiting state', a
   await expect(page.locator('.board')).toHaveCount(0);
 });
 
+test('cancelling while queued for a human opponent returns to the lobby', async ({ page }) => {
+  await page.getByRole('button', { name: 'Start Game' }).click();
+  await expect(page).toHaveURL(/\/game$/);
+  await expect(page.getByText('Searching for opponent…')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
+  await expect(page).toHaveURL(/\/lobby$/);
+  await expect(page.getByRole('button', { name: 'Start Game' })).toBeVisible();
+});
+
 test('wait time displayed while queued increases over time', async ({ page }) => {
   await page.getByRole('button', { name: 'Start Game' }).click();
   await expect(page).toHaveURL(/\/game$/);
