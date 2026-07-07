@@ -56,10 +56,16 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
     wsRef.current = ws;
 
     let didOpen = false;
+    let cleanedUp = false;
     ws.onopen = () => { didOpen = true; setState(s => ({ ...s, connected: true })); };
 
     ws.onclose = (event) => {
-      if (!didOpen) {
+      // A close before open usually means the server rejected the handshake
+      // (e.g. expired auth cookie). But effect cleanup below also closes the
+      // socket before it opens (React StrictMode double-invokes this effect
+      // in dev, and any real unmount does too) — that's an intentional close,
+      // not an auth failure, so it must not trigger a logout.
+      if (!didOpen && !cleanedUp) {
         console.warn('WS closed before open — code:', event.code, 'reason:', event.reason);
         onAuthFailedRef.current?.();
         return;
@@ -164,7 +170,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
       }
     };
 
-    return () => ws.close();
+    return () => { cleanedUp = true; ws.close(); };
   }, [botType, colorPreference]);
 
   const sendMove = useCallback((fromRow: number, fromCol: number, toRow: number, toCol: number) => {

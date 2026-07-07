@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Component
 public class GameSessionManager {
@@ -194,8 +195,7 @@ public class GameSessionManager {
     private void startScheduledMatch(WaitingPlayer a, WaitingPlayer b) {
         log.info("Matched {} (ELO {}) vs {} (ELO {})", a.username(), a.elo(), b.username(), b.elo());
 
-        // Older arrival (a) gets their color preference honored
-        PlayerRole roleA = "BLACK".equals(a.colorPreference()) ? PlayerRole.BLACK : PlayerRole.WHITE;
+        PlayerRole roleA = resolveFirstRole(a.colorPreference(), b.colorPreference());
         PlayerRole roleB = roleA == PlayerRole.WHITE ? PlayerRole.BLACK : PlayerRole.WHITE;
 
         GameSession session = new GameSession(objectMapper, gameRecorder);
@@ -252,8 +252,7 @@ public class GameSessionManager {
 
     private PlayerRole createMatchedSession(WebSocketSession ws, String username, Long userId,
                                             String colorPreference, WaitingPlayer waiting) {
-        // Waiting player's preference takes priority — they arrived first
-        PlayerRole waitingRole = "BLACK".equals(waiting.colorPreference()) ? PlayerRole.BLACK : PlayerRole.WHITE;
+        PlayerRole waitingRole = resolveFirstRole(waiting.colorPreference(), colorPreference);
         PlayerRole joiningRole = waitingRole == PlayerRole.WHITE ? PlayerRole.BLACK : PlayerRole.WHITE;
 
         GameSession session = new GameSession(objectMapper, gameRecorder);
@@ -270,6 +269,27 @@ public class GameSessionManager {
         // Notify the waiting player that a match was found and confirm their color
         sendMessage(waiting.ws(), ServerMessage.waiting(waitingRole.name()));
         return joiningRole;
+    }
+
+    /**
+     * Decides which of two paired players gets White. A fixed preference
+     * (WHITE/BLACK) is always honored over RANDOM — the RANDOM side simply
+     * takes whichever colour the other side didn't take. If both sides are
+     * RANDOM, it's a coin toss. If both are fixed and conflict (both want
+     * the same colour), {@code prefFirst} wins — same arrival-order tiebreak
+     * as before this method existed.
+     */
+    private PlayerRole resolveFirstRole(String prefFirst, String prefSecond) {
+        boolean firstRandom = !"WHITE".equals(prefFirst) && !"BLACK".equals(prefFirst);
+        boolean secondRandom = !"WHITE".equals(prefSecond) && !"BLACK".equals(prefSecond);
+
+        if (firstRandom && secondRandom) {
+            return ThreadLocalRandom.current().nextBoolean() ? PlayerRole.WHITE : PlayerRole.BLACK;
+        }
+        if (firstRandom) {
+            return "WHITE".equals(prefSecond) ? PlayerRole.BLACK : PlayerRole.WHITE;
+        }
+        return "BLACK".equals(prefFirst) ? PlayerRole.BLACK : PlayerRole.WHITE;
     }
 
     private void sendMessage(WebSocketSession ws, ServerMessage message) {
