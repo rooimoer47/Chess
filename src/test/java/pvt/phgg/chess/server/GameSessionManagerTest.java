@@ -259,6 +259,21 @@ class GameSessionManagerTest {
     }
 
     @Test
+    void matchPendingPlayers_sendsWaitTimeUpdateToLoneQueuedPlayer() {
+        FakeWs ws = humanWs("a");
+        stubUser("alice", 1L, 1000);
+
+        manager.join(ws, "alice", "WHITE");
+
+        // A single queued player has nobody to match against, but should
+        // still get their wait time refreshed on every tick — otherwise the
+        // UI's displayed wait time would stay frozen at 0:00 forever.
+        manager.matchPendingPlayers();
+
+        assertTrue(ws.lastPayload().contains("WAITING_QUEUE"));
+    }
+
+    @Test
     void matchPendingPlayers_sendsWaitingQueueUpdateToStillQueuedPlayers() {
         FakeWs ws1 = humanWs("a");
         FakeWs ws2 = humanWs("b");

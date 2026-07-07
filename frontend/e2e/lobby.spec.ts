@@ -48,6 +48,19 @@ test('starting a human game with no opponent available shows a waiting state', a
   await expect(page.locator('.board')).toHaveCount(0);
 });
 
+test('wait time displayed while queued increases over time', async ({ page }) => {
+  await page.getByRole('button', { name: 'Start Game' }).click();
+  await expect(page).toHaveURL(/\/game$/);
+
+  const waitLine = page.locator('p', { hasText: 'Searching for opponent' });
+  await expect(waitLine).toHaveText('Searching for opponent… 0:00');
+
+  // The server only pushes an updated wait time on its 5s queue
+  // re-evaluation tick, so give it enough margin to fire at least once
+  // and confirm the displayed time actually moved past the initial 0:00.
+  await expect(waitLine).not.toHaveText('Searching for opponent… 0:00', { timeout: 12_000 });
+});
+
 test.describe('waiting screen shows the chosen colour preference', () => {
   const cases: { label: 'Always White' | 'Always Black' | 'Random'; expectedColor: 'WHITE' | 'BLACK' }[] = [
     { label: 'Always White', expectedColor: 'WHITE' },

@@ -146,44 +146,48 @@ public class GameSessionManager {
     @Scheduled(fixedDelay = 5000)
     public synchronized void matchPendingPlayers() {
         humanQueue.removeIf(p -> !p.ws().isOpen());
-        if (humanQueue.size() < 2) return;
+        if (humanQueue.isEmpty()) return;
 
-        Instant now = Instant.now();
-        boolean[] claimed = new boolean[humanQueue.size()];
-        List<WaitingPlayer[]> toMatch = new ArrayList<>();
+        if (humanQueue.size() >= 2) {
+            Instant now = Instant.now();
+            boolean[] claimed = new boolean[humanQueue.size()];
+            List<WaitingPlayer[]> toMatch = new ArrayList<>();
 
-        for (int i = 0; i < humanQueue.size(); i++) {
-            if (claimed[i]) continue;
-            WaitingPlayer a = humanQueue.get(i);
-            int windowA = getWindow(a.joinedAt(), now);
-            int bestDiff = Integer.MAX_VALUE;
-            int bestJ = -1;
+            for (int i = 0; i < humanQueue.size(); i++) {
+                if (claimed[i]) continue;
+                WaitingPlayer a = humanQueue.get(i);
+                int windowA = getWindow(a.joinedAt(), now);
+                int bestDiff = Integer.MAX_VALUE;
+                int bestJ = -1;
 
-            for (int j = i + 1; j < humanQueue.size(); j++) {
-                if (claimed[j]) continue;
-                WaitingPlayer b = humanQueue.get(j);
-                int diff = Math.abs(a.elo() - b.elo());
-                int window = Math.max(windowA, getWindow(b.joinedAt(), now));
-                if (diff <= window && diff < bestDiff) {
-                    bestDiff = diff;
-                    bestJ = j;
+                for (int j = i + 1; j < humanQueue.size(); j++) {
+                    if (claimed[j]) continue;
+                    WaitingPlayer b = humanQueue.get(j);
+                    int diff = Math.abs(a.elo() - b.elo());
+                    int window = Math.max(windowA, getWindow(b.joinedAt(), now));
+                    if (diff <= window && diff < bestDiff) {
+                        bestDiff = diff;
+                        bestJ = j;
+                    }
+                }
+
+                if (bestJ >= 0) {
+                    claimed[i] = true;
+                    claimed[bestJ] = true;
+                    toMatch.add(new WaitingPlayer[]{humanQueue.get(i), humanQueue.get(bestJ)});
                 }
             }
 
-            if (bestJ >= 0) {
-                claimed[i] = true;
-                claimed[bestJ] = true;
-                toMatch.add(new WaitingPlayer[]{humanQueue.get(i), humanQueue.get(bestJ)});
+            for (WaitingPlayer[] pair : toMatch) {
+                humanQueue.remove(pair[0]);
+                humanQueue.remove(pair[1]);
+                startScheduledMatch(pair[0], pair[1]);
             }
         }
 
-        for (WaitingPlayer[] pair : toMatch) {
-            humanQueue.remove(pair[0]);
-            humanQueue.remove(pair[1]);
-            startScheduledMatch(pair[0], pair[1]);
-        }
-
-        // Update wait time for players still in queue
+        // Update wait time for players still in queue — including a lone
+        // player with nobody to match against yet, who otherwise would never
+        // see their displayed wait time move past 0:00.
         Instant afterMatch = Instant.now();
         for (WaitingPlayer p : humanQueue) {
             int waitSecs = (int) Duration.between(p.joinedAt(), afterMatch).getSeconds();
