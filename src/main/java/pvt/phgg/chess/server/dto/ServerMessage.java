@@ -21,7 +21,8 @@ public record ServerMessage(
         Integer promotionCol,
         String message,
         Long whiteTimeMs,
-        Long blackTimeMs
+        Long blackTimeMs,
+        Integer waitSeconds
 ) {
 
     @Override
@@ -29,7 +30,8 @@ public record ServerMessage(
         return this == o || (o instanceof ServerMessage(
                 var oType, var oColor, var oBoard, var oCurrentTurn, var oStatus,
                 var oLegalMoves, var oLastMove, var oCapturedByWhite, var oCapturedByBlack,
-                var oPromotionRow, var oPromotionCol, var oMessage, var oWhiteTimeMs, var oBlackTimeMs)
+                var oPromotionRow, var oPromotionCol, var oMessage, var oWhiteTimeMs, var oBlackTimeMs,
+                var oWaitSeconds)
                 && Objects.equals(type, oType)
                 && Objects.equals(color, oColor)
                 && Arrays.deepEquals(board, oBoard)
@@ -43,14 +45,15 @@ public record ServerMessage(
                 && Objects.equals(promotionCol, oPromotionCol)
                 && Objects.equals(message, oMessage)
                 && Objects.equals(whiteTimeMs, oWhiteTimeMs)
-                && Objects.equals(blackTimeMs, oBlackTimeMs));
+                && Objects.equals(blackTimeMs, oBlackTimeMs)
+                && Objects.equals(waitSeconds, oWaitSeconds));
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(type, color, Arrays.deepHashCode(board), currentTurn, status,
                 legalMoves, lastMove, capturedByWhite, capturedByBlack,
-                promotionRow, promotionCol, message, whiteTimeMs, blackTimeMs);
+                promotionRow, promotionCol, message, whiteTimeMs, blackTimeMs, waitSeconds);
     }
 
     @Override
@@ -68,11 +71,16 @@ public record ServerMessage(
                 + ", promotionCol=" + promotionCol
                 + ", message=" + message
                 + ", whiteTimeMs=" + whiteTimeMs
-                + ", blackTimeMs=" + blackTimeMs + "]";
+                + ", blackTimeMs=" + blackTimeMs
+                + ", waitSeconds=" + waitSeconds + "]";
     }
 
     public static ServerMessage waiting(String color) {
         return new Builder("WAITING").color(color).build();
+    }
+
+    public static ServerMessage waitingInQueue(String color, int waitSeconds) {
+        return new Builder("WAITING_QUEUE").color(color).waitSeconds(waitSeconds).build();
     }
 
     public static ServerMessage boardUpdate(PieceDto[][] board, String currentTurn, String status,
@@ -133,6 +141,7 @@ public record ServerMessage(
         private String message;
         private Long whiteTimeMs;
         private Long blackTimeMs;
+        private Integer waitSeconds;
 
         Builder(String type) { this.type = type; }
 
@@ -149,11 +158,12 @@ public record ServerMessage(
         Builder message(String v)                { this.message = v; return this; }
         Builder whiteTimeMs(Long v)              { this.whiteTimeMs = v; return this; }
         Builder blackTimeMs(Long v)              { this.blackTimeMs = v; return this; }
+        Builder waitSeconds(Integer v)           { this.waitSeconds = v; return this; }
 
         ServerMessage build() {
             return new ServerMessage(type, color, board, currentTurn, status,
                     legalMoves, lastMove, capturedByWhite, capturedByBlack,
-                    promotionRow, promotionCol, message, whiteTimeMs, blackTimeMs);
+                    promotionRow, promotionCol, message, whiteTimeMs, blackTimeMs, waitSeconds);
         }
     }
 }

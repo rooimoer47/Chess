@@ -25,11 +25,14 @@ public class UserService implements UserDetailsService {
         return userRepository.findByUsername(username);
     }
 
-    public AppUser register(String username, String password) {
+    public AppUser register(String username, String password, Integer startingElo) {
         if (userRepository.findByUsername(username).isPresent()) {
             throw new IllegalArgumentException("Username already taken");
         }
-        return userRepository.save(new AppUser(username, passwordEncoder.encode(password)));
+        AppUser user = startingElo != null
+                ? new AppUser(username, passwordEncoder.encode(password), startingElo)
+                : new AppUser(username, passwordEncoder.encode(password));
+        return userRepository.save(user);
     }
 
     public void updateLastActive(long userId) {

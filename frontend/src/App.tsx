@@ -8,6 +8,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { LobbyScreen } from './components/LobbyScreen';
 import { type Theme, type BoardTheme } from './components/ThemePicker';
 import { HistoryPage } from './components/HistoryPage';
+import { EloHistoryPage } from './components/EloHistoryPage';
 import { ReplayViewer } from './components/ReplayViewer';
 import './App.css';
 
@@ -116,6 +117,7 @@ export default function App() {
       } />
       <Route path="/history" element={<HistoryPage username={username} />} />
       <Route path="/history/:gameId" element={<ReplayViewer />} />
+      <Route path="/profile" element={<EloHistoryPage username={username} />} />
       <Route path="*" element={<Navigate to="/lobby" replace />} />
     </Routes>
   );
@@ -154,6 +156,7 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
     rematchState,
     sendRematchRequest,
     sendRematchDecline,
+    waitSeconds,
   } = useChessSocket(botType, colorPreference, onAuthFailed);
 
   if (!connected) {
@@ -161,10 +164,20 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
   }
 
   if (!gameStarted) {
+    const waitLabel = waitSeconds !== null
+      ? `Searching for opponent… ${Math.floor(waitSeconds / 60)}:${String(waitSeconds % 60).padStart(2, '0')}`
+      : 'Waiting for opponent to connect…';
+    // Nobody to pair with yet, so a Random preference hasn't actually been
+    // resolved to a colour — show the literal word rather than the
+    // provisional guess the server sends before a match exists.
+    const displayColor = colorPreference === 'RANDOM' ? 'RANDOM' : (playerColor ?? '…');
     return (
       <div className="screen">
-        <p>You are: <strong>{playerColor ?? '…'}</strong></p>
-        <p>Waiting for opponent to connect…</p>
+        <p>You are: <strong>{displayColor}</strong></p>
+        <p>{waitLabel}</p>
+        <button type="button" className="lobby-games-btn" onClick={() => navigate('/lobby')}>
+          Cancel
+        </button>
       </div>
     );
   }

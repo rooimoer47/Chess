@@ -50,21 +50,26 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        LOGGER.info("Player {} as {}: {}", isRejoin ? "reconnected" : "connected", role, ws.getId());
-        sendTo(ws, ServerMessage.waiting(role.name()));
-
         if (!isRejoin) {
             String botType = (String) ws.getAttributes().get("botType");
             if (!"none".equals(botType)) {
-                sessionManager.joinBot(botType);
+                sessionManager.joinBot(ws, botType);
             }
         }
 
-        GameSession session = sessionManager.getSession();
-        if (session.isFull()) {
+        GameSession session = sessionManager.getSession(ws);
+        LOGGER.info("Player {} as {}: {}", isRejoin ? "reconnected" : "connected", role, ws.getId());
+
+        if (session != null) {
+            sendTo(ws, ServerMessage.waiting(role.name()));
+        } else {
+            sendTo(ws, ServerMessage.waitingInQueue(role.name(), 0));
+        }
+
+        if (session != null && session.isFull()) {
             LOGGER.info(isRejoin ? "Player rejoined — game resuming" : "Both players connected — game starting");
             if (!isRejoin) {
-                sessionManager.onGameStart();
+                session.onGameStart();
             }
             session.broadcastBoardState();
         }
@@ -78,7 +83,11 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
 
         ClientMessage msg = objectMapper.readValue(raw.getPayload(), ClientMessage.class);
-        GameSession session = sessionManager.getSession();
+        GameSession session = sessionManager.getSession(ws);
+        if (session == null) {
+            sendTo(ws, ServerMessage.error("Not in a game yet."));
+            return;
+        }
         PlayerRole role = session.roleOf(ws);
 
         if (role == null) {
@@ -227,7 +236,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             case WAITING -> session.sendRematchRequestedToOpponent(role == PlayerRole.WHITE);
             case OPPONENT_GONE -> sendTo(ws, ServerMessage.rematchDeclined());
             case STARTED -> {
-                GameSession newSession = sessionManager.getSession();
+                GameSession newSession = sessionManager.getSession(ws);
                 newSession.sendRematchStart();
                 newSession.onGameStart();
                 if (newSession.isBotTurn() && newSession.makeBotMove()) {

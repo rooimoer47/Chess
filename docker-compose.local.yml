@@ -2,6 +2,8 @@ services:
   db:
     image: postgres:17-alpine
     restart: unless-stopped
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: chess
       POSTGRES_USER: chess

@@ -26,9 +26,13 @@ export function Square({ row, col, piece, isSelected, isLegalTarget, isLastMove,
   else if (isLegalDropTarget) background = isLight ? '#f5c518' : '#d4a900';
   else if (isLegalTarget)     background = isLight ? '#cdd16e' : '#aaa23a';
 
+  // board[0][0] = a1 (see GameEngine.initializeBoard) — col 0 = 'a' file, row 0 = rank 1
+  const square = `${String.fromCharCode(97 + col)}${row + 1}`;
+
   return (
     <div
       className="square"
+      data-testid={`square-${square}`}
       style={{ background }}
       onMouseDown={onMouseDown}
       onMouseEnter={onMouseEnter}

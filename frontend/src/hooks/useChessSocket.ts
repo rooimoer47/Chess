@@ -19,6 +19,7 @@ export interface GameState {
   drawOfferedByOpponent: boolean;
   drawOfferPending: boolean;
   rematchState: null | 'waiting' | 'declined';
+  waitSeconds: number | null;
 }
 
 export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthFailed?: () => void) {
@@ -38,6 +39,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
     drawOfferedByOpponent: false,
     drawOfferPending: false,
     rematchState: null,
+    waitSeconds: null,
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -54,10 +56,16 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
     wsRef.current = ws;
 
     let didOpen = false;
+    let cleanedUp = false;
     ws.onopen = () => { didOpen = true; setState(s => ({ ...s, connected: true })); };
 
     ws.onclose = (event) => {
-      if (!didOpen) {
+      // A close before open usually means the server rejected the handshake
+      // (e.g. expired auth cookie). But effect cleanup below also closes the
+      // socket before it opens (React StrictMode double-invokes this effect
+      // in dev, and any real unmount does too) — that's an intentional close,
+      // not an auth failure, so it must not trigger a logout.
+      if (!didOpen && !cleanedUp) {
         console.warn('WS closed before open — code:', event.code, 'reason:', event.reason);
         onAuthFailedRef.current?.();
         return;
@@ -70,7 +78,11 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
 
       switch (msg.type) {
         case 'WAITING':
-          setState(s => ({ ...s, playerColor: msg.color }));
+          setState(s => ({ ...s, playerColor: msg.color, waitSeconds: null }));
+          break;
+
+        case 'WAITING_QUEUE':
+          setState(s => ({ ...s, playerColor: msg.color, waitSeconds: msg.waitSeconds }));
           break;
 
         case 'BOARD_UPDATE': {
@@ -87,6 +99,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
           setState(s => ({
             ...s,
             gameStarted: true,
+            waitSeconds: null,
             board: msg.board,
             currentTurn: msg.currentTurn,
             status: msg.status,
@@ -147,6 +160,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
             drawOfferedByOpponent: false,
             drawOfferPending: false,
             rematchState: null,
+            waitSeconds: null,
           });
           break;
 
@@ -156,7 +170,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
       }
     };
 
-    return () => ws.close();
+    return () => { cleanedUp = true; ws.close(); };
   }, [botType, colorPreference]);
 
   const sendMove = useCallback((fromRow: number, fromCol: number, toRow: number, toCol: number) => {
