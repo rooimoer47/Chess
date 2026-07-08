@@ -807,6 +807,35 @@ body {
   max-width: 86px;
 }
 
+.opponent-card-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.opponent-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.opponent-resume-btn,
+.opponent-new-btn {
+  font-size: 0.68rem;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #222;
+  color: #ddd;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.opponent-resume-btn:hover,
+.opponent-new-btn:hover {
+  border-color: #7fc97f;
+}
+
 /* ---- Colour preference ---- */
 
 .color-pref-row {

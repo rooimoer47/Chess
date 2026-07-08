@@ -51,6 +51,11 @@ public class GameSessionManager {
     // (or how many) WebSocketSessions are currently attached to it.
     private final Map<Long, GameSession> sessionsByGameId = new HashMap<>();
 
+    // One live bot game per (userId, botType) slot, keyed by "userId:botType".
+    // Lets join() recognize "you already have a game with this bot" and
+    // reattach instead of silently starting a second, orphaning the first.
+    private final Map<String, Long> activeBotGameId = new HashMap<>();
+
     public GameSessionManager(ObjectMapper objectMapper, GameRecorder gameRecorder,
                               UserService userService, EloProperties eloProperties,
                               MatchmakingProperties matchmakingProperties) {
@@ -114,6 +119,27 @@ public class GameSessionManager {
         if (!"none".equals(botType)) {
             AppUser user = userService.findByUsername(username).orElse(null);
             Long userId = user != null ? user.getId() : null;
+
+            String botKey = botKey(userId, botType);
+            Long existingGameId = activeBotGameId.get(botKey);
+            if (existingGameId != null) {
+                GameSession existing = sessionsByGameId.get(existingGameId);
+                if (existing == null || existing.isGameOver()) {
+                    activeBotGameId.remove(botKey);
+                } else {
+                    // A live game already exists for this bot — reattach to
+                    // it rather than starting a duplicate. If it's occupied
+                    // by another socket (e.g. a second tab), rejoin fails
+                    // and we deliberately return null instead of falling
+                    // through to create a second session for the same slot.
+                    PlayerRole role = existing.rejoin(ws, username);
+                    if (role != null) {
+                        activeSessions.put(ws, existing);
+                    }
+                    return role;
+                }
+            }
+
             GameSession session = new GameSession(objectMapper, gameRecorder);
             PlayerRole role = session.join(ws, username, userId, colorPreference);
             if (role != null) activeSessions.put(ws, session);
@@ -181,17 +207,41 @@ public class GameSessionManager {
         Long gameId = session.getGameId();
         if (gameId != null) {
             sessionsByGameId.put(gameId, session);
+            if (session.isBotEnabled()) {
+                Long humanId = session.getHumanPlayerId();
+                if (humanId != null) {
+                    activeBotGameId.put(botKey(humanId, session.getBotType()), gameId);
+                }
+            }
         }
     }
 
     // Called after any action that might have ended a game, so finished
-    // games don't linger in the gameId index forever.
+    // games don't linger in the gameId (or bot-slot) index forever.
     public synchronized void pruneIfOver(GameSession session) {
         if (session == null || !session.isGameOver()) return;
         Long gameId = session.getGameId();
         if (gameId != null) {
             sessionsByGameId.remove(gameId);
+            activeBotGameId.values().removeIf(id -> id.equals(gameId));
         }
+    }
+
+    // Lets a user walk away from a bot game they no longer want to finish,
+    // freeing up that bot's slot for a fresh game. Only bot games — PvP
+    // abandonment isn't a concept the other player should be subject to.
+    public synchronized boolean abandonBotGame(String username, long gameId) {
+        GameSession session = sessionsByGameId.get(gameId);
+        if (session == null) return false;
+        ActiveGameSummary summary = session.summarizeFor(username);
+        if (summary == null || !"BOT".equals(summary.mode())) return false;
+        session.abandon();
+        pruneIfOver(session);
+        return true;
+    }
+
+    private static String botKey(Long userId, String botType) {
+        return userId + ":" + botType;
     }
 
     @Scheduled(fixedDelay = 5000)

@@ -571,6 +571,138 @@ class GameSessionManagerTest {
         assertTrue(manager.activeGamesFor("alice").isEmpty());
     }
 
+    // ---- concurrent bot games — resume/new (Phase 4 of docs/RECONNECT_PLAN.md) ----
+
+    @Test
+    void join_botGame_secondConnectReattachesToExistingSlot() throws Exception {
+        // Simulates the lobby's "Resume" click: connecting to the same bot
+        // again after the original socket closed must reattach, not spawn
+        // a second concurrent game for the same (user, bot) slot.
+        FakeWs ws1 = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(42L);
+        manager.join(ws1, "alice", "WHITE");
+        manager.joinBot(ws1, "alan");
+        manager.startGame(manager.getSession(ws1));
+        manager.disconnect(ws1);
+
+        FakeWs ws2 = new FakeWs("a2", Map.of("botType", "alan"));
+        PlayerRole role = manager.join(ws2, "alice", "WHITE");
+
+        assertEquals(PlayerRole.WHITE, role);
+        assertEquals(42L, manager.getSession(ws2).getGameId());
+        assertEquals(1, manager.activeGamesFor("alice").size(), "Must not have created a second session");
+    }
+
+    @Test
+    void join_botGame_occupiedSlot_rejectsSecondConnection() {
+        // Two tabs open on the same bot at once: the first is still live,
+        // so the second must be rejected rather than silently duplicating
+        // the session.
+        FakeWs ws1 = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(42L);
+        manager.join(ws1, "alice", "WHITE");
+        manager.joinBot(ws1, "alan");
+        manager.startGame(manager.getSession(ws1));
+
+        FakeWs ws2 = new FakeWs("a2", Map.of("botType", "alan"));
+        PlayerRole role = manager.join(ws2, "alice", "WHITE");
+
+        assertNull(role, "A second live socket for the same bot slot must be rejected");
+        assertEquals(1, manager.activeGamesFor("alice").size());
+    }
+
+    @Test
+    void join_botGame_afterPreviousGameEnded_startsFreshSession() {
+        FakeWs ws1 = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(1L, 2L);
+        manager.join(ws1, "alice", "WHITE");
+        manager.joinBot(ws1, "alan");
+        GameSession first = manager.getSession(ws1);
+        manager.startGame(first);
+        first.resign(true);
+        manager.pruneIfOver(first);
+
+        FakeWs ws2 = new FakeWs("a2", Map.of("botType", "alan"));
+        manager.join(ws2, "alice", "WHITE");
+        manager.joinBot(ws2, "alan");
+        manager.startGame(manager.getSession(ws2));
+
+        assertEquals(2L, manager.getSession(ws2).getGameId());
+    }
+
+    @Test
+    void join_botGame_differentBotTypes_areIndependentSlots() {
+        FakeWs alanWs = new FakeWs("a", Map.of("botType", "alan"));
+        FakeWs barbaraWs = new FakeWs("b", Map.of("botType", "barbara"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(1L, 2L);
+        manager.join(alanWs, "alice", "WHITE");
+        manager.joinBot(alanWs, "alan");
+        manager.startGame(manager.getSession(alanWs));
+
+        manager.join(barbaraWs, "alice", "WHITE");
+        manager.joinBot(barbaraWs, "barbara");
+        manager.startGame(manager.getSession(barbaraWs));
+
+        assertEquals(2, manager.activeGamesFor("alice").size());
+    }
+
+    @Test
+    void abandonBotGame_endsGameAndFreesTheSlot() {
+        FakeWs ws1 = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(1L, 2L);
+        manager.join(ws1, "alice", "WHITE");
+        manager.joinBot(ws1, "alan");
+        manager.startGame(manager.getSession(ws1));
+
+        boolean abandoned = manager.abandonBotGame("alice", 1L);
+
+        assertTrue(abandoned);
+        verify(gameRecorder).endGame(1L, "ABANDONED", null);
+        assertTrue(manager.activeGamesFor("alice").isEmpty());
+
+        FakeWs ws2 = new FakeWs("a2", Map.of("botType", "alan"));
+        manager.join(ws2, "alice", "WHITE");
+        manager.joinBot(ws2, "alan");
+        manager.startGame(manager.getSession(ws2));
+        assertEquals(2L, manager.getSession(ws2).getGameId(), "Abandoning must free the slot for a fresh game");
+    }
+
+    @Test
+    void abandonBotGame_notAPlayerInThatGame_returnsFalse() {
+        FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(1L);
+        manager.join(ws, "alice", "WHITE");
+        manager.joinBot(ws, "alan");
+        manager.startGame(manager.getSession(ws));
+
+        assertFalse(manager.abandonBotGame("bob", 1L));
+    }
+
+    @Test
+    void abandonBotGame_pvpGame_returnsFalse() {
+        FakeWs ws1 = humanWs("a");
+        FakeWs ws2 = humanWs("b");
+        stubUser("alice", 1L, 1000);
+        stubUser("bob",   2L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(1L);
+        manager.join(ws1, "alice", "WHITE");
+        manager.join(ws2, "bob",   "WHITE");
+        manager.startGame(manager.getSession(ws1));
+
+        assertFalse(manager.abandonBotGame("alice", 1L), "Abandon must not apply to PvP games");
+    }
+
+    @Test
+    void abandonBotGame_unknownGameId_returnsFalse() {
+        assertFalse(manager.abandonBotGame("alice", 999L));
+    }
+
     // ---- helpers ----
 
     private void stubUser(String username, Long id, int elo) {

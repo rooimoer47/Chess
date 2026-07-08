@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pvt.phgg.chess.server.auth.JwtUtil;
@@ -30,6 +31,15 @@ public class ActiveGamesController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(sessionManager.activeGamesFor(username));
+    }
+
+    @PostMapping("/{username:.+}/active-games/{gameId}/abandon")
+    public ResponseEntity<Void> abandonGame(@PathVariable String username, @PathVariable long gameId, HttpServletRequest request) {
+        if (!isAuthorised(username, request)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        boolean abandoned = sessionManager.abandonBotGame(username, gameId);
+        return abandoned ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 
     private boolean isAuthorised(String username, HttpServletRequest request) {

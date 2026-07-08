@@ -124,6 +124,7 @@ export default function App() {
           onChangeClockMs={setClockMs}
           onLogout={handleLogout}
           onStartGame={() => { setResumeGameId(null); navigate('/game'); }}
+          onResumeGame={(bt, gameId) => { setBotType(bt); setResumeGameId(gameId); navigate('/game'); }}
         />
       } />
       <Route path="/game" element={

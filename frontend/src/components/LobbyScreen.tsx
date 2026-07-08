@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemePicker, THEMES, type Theme, type BoardTheme } from './ThemePicker';
+import type { ActiveGameSummary } from '../types';
 
 export { THEMES, type Theme, type BoardTheme };
 
@@ -38,11 +39,13 @@ interface Props {
   onChangeClockMs: (ms: number) => void;
   onLogout: () => void;
   onStartGame: () => void;
+  onResumeGame: (botType: string, gameId: string) => void;
 }
 
-export function LobbyScreen({ username, botType, theme, boardTheme, colorPreference, clockMs, onChangeBotType, onChangeTheme, onChangeBoardTheme, onChangeColorPreference, onChangeClockMs, onLogout, onStartGame }: Props) {
+export function LobbyScreen({ username, botType, theme, boardTheme, colorPreference, clockMs, onChangeBotType, onChangeTheme, onChangeBoardTheme, onChangeColorPreference, onChangeClockMs, onLogout, onStartGame, onResumeGame }: Props) {
   const [themePickerOpen, setThemePickerOpen] = useState(false);
   const [eloDisplay, setEloDisplay] = useState<string | null>(null);
+  const [activeBotGames, setActiveBotGames] = useState<ActiveGameSummary[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -53,6 +56,27 @@ export function LobbyScreen({ username, botType, theme, boardTheme, colorPrefere
       })
       .catch(() => { /* silently ignore — ELO is cosmetic */ });
   }, [username]);
+
+  useEffect(() => {
+    fetch(`/api/users/${encodeURIComponent(username)}/active-games`)
+      .then(r => r.ok ? r.json() as Promise<ActiveGameSummary[]> : [])
+      .then(games => setActiveBotGames(games.filter(g => g.mode === 'BOT')))
+      .catch(() => {});
+  }, [username]);
+
+  const activeByBotType = new Map(activeBotGames.map(g => [g.botType, g]));
+
+  const handleNewGame = async (type: string, existingGameId: number) => {
+    onChangeBotType(type);
+    try {
+      await fetch(`/api/users/${encodeURIComponent(username)}/active-games/${existingGameId}/abandon`, { method: 'POST' });
+    } catch {
+      // Best-effort — if this fails, join() will still refuse a duplicate
+      // slot rather than silently orphaning the old game.
+    }
+    setActiveBotGames(games => games.filter(g => g.gameId !== existingGameId));
+    onStartGame();
+  };
 
   return (
     <div className="lobby">
@@ -65,24 +89,36 @@ export function LobbyScreen({ username, botType, theme, boardTheme, colorPrefere
       <div className="lobby-section">
         <span className="lobby-label">Opponent</span>
         <div className="opponent-cards">
-          {OPPONENTS.map(opp => (
-            <label
-              key={opp.type}
-              className={`opponent-card${botType === opp.type ? ' opponent-card-active' : ''}`}
-            >
-              <input
-                type="radio"
-                name="opponent"
-                value={opp.type}
-                checked={botType === opp.type}
-                onChange={() => onChangeBotType(opp.type)}
-              />
-              <span className="opponent-card-icon">{opp.icon}</span>
-              <span className="opponent-card-label">{opp.label}</span>
-              {opp.stars && <span className="opponent-card-stars">{opp.stars}</span>}
-              {opp.desc && <span className="opponent-card-desc">{opp.desc}</span>}
-            </label>
-          ))}
+          {OPPONENTS.map(opp => {
+            const active = opp.type ? activeByBotType.get(opp.type) : undefined;
+            return (
+              <div key={opp.type} className="opponent-card-wrap">
+                <label className={`opponent-card${botType === opp.type ? ' opponent-card-active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="opponent"
+                    value={opp.type}
+                    checked={botType === opp.type}
+                    onChange={() => onChangeBotType(opp.type)}
+                  />
+                  <span className="opponent-card-icon">{opp.icon}</span>
+                  <span className="opponent-card-label">{opp.label}</span>
+                  {opp.stars && <span className="opponent-card-stars">{opp.stars}</span>}
+                  {opp.desc && <span className="opponent-card-desc">{opp.desc}</span>}
+                </label>
+                {active && (
+                  <div className="opponent-card-actions">
+                    <button type="button" className="opponent-resume-btn" onClick={() => onResumeGame(opp.type, String(active.gameId))}>
+                      Resume
+                    </button>
+                    <button type="button" className="opponent-new-btn" onClick={() => handleNewGame(opp.type, active.gameId)}>
+                      New
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

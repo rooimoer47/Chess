@@ -62,6 +62,7 @@ public class GameSession {
     private boolean rematchRequestedByWhite = false;
     private boolean rematchRequestedByBlack = false;
     private boolean timedOut = false;
+    private boolean abandoned = false;
     private Instant disconnectedAt;
     private boolean disconnectedIsWhite;
 
@@ -160,6 +161,19 @@ public class GameSession {
         return gameId;
     }
 
+    public synchronized boolean isBotEnabled() {
+        return botEnabled;
+    }
+
+    public synchronized String getBotType() {
+        return botEnabled ? botType : null;
+    }
+
+    public synchronized Long getHumanPlayerId() {
+        if (!botEnabled) return null;
+        return botIsWhite ? blackPlayerId : whitePlayerId;
+    }
+
     public synchronized boolean isBotTurn() {
         return botEnabled && engine.isWhiteTurn() == botIsWhite;
     }
@@ -188,11 +202,23 @@ public class GameSession {
     }
 
     public synchronized boolean isGameOver() {
-        if (resigned || drawAgreed || timedOut) return true;
+        if (resigned || drawAgreed || timedOut || abandoned) return true;
         GameStatus status = engine.getStatus();
         return status == GameStatus.CHECKMATE || status == GameStatus.STALEMATE
                 || status == GameStatus.THREEFOLD_REPETITION || status == GameStatus.FIFTY_MOVE_RULE
                 || status == GameStatus.INSUFFICIENT_MATERIAL || status == GameStatus.TIMEOUT;
+    }
+
+    // Lets a user deliberately walk away from a bot game to start a fresh
+    // one for the same bot slot, without waiting for it to resolve on its
+    // own. Only ever called from the lobby (no WebSocketSession attached),
+    // so unlike resign/timeout there's no one left to notify.
+    public synchronized void abandon() {
+        if (isGameOver()) return;
+        abandoned = true;
+        if (gameRecorder != null && gameId != null) {
+            gameRecorder.endGame(gameId, "ABANDONED", null);
+        }
     }
 
     public synchronized boolean isClockCompatible() {
