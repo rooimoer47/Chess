@@ -32,6 +32,15 @@ export interface GameSummary {
   endedAt: string | null;
 }
 
+export interface ActiveGameSummary {
+  gameId: number;
+  mode: string;
+  botType: string | null;
+  opponentUsername: string | null;
+  color: Color;
+  status: string;
+}
+
 export interface BoardSnapshot {
   moveNumber: number;
   board: (Piece | null)[][];

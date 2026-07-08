@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import pvt.phgg.chess.server.dto.ActiveGameSummary;
 import pvt.phgg.chess.server.dto.ServerMessage;
 import pvt.phgg.chess.server.elo.EloProperties;
 import pvt.phgg.chess.server.elo.MatchmakingProperties;
@@ -62,6 +63,15 @@ public class GameSessionManager {
 
     public synchronized GameSession getSession(WebSocketSession ws) {
         return activeSessions.get(ws);
+    }
+
+    public synchronized List<ActiveGameSummary> activeGamesFor(String username) {
+        List<ActiveGameSummary> result = new ArrayList<>();
+        for (GameSession session : sessionsByGameId.values()) {
+            ActiveGameSummary summary = session.summarizeFor(username);
+            if (summary != null) result.add(summary);
+        }
+        return result;
     }
 
     public synchronized PlayerRole rejoin(WebSocketSession ws, String username) {

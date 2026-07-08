@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.socket.*;
+import pvt.phgg.chess.server.dto.ActiveGameSummary;
 import pvt.phgg.chess.server.elo.EloProperties;
 import pvt.phgg.chess.server.elo.MatchmakingProperties;
 import pvt.phgg.chess.server.game.GameRecorder;
@@ -509,6 +510,65 @@ class GameSessionManagerTest {
     private GameSessionManager managerWithGraceSeconds(int seconds) {
         EloProperties props = new EloProperties(1000, 100, 400, 2800, seconds);
         return new GameSessionManager(objectMapper, gameRecorder, userService, props, mmProps);
+    }
+
+    // ---- activeGamesFor (Phase 3 of docs/RECONNECT_PLAN.md) ----
+
+    @Test
+    void activeGamesFor_returnsSummaryForBotGame() {
+        FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(42L);
+        manager.join(ws, "alice", "WHITE");
+        manager.joinBot(ws, "alan");
+        manager.startGame(manager.getSession(ws));
+
+        List<ActiveGameSummary> games = manager.activeGamesFor("alice");
+
+        assertEquals(1, games.size());
+        ActiveGameSummary summary = games.get(0);
+        assertEquals(42L, summary.gameId());
+        assertEquals("BOT", summary.mode());
+        assertEquals("alan", summary.botType());
+        assertNull(summary.opponentUsername());
+        assertEquals("WHITE", summary.color());
+    }
+
+    @Test
+    void activeGamesFor_returnsSummaryForBothPvpPlayers() {
+        FakeWs ws1 = humanWs("a");
+        FakeWs ws2 = humanWs("b");
+        stubUser("alice", 1L, 1000);
+        stubUser("bob",   2L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(7L);
+        manager.join(ws1, "alice", "WHITE");
+        manager.join(ws2, "bob",   "WHITE");
+        manager.startGame(manager.getSession(ws1));
+
+        ActiveGameSummary aliceView = manager.activeGamesFor("alice").get(0);
+        ActiveGameSummary bobView = manager.activeGamesFor("bob").get(0);
+
+        assertEquals("bob", aliceView.opponentUsername());
+        assertEquals("HUMAN", aliceView.mode());
+        assertNull(aliceView.botType());
+        assertEquals("alice", bobView.opponentUsername());
+    }
+
+    @Test
+    void activeGamesFor_excludesOtherUsersGames() {
+        FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(42L);
+        manager.join(ws, "alice", "WHITE");
+        manager.joinBot(ws, "alan");
+        manager.startGame(manager.getSession(ws));
+
+        assertTrue(manager.activeGamesFor("bob").isEmpty());
+    }
+
+    @Test
+    void activeGamesFor_emptyWhenNoActiveGames() {
+        assertTrue(manager.activeGamesFor("alice").isEmpty());
     }
 
     // ---- helpers ----

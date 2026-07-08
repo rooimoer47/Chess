@@ -37,9 +37,10 @@ interface Props {
   onChangeColorPreference: (pref: string) => void;
   onChangeClockMs: (ms: number) => void;
   onLogout: () => void;
+  onStartGame: () => void;
 }
 
-export function LobbyScreen({ username, botType, theme, boardTheme, colorPreference, clockMs, onChangeBotType, onChangeTheme, onChangeBoardTheme, onChangeColorPreference, onChangeClockMs, onLogout }: Props) {
+export function LobbyScreen({ username, botType, theme, boardTheme, colorPreference, clockMs, onChangeBotType, onChangeTheme, onChangeBoardTheme, onChangeColorPreference, onChangeClockMs, onLogout, onStartGame }: Props) {
   const [themePickerOpen, setThemePickerOpen] = useState(false);
   const [eloDisplay, setEloDisplay] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -142,7 +143,7 @@ export function LobbyScreen({ username, botType, theme, boardTheme, colorPrefere
         </div>
       </div>
 
-      <button className="start-btn" onClick={() => navigate('/game')}>Start Game</button>
+      <button className="start-btn" onClick={onStartGame}>Start Game</button>
       <div className="lobby-secondary-btns">
         <button className="lobby-games-btn" onClick={() => navigate('/history')}>My Games</button>
         <button className="lobby-games-btn" onClick={() => navigate('/profile')}>ELO Profile</button>

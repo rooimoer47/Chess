@@ -6,6 +6,7 @@ import org.springframework.web.socket.WebSocketSession;
 import pvt.phgg.chess.*;
 import pvt.phgg.chess.piece.APiece;
 import pvt.phgg.chess.piece.PieceType;
+import pvt.phgg.chess.server.dto.ActiveGameSummary;
 import pvt.phgg.chess.server.dto.LastMoveDto;
 import pvt.phgg.chess.server.dto.LegalMove;
 import pvt.phgg.chess.server.dto.PieceDto;
@@ -200,6 +201,20 @@ public class GameSession {
 
     public synchronized boolean isEmpty() {
         return whiteUsername == null && blackUsername == null;
+    }
+
+    // Callers only ever see this for sessions still in
+    // GameSessionManager.sessionsByGameId, which are pruned the moment
+    // isGameOver() becomes true — so "status" is always the in-progress case.
+    public synchronized ActiveGameSummary summarizeFor(String username) {
+        if (!username.equals(whiteUsername) && !username.equals(blackUsername)) {
+            return null;
+        }
+        boolean isWhite = username.equals(whiteUsername);
+        String mode = botEnabled ? "BOT" : "HUMAN";
+        String opponentUsername = botEnabled ? null : (isWhite ? blackUsername : whiteUsername);
+        return new ActiveGameSummary(gameId, mode, botEnabled ? botType : null,
+                opponentUsername, isWhite ? WHITE : BLACK, "IN_PROGRESS");
     }
 
     public synchronized PlayerRole roleOf(WebSocketSession ws) {
