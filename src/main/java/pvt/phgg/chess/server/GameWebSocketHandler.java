@@ -35,8 +35,9 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession ws) throws Exception {
         String username = (String) ws.getAttributes().get("username");
+        Long gameId = (Long) ws.getAttributes().get("gameId");
 
-        PlayerRole role = sessionManager.rejoin(ws, username);
+        PlayerRole role = sessionManager.rejoin(ws, username, gameId);
         boolean isRejoin = role != null;
 
         if (!isRejoin) {
@@ -69,7 +70,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         if (session != null && session.isFull()) {
             LOGGER.info(isRejoin ? "Player rejoined — game resuming" : "Both players connected — game starting");
             if (!isRejoin) {
-                session.onGameStart();
+                sessionManager.startGame(session);
             }
             session.broadcastBoardState();
         }
@@ -105,6 +106,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             case "REMATCH_DECLINE"-> handleRematchDecline(ws);
             default               -> sendTo(ws, ServerMessage.error("Unknown message type: " + msg.type()));
         }
+        sessionManager.pruneIfOver(session);
     }
 
     @Override
@@ -238,7 +240,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             case STARTED -> {
                 GameSession newSession = sessionManager.getSession(ws);
                 newSession.sendRematchStart();
-                newSession.onGameStart();
+                sessionManager.startGame(newSession);
                 if (newSession.isBotTurn() && newSession.makeBotMove()) {
                     // bot made its opening move
                 }

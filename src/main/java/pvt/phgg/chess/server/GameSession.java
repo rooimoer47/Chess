@@ -6,13 +6,17 @@ import org.springframework.web.socket.WebSocketSession;
 import pvt.phgg.chess.*;
 import pvt.phgg.chess.piece.APiece;
 import pvt.phgg.chess.piece.PieceType;
+import pvt.phgg.chess.server.dto.ActiveGameSummary;
 import pvt.phgg.chess.server.dto.LastMoveDto;
 import pvt.phgg.chess.server.dto.LegalMove;
 import pvt.phgg.chess.server.dto.PieceDto;
 import pvt.phgg.chess.server.dto.ServerMessage;
+import pvt.phgg.chess.server.game.GameMove;
 import pvt.phgg.chess.server.game.GameRecorder;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -58,6 +62,10 @@ public class GameSession {
     private boolean drawAgreed = false;
     private boolean rematchRequestedByWhite = false;
     private boolean rematchRequestedByBlack = false;
+    private boolean timedOut = false;
+    private boolean abandoned = false;
+    private Instant disconnectedAt;
+    private boolean disconnectedIsWhite;
 
     // Game recording state
     private Long gameId;
@@ -75,6 +83,43 @@ public class GameSession {
     public GameSession(ObjectMapper objectMapper, GameRecorder gameRecorder) {
         this.objectMapper = objectMapper;
         this.gameRecorder = gameRecorder;
+    }
+
+    // Rebuilds a live session from durable storage after a server restart —
+    // see GameRestorationService. Replays every recorded move through the
+    // same applyMove()/applyPromotion() path live play uses, so captures,
+    // check/checkmate detection, and bot opponent-move tracking all come
+    // out identical to the original game. gameId is set only after replay
+    // completes, so the replay itself never re-records into game_moves.
+    public static GameSession restore(ObjectMapper mapper, GameRecorder recorder, long gameId,
+                                       String mode, String botType,
+                                       String whiteUsername, Long whitePlayerId,
+                                       String blackUsername, Long blackPlayerId,
+                                       List<GameMove> moves) {
+        GameSession session = new GameSession(mapper, recorder);
+        session.whiteUsername = whiteUsername;
+        session.whitePlayerId = whitePlayerId;
+        session.blackUsername = blackUsername;
+        session.blackPlayerId = blackPlayerId;
+        if ("BOT".equals(mode)) {
+            session.botEnabled = true;
+            session.botType = botType;
+            session.botStrategy = selectStrategy(botType);
+            session.botIsWhite = "BOT".equals(whiteUsername);
+        }
+
+        for (GameMove move : moves) {
+            Position from = new Position(move.getFromRow(), move.getFromCol());
+            Position to = new Position(move.getToRow(), move.getToCol());
+            MoveResult result = session.applyMove(from, to);
+            if (result.type() == MoveResult.Type.PROMOTION_NEEDED) {
+                session.applyPromotion(to, PromotionChoice.valueOf(move.getPromotionChoice()));
+            }
+        }
+
+        session.gameId = gameId;
+        session.moveCount = moves.size();
+        return session;
     }
 
     public synchronized PlayerRole join(WebSocketSession ws, String username) {
@@ -147,7 +192,24 @@ public class GameSession {
     public synchronized void onGameStart() {
         if (gameRecorder == null || gameId != null) return;
         String mode = botEnabled ? "BOT" : "HUMAN";
-        gameId = gameRecorder.startGame(whitePlayerId, blackPlayerId, mode);
+        gameId = gameRecorder.startGame(whitePlayerId, blackPlayerId, mode, botEnabled ? botType : null);
+    }
+
+    public synchronized Long getGameId() {
+        return gameId;
+    }
+
+    public synchronized boolean isBotEnabled() {
+        return botEnabled;
+    }
+
+    public synchronized String getBotType() {
+        return botEnabled ? botType : null;
+    }
+
+    public synchronized Long getHumanPlayerId() {
+        if (!botEnabled) return null;
+        return botIsWhite ? blackPlayerId : whitePlayerId;
     }
 
     public synchronized boolean isBotTurn() {
@@ -178,11 +240,23 @@ public class GameSession {
     }
 
     public synchronized boolean isGameOver() {
-        if (resigned || drawAgreed) return true;
+        if (resigned || drawAgreed || timedOut || abandoned) return true;
         GameStatus status = engine.getStatus();
         return status == GameStatus.CHECKMATE || status == GameStatus.STALEMATE
                 || status == GameStatus.THREEFOLD_REPETITION || status == GameStatus.FIFTY_MOVE_RULE
                 || status == GameStatus.INSUFFICIENT_MATERIAL || status == GameStatus.TIMEOUT;
+    }
+
+    // Lets a user deliberately walk away from a bot game to start a fresh
+    // one for the same bot slot, without waiting for it to resolve on its
+    // own. Only ever called from the lobby (no WebSocketSession attached),
+    // so unlike resign/timeout there's no one left to notify.
+    public synchronized void abandon() {
+        if (isGameOver()) return;
+        abandoned = true;
+        if (gameRecorder != null && gameId != null) {
+            gameRecorder.endGame(gameId, "ABANDONED", null);
+        }
     }
 
     public synchronized boolean isClockCompatible() {
@@ -191,6 +265,20 @@ public class GameSession {
 
     public synchronized boolean isEmpty() {
         return whiteUsername == null && blackUsername == null;
+    }
+
+    // Callers only ever see this for sessions still in
+    // GameSessionManager.sessionsByGameId, which are pruned the moment
+    // isGameOver() becomes true — so "status" is always the in-progress case.
+    public synchronized ActiveGameSummary summarizeFor(String username) {
+        if (!username.equals(whiteUsername) && !username.equals(blackUsername)) {
+            return null;
+        }
+        boolean isWhite = username.equals(whiteUsername);
+        String mode = botEnabled ? "BOT" : "HUMAN";
+        String opponentUsername = botEnabled ? null : (isWhite ? blackUsername : whiteUsername);
+        return new ActiveGameSummary(gameId, mode, botEnabled ? botType : null,
+                opponentUsername, isWhite ? WHITE : BLACK, "IN_PROGRESS");
     }
 
     public synchronized PlayerRole roleOf(WebSocketSession ws) {
@@ -207,6 +295,7 @@ public class GameSession {
                 if (rematchRequestedByBlack) sendTo(blackSession, ServerMessage.rematchDeclined());
             } else {
                 sendTo(blackSession, ServerMessage.opponentDisconnected());
+                if (!botEnabled) startDisconnectTimer(true);
             }
         } else if (role == PlayerRole.BLACK) {
             blackSession = null;
@@ -214,20 +303,43 @@ public class GameSession {
                 if (rematchRequestedByWhite) sendTo(whiteSession, ServerMessage.rematchDeclined());
             } else {
                 sendTo(whiteSession, ServerMessage.opponentDisconnected());
+                if (!botEnabled) startDisconnectTimer(false);
             }
         }
+    }
+
+    private void startDisconnectTimer(boolean isWhite) {
+        disconnectedAt = Instant.now();
+        disconnectedIsWhite = isWhite;
     }
 
     public synchronized PlayerRole rejoin(WebSocketSession ws, String username) {
         if (username.equals(whiteUsername) && whiteSession == null) {
             whiteSession = ws;
+            disconnectedAt = null;
             return PlayerRole.WHITE;
         }
         if (username.equals(blackUsername) && blackSession == null) {
             blackSession = ws;
+            disconnectedAt = null;
             return PlayerRole.BLACK;
         }
         return null;
+    }
+
+    // Called by GameSessionManager's scheduled sweep. Bot games are exempt —
+    // there's no opponent waiting, so a disconnected human isn't costing
+    // anyone anything.
+    public synchronized boolean expireIfDisconnectedPastGrace(int graceSeconds) {
+        if (disconnectedAt == null || timedOut || botEnabled) return false;
+        if (Duration.between(disconnectedAt, Instant.now()).getSeconds() < graceSeconds) return false;
+
+        timedOut = true;
+        String winner = disconnectedIsWhite ? BLACK : WHITE;
+        if (gameRecorder != null && gameId != null) {
+            gameRecorder.endGame(gameId, "TIMEOUT", winner);
+        }
+        return true;
     }
 
     public synchronized void resign(boolean isWhite) {
@@ -430,6 +542,8 @@ public class GameSession {
             currentStatus = GameStatus.RESIGNED;
         } else if (drawAgreed) {
             currentStatus = GameStatus.DRAW_AGREED;
+        } else if (timedOut) {
+            currentStatus = GameStatus.TIMEOUT;
         } else {
             currentStatus = engine.getStatus();
         }
@@ -437,7 +551,8 @@ public class GameSession {
                 && currentStatus != GameStatus.THREEFOLD_REPETITION
                 && currentStatus != GameStatus.FIFTY_MOVE_RULE
                 && currentStatus != GameStatus.INSUFFICIENT_MATERIAL
-                && currentStatus != GameStatus.DRAW_AGREED;
+                && currentStatus != GameStatus.DRAW_AGREED
+                && currentStatus != GameStatus.TIMEOUT;
 
         PieceDto[][] board = new PieceDto[BOARD_SIZE][BOARD_SIZE];
         List<LegalMove> legalMoves = new ArrayList<>();
@@ -459,6 +574,8 @@ public class GameSession {
         String turn;
         if (resigned) {
             turn = resignedWhite ? WHITE : BLACK;
+        } else if (timedOut) {
+            turn = disconnectedIsWhite ? WHITE : BLACK;
         } else {
             turn = engine.isWhiteTurn() ? WHITE : BLACK;
         }

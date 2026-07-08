@@ -10,9 +10,11 @@ import { type Theme, type BoardTheme } from './components/ThemePicker';
 import { HistoryPage } from './components/HistoryPage';
 import { EloHistoryPage } from './components/EloHistoryPage';
 import { ReplayViewer } from './components/ReplayViewer';
+import type { ActiveGameSummary } from './types';
 import './App.css';
 
 export default function App() {
+  const navigate = useNavigate();
   const [username, setUsername] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [botType, setBotType] = useState('');
@@ -20,6 +22,7 @@ export default function App() {
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('classic');
   const [colorPreference, setColorPreference] = useState('RANDOM');
   const [clockMs, setClockMs] = useState(0);
+  const [resumeGameId, setResumeGameId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -28,6 +31,24 @@ export default function App() {
       .catch(() => {})
       .finally(() => setAuthChecked(true));
   }, []);
+
+  useEffect(() => {
+    if (!username) return;
+    fetch(`/api/users/${encodeURIComponent(username)}/active-games`)
+      .then(r => r.ok ? r.json() as Promise<ActiveGameSummary[]> : [])
+      .then(games => {
+        // Bot-game resume is a lobby-level choice (Phase 4) — here we only
+        // auto-rejoin the one PvP game a user can have in flight, so a
+        // reload or a reconnect after a locked phone doesn't strand them
+        // in the lobby with no way back to a game that's still live.
+        const pvp = games.find(g => g.mode === 'HUMAN');
+        if (pvp) {
+          setResumeGameId(String(pvp.gameId));
+          navigate('/game');
+        }
+      })
+      .catch(() => {});
+  }, [username, navigate]);
 
   useEffect(() => {
     if (!username) return;
@@ -102,6 +123,8 @@ export default function App() {
           onChangeColorPreference={handleChangeColorPreference}
           onChangeClockMs={setClockMs}
           onLogout={handleLogout}
+          onStartGame={() => { setResumeGameId(null); navigate('/game'); }}
+          onResumeGame={(bt, gameId) => { setBotType(bt); setResumeGameId(gameId); navigate('/game'); }}
         />
       } />
       <Route path="/game" element={
@@ -111,8 +134,10 @@ export default function App() {
           colorPreference={colorPreference}
           theme={theme}
           boardTheme={boardTheme}
+          resumeGameId={resumeGameId}
           onLogout={handleLogout}
           onAuthFailed={handleLogout}
+          onLeaveGame={() => { setResumeGameId(null); navigate('/lobby'); }}
         />
       } />
       <Route path="/history" element={<HistoryPage username={username} />} />
@@ -123,16 +148,17 @@ export default function App() {
   );
 }
 
-function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLogout, onAuthFailed }: {
+function ChessGame({ username, botType, colorPreference, theme, boardTheme, resumeGameId, onLogout, onAuthFailed, onLeaveGame }: {
   username: string;
   botType: string;
   colorPreference: string;
   theme: Theme;
   boardTheme: BoardTheme;
+  resumeGameId: string | null;
   onLogout: () => void;
   onAuthFailed: () => void;
+  onLeaveGame: () => void;
 }) {
-  const navigate = useNavigate();
   const {
     connected,
     gameStarted,
@@ -157,7 +183,7 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
     sendRematchRequest,
     sendRematchDecline,
     waitSeconds,
-  } = useChessSocket(botType, colorPreference, onAuthFailed);
+  } = useChessSocket(botType, colorPreference, resumeGameId, onAuthFailed);
 
   if (!connected) {
     return <div className="screen"><p>Connecting to server…</p></div>;
@@ -175,7 +201,7 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
       <div className="screen">
         <p>You are: <strong>{displayColor}</strong></p>
         <p>{waitLabel}</p>
-        <button type="button" className="lobby-games-btn" onClick={() => navigate('/lobby')}>
+        <button type="button" className="lobby-games-btn" onClick={onLeaveGame}>
           Cancel
         </button>
       </div>
@@ -184,7 +210,7 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
 
   const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE' || status === 'RESIGNED'
     || status === 'THREEFOLD_REPETITION' || status === 'FIFTY_MOVE_RULE'
-    || status === 'INSUFFICIENT_MATERIAL' || status === 'DRAW_AGREED';
+    || status === 'INSUFFICIENT_MATERIAL' || status === 'DRAW_AGREED' || status === 'TIMEOUT';
   const isMyTurn = currentTurn === playerColor;
 
   const myLost       = playerColor === 'WHITE' ? capturedByBlack : capturedByWhite;
@@ -244,21 +270,21 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
           {rematchState === 'waiting' ? (
             <>
               <p className="rematch-status">Waiting for opponent…</p>
-              <button type="button" className="lobby-games-btn" onClick={() => { sendRematchDecline(); navigate('/lobby'); }}>
+              <button type="button" className="lobby-games-btn" onClick={() => { sendRematchDecline(); onLeaveGame(); }}>
                 Cancel
               </button>
             </>
           ) : rematchState === 'declined' ? (
             <>
               <p className="rematch-status rematch-declined">Opponent did not want a rematch.</p>
-              <button type="button" className="start-btn" onClick={() => navigate('/lobby')}>
+              <button type="button" className="start-btn" onClick={onLeaveGame}>
                 Back to Lobby
               </button>
             </>
           ) : (
             <>
               <button type="button" className="start-btn" onClick={sendRematchRequest}>Rematch</button>
-              <button type="button" className="lobby-games-btn" onClick={() => navigate('/lobby')}>
+              <button type="button" className="lobby-games-btn" onClick={onLeaveGame}>
                 Back to Lobby
               </button>
             </>

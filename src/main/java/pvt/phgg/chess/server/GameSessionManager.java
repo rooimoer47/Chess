@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import pvt.phgg.chess.server.dto.ActiveGameSummary;
 import pvt.phgg.chess.server.dto.ServerMessage;
 import pvt.phgg.chess.server.elo.EloProperties;
 import pvt.phgg.chess.server.elo.MatchmakingProperties;
@@ -43,6 +44,18 @@ public class GameSessionManager {
     // Both players' WebSocket sessions map to the same GameSession
     private final Map<WebSocketSession, GameSession> activeSessions = new HashMap<>();
 
+    // Live sessions keyed by their durable gameId. A bot game has only one
+    // WebSocketSession pointing at it (the human's) — the instant that
+    // socket closes, activeSessions has nothing left referencing the
+    // session at all. This index keeps it reachable regardless of which
+    // (or how many) WebSocketSessions are currently attached to it.
+    private final Map<Long, GameSession> sessionsByGameId = new HashMap<>();
+
+    // One live bot game per (userId, botType) slot, keyed by "userId:botType".
+    // Lets join() recognize "you already have a game with this bot" and
+    // reattach instead of silently starting a second, orphaning the first.
+    private final Map<String, Long> activeBotGameId = new HashMap<>();
+
     public GameSessionManager(ObjectMapper objectMapper, GameRecorder gameRecorder,
                               UserService userService, EloProperties eloProperties,
                               MatchmakingProperties matchmakingProperties) {
@@ -55,6 +68,15 @@ public class GameSessionManager {
 
     public synchronized GameSession getSession(WebSocketSession ws) {
         return activeSessions.get(ws);
+    }
+
+    public synchronized List<ActiveGameSummary> activeGamesFor(String username) {
+        List<ActiveGameSummary> result = new ArrayList<>();
+        for (GameSession session : sessionsByGameId.values()) {
+            ActiveGameSummary summary = session.summarizeFor(username);
+            if (summary != null) result.add(summary);
+        }
+        return result;
     }
 
     public synchronized PlayerRole rejoin(WebSocketSession ws, String username) {
@@ -71,12 +93,53 @@ public class GameSessionManager {
         return null;
     }
 
+    // Preferred over the username-only overload whenever a gameId is known
+    // (e.g. a reconnect that names the game it belongs to) — an O(1) lookup
+    // instead of a scan, and unambiguous once a user can hold more than one
+    // live session (concurrent bot games). Falls back to the username scan
+    // when no gameId is supplied, so existing PvP reconnects are unaffected.
+    public synchronized PlayerRole rejoin(WebSocketSession ws, String username, Long gameId) {
+        if (gameId == null) {
+            return rejoin(ws, username);
+        }
+        GameSession session = sessionsByGameId.get(gameId);
+        if (session == null || session.isGameOver()) {
+            return null;
+        }
+        PlayerRole role = session.rejoin(ws, username);
+        if (role != null) {
+            activeSessions.put(ws, session);
+        }
+        return role;
+    }
+
     public synchronized PlayerRole join(WebSocketSession ws, String username, String colorPreference) {
         // Bot games bypass the queue — create a session immediately
         String botType = (String) ws.getAttributes().getOrDefault("botType", "none");
         if (!"none".equals(botType)) {
             AppUser user = userService.findByUsername(username).orElse(null);
             Long userId = user != null ? user.getId() : null;
+
+            String botKey = botKey(userId, botType);
+            Long existingGameId = activeBotGameId.get(botKey);
+            if (existingGameId != null) {
+                GameSession existing = sessionsByGameId.get(existingGameId);
+                if (existing == null || existing.isGameOver()) {
+                    activeBotGameId.remove(botKey);
+                } else {
+                    // A live game already exists for this bot — reattach to
+                    // it rather than starting a duplicate. If it's occupied
+                    // by another socket (e.g. a second tab), rejoin fails
+                    // and we deliberately return null instead of falling
+                    // through to create a second session for the same slot.
+                    PlayerRole role = existing.rejoin(ws, username);
+                    if (role != null) {
+                        activeSessions.put(ws, existing);
+                    }
+                    return role;
+                }
+            }
+
             GameSession session = new GameSession(objectMapper, gameRecorder);
             PlayerRole role = session.join(ws, username, userId, colorPreference);
             if (role != null) activeSessions.put(ws, session);
@@ -134,6 +197,75 @@ public class GameSessionManager {
             activeSessions.replaceAll((k, v) -> v == session ? newSession : v);
         }
         return outcome;
+    }
+
+    // Starts a session's recorded game and indexes it by gameId. Must be
+    // used instead of calling session.onGameStart() directly — otherwise
+    // the session is never reachable via rejoin(ws, username, gameId).
+    public synchronized void startGame(GameSession session) {
+        session.onGameStart();
+        index(session);
+    }
+
+    // Registers an already-started session (gameId already assigned) rebuilt
+    // by GameRestorationService after a server restart — same indexing
+    // startGame() does, without calling onGameStart() again.
+    public synchronized void restoreSession(GameSession session) {
+        index(session);
+    }
+
+    private void index(GameSession session) {
+        Long gameId = session.getGameId();
+        if (gameId == null) return;
+        sessionsByGameId.put(gameId, session);
+        if (session.isBotEnabled()) {
+            Long humanId = session.getHumanPlayerId();
+            if (humanId != null) {
+                activeBotGameId.put(botKey(humanId, session.getBotType()), gameId);
+            }
+        }
+    }
+
+    // Called after any action that might have ended a game, so finished
+    // games don't linger in the gameId (or bot-slot) index forever.
+    public synchronized void pruneIfOver(GameSession session) {
+        if (session == null || !session.isGameOver()) return;
+        Long gameId = session.getGameId();
+        if (gameId != null) {
+            sessionsByGameId.remove(gameId);
+            activeBotGameId.values().removeIf(id -> id.equals(gameId));
+        }
+    }
+
+    // Lets a user walk away from a bot game they no longer want to finish,
+    // freeing up that bot's slot for a fresh game. Only bot games — PvP
+    // abandonment isn't a concept the other player should be subject to.
+    public synchronized boolean abandonBotGame(String username, long gameId) {
+        GameSession session = sessionsByGameId.get(gameId);
+        if (session == null) return false;
+        ActiveGameSummary summary = session.summarizeFor(username);
+        if (summary == null || !"BOT".equals(summary.mode())) return false;
+        session.abandon();
+        pruneIfOver(session);
+        return true;
+    }
+
+    private static String botKey(Long userId, String botType) {
+        return userId + ":" + botType;
+    }
+
+    @Scheduled(fixedDelay = 5000)
+    public synchronized void expireDisconnectedPvpGames() {
+        for (GameSession session : new ArrayList<>(sessionsByGameId.values())) {
+            if (!session.expireIfDisconnectedPastGrace(eloProperties.disconnectGraceSeconds())) continue;
+            try {
+                session.broadcastBoardState();
+            } catch (IOException e) {
+                log.error("Failed to notify players of PvP disconnect timeout for game {}", session.getGameId(), e);
+            }
+            pruneIfOver(session);
+            activeSessions.values().removeIf(s -> s == session);
+        }
     }
 
     public synchronized void declineRematch(WebSocketSession ws) throws IOException {
@@ -221,7 +353,7 @@ public class GameSessionManager {
         sendMessage(b.ws(), ServerMessage.waiting(roleB.name()));
 
         try {
-            session.onGameStart();
+            startGame(session);
             session.broadcastBoardState();
         } catch (Exception e) {
             log.error("Failed to start scheduled game for {} vs {}", a.username(), b.username(), e);

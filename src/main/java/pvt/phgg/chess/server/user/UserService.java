@@ -25,6 +25,10 @@ public class UserService implements UserDetailsService {
         return userRepository.findByUsername(username);
     }
 
+    public java.util.Optional<AppUser> findById(Long id) {
+        return userRepository.findById(id);
+    }
+
     public AppUser register(String username, String password, Integer startingElo) {
         if (userRepository.findByUsername(username).isPresent()) {
             throw new IllegalArgumentException("Username already taken");
