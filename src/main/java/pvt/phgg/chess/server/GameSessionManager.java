@@ -184,6 +184,20 @@ public class GameSessionManager {
         }
     }
 
+    @Scheduled(fixedDelay = 5000)
+    public synchronized void expireDisconnectedPvpGames() {
+        for (GameSession session : new ArrayList<>(sessionsByGameId.values())) {
+            if (!session.expireIfDisconnectedPastGrace(eloProperties.disconnectGraceSeconds())) continue;
+            try {
+                session.broadcastBoardState();
+            } catch (IOException e) {
+                log.error("Failed to notify players of PvP disconnect timeout for game {}", session.getGameId(), e);
+            }
+            pruneIfOver(session);
+            activeSessions.values().removeIf(s -> s == session);
+        }
+    }
+
     public synchronized void declineRematch(WebSocketSession ws) throws IOException {
         GameSession session = activeSessions.get(ws);
         if (session == null) return;

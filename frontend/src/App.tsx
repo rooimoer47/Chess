@@ -184,7 +184,7 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, onLo
 
   const isGameOver = status === 'CHECKMATE' || status === 'STALEMATE' || status === 'RESIGNED'
     || status === 'THREEFOLD_REPETITION' || status === 'FIFTY_MOVE_RULE'
-    || status === 'INSUFFICIENT_MATERIAL' || status === 'DRAW_AGREED';
+    || status === 'INSUFFICIENT_MATERIAL' || status === 'DRAW_AGREED' || status === 'TIMEOUT';
   const isMyTurn = currentTurn === playerColor;
 
   const myLost       = playerColor === 'WHITE' ? capturedByBlack : capturedByWhite;

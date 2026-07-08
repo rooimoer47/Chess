@@ -424,6 +424,93 @@ class GameSessionManagerTest {
         assertNotNull(manager.rejoin(new FakeWs("a2", Map.of()), "alice", 42L));
     }
 
+    // ---- PvP disconnect timeout (Phase 2 of docs/RECONNECT_PLAN.md) ----
+
+    @Test
+    void expireDisconnectedPvpGames_endsGameAfterGracePeriod() throws Exception {
+        GameSessionManager zeroGraceManager = managerWithGraceSeconds(0);
+        FakeWs ws1 = humanWs("a");
+        FakeWs ws2 = humanWs("b");
+        stubUser("alice", 1L, 1000);
+        stubUser("bob",   2L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(99L);
+        zeroGraceManager.join(ws1, "alice", "WHITE");
+        zeroGraceManager.join(ws2, "bob",   "WHITE");
+        GameSession session = zeroGraceManager.getSession(ws1);
+        zeroGraceManager.startGame(session);
+
+        zeroGraceManager.disconnect(ws1); // alice (white) disconnects
+        zeroGraceManager.expireDisconnectedPvpGames();
+
+        verify(gameRecorder).endGame(99L, "TIMEOUT", "BLACK");
+        assertTrue(session.isGameOver());
+        assertNull(zeroGraceManager.rejoin(new FakeWs("a2", Map.of()), "alice", 99L),
+                "Timed-out game must no longer be reachable");
+    }
+
+    @Test
+    void expireDisconnectedPvpGames_withinGracePeriod_doesNothing() throws Exception {
+        FakeWs ws1 = humanWs("a"); // default manager grace is 60s
+        FakeWs ws2 = humanWs("b");
+        stubUser("alice", 1L, 1000);
+        stubUser("bob",   2L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(99L);
+        manager.join(ws1, "alice", "WHITE");
+        manager.join(ws2, "bob",   "WHITE");
+        GameSession session = manager.getSession(ws1);
+        manager.startGame(session);
+
+        manager.disconnect(ws1);
+        manager.expireDisconnectedPvpGames();
+
+        assertFalse(session.isGameOver());
+        verify(gameRecorder, never()).endGame(anyLong(), any(), any());
+    }
+
+    @Test
+    void expireDisconnectedPvpGames_botGame_neverExpires() throws Exception {
+        GameSessionManager zeroGraceManager = managerWithGraceSeconds(0);
+        FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(7L);
+        zeroGraceManager.join(ws, "alice", "WHITE");
+        zeroGraceManager.joinBot(ws, "alan");
+        GameSession session = zeroGraceManager.getSession(ws);
+        zeroGraceManager.startGame(session);
+
+        zeroGraceManager.disconnect(ws);
+        zeroGraceManager.expireDisconnectedPvpGames();
+
+        assertFalse(session.isGameOver(), "Bot games must never auto-lose from disconnect");
+        assertNotNull(zeroGraceManager.rejoin(new FakeWs("a2", Map.of()), "alice", 7L),
+                "Bot game must still be resumable");
+    }
+
+    @Test
+    void expireDisconnectedPvpGames_reconnectBeforeGraceCancelsTimeout() throws Exception {
+        GameSessionManager zeroGraceManager = managerWithGraceSeconds(0);
+        FakeWs ws1 = humanWs("a");
+        FakeWs ws2 = humanWs("b");
+        stubUser("alice", 1L, 1000);
+        stubUser("bob",   2L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(99L);
+        zeroGraceManager.join(ws1, "alice", "WHITE");
+        zeroGraceManager.join(ws2, "bob",   "WHITE");
+        GameSession session = zeroGraceManager.getSession(ws1);
+        zeroGraceManager.startGame(session);
+        zeroGraceManager.disconnect(ws1);
+
+        zeroGraceManager.rejoin(new FakeWs("a2", Map.of()), "alice", 99L);
+        zeroGraceManager.expireDisconnectedPvpGames();
+
+        assertFalse(session.isGameOver(), "Reconnecting must cancel the pending timeout");
+    }
+
+    private GameSessionManager managerWithGraceSeconds(int seconds) {
+        EloProperties props = new EloProperties(1000, 100, 400, 2800, seconds);
+        return new GameSessionManager(objectMapper, gameRecorder, userService, props, mmProps);
+    }
+
     // ---- helpers ----
 
     private void stubUser(String username, Long id, int elo) {

@@ -13,6 +13,8 @@ import pvt.phgg.chess.server.dto.ServerMessage;
 import pvt.phgg.chess.server.game.GameRecorder;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -58,6 +60,9 @@ public class GameSession {
     private boolean drawAgreed = false;
     private boolean rematchRequestedByWhite = false;
     private boolean rematchRequestedByBlack = false;
+    private boolean timedOut = false;
+    private Instant disconnectedAt;
+    private boolean disconnectedIsWhite;
 
     // Game recording state
     private Long gameId;
@@ -182,7 +187,7 @@ public class GameSession {
     }
 
     public synchronized boolean isGameOver() {
-        if (resigned || drawAgreed) return true;
+        if (resigned || drawAgreed || timedOut) return true;
         GameStatus status = engine.getStatus();
         return status == GameStatus.CHECKMATE || status == GameStatus.STALEMATE
                 || status == GameStatus.THREEFOLD_REPETITION || status == GameStatus.FIFTY_MOVE_RULE
@@ -211,6 +216,7 @@ public class GameSession {
                 if (rematchRequestedByBlack) sendTo(blackSession, ServerMessage.rematchDeclined());
             } else {
                 sendTo(blackSession, ServerMessage.opponentDisconnected());
+                if (!botEnabled) startDisconnectTimer(true);
             }
         } else if (role == PlayerRole.BLACK) {
             blackSession = null;
@@ -218,20 +224,43 @@ public class GameSession {
                 if (rematchRequestedByWhite) sendTo(whiteSession, ServerMessage.rematchDeclined());
             } else {
                 sendTo(whiteSession, ServerMessage.opponentDisconnected());
+                if (!botEnabled) startDisconnectTimer(false);
             }
         }
+    }
+
+    private void startDisconnectTimer(boolean isWhite) {
+        disconnectedAt = Instant.now();
+        disconnectedIsWhite = isWhite;
     }
 
     public synchronized PlayerRole rejoin(WebSocketSession ws, String username) {
         if (username.equals(whiteUsername) && whiteSession == null) {
             whiteSession = ws;
+            disconnectedAt = null;
             return PlayerRole.WHITE;
         }
         if (username.equals(blackUsername) && blackSession == null) {
             blackSession = ws;
+            disconnectedAt = null;
             return PlayerRole.BLACK;
         }
         return null;
+    }
+
+    // Called by GameSessionManager's scheduled sweep. Bot games are exempt —
+    // there's no opponent waiting, so a disconnected human isn't costing
+    // anyone anything.
+    public synchronized boolean expireIfDisconnectedPastGrace(int graceSeconds) {
+        if (disconnectedAt == null || timedOut || botEnabled) return false;
+        if (Duration.between(disconnectedAt, Instant.now()).getSeconds() < graceSeconds) return false;
+
+        timedOut = true;
+        String winner = disconnectedIsWhite ? BLACK : WHITE;
+        if (gameRecorder != null && gameId != null) {
+            gameRecorder.endGame(gameId, "TIMEOUT", winner);
+        }
+        return true;
     }
 
     public synchronized void resign(boolean isWhite) {
@@ -434,6 +463,8 @@ public class GameSession {
             currentStatus = GameStatus.RESIGNED;
         } else if (drawAgreed) {
             currentStatus = GameStatus.DRAW_AGREED;
+        } else if (timedOut) {
+            currentStatus = GameStatus.TIMEOUT;
         } else {
             currentStatus = engine.getStatus();
         }
@@ -441,7 +472,8 @@ public class GameSession {
                 && currentStatus != GameStatus.THREEFOLD_REPETITION
                 && currentStatus != GameStatus.FIFTY_MOVE_RULE
                 && currentStatus != GameStatus.INSUFFICIENT_MATERIAL
-                && currentStatus != GameStatus.DRAW_AGREED;
+                && currentStatus != GameStatus.DRAW_AGREED
+                && currentStatus != GameStatus.TIMEOUT;
 
         PieceDto[][] board = new PieceDto[BOARD_SIZE][BOARD_SIZE];
         List<LegalMove> legalMoves = new ArrayList<>();
@@ -463,6 +495,8 @@ public class GameSession {
         String turn;
         if (resigned) {
             turn = resignedWhite ? WHITE : BLACK;
+        } else if (timedOut) {
+            turn = disconnectedIsWhite ? WHITE : BLACK;
         } else {
             turn = engine.isWhiteTurn() ? WHITE : BLACK;
         }

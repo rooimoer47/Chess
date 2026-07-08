@@ -95,6 +95,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
             : msg.status === 'INSUFFICIENT_MATERIAL'? 'Draw — insufficient material!'
             : msg.status === 'DRAW_AGREED'         ? 'Draw by agreement!'
             : msg.status === 'CHECK'               ? `${msg.currentTurn} is in check!`
+            : msg.status === 'TIMEOUT'              ? `${msg.currentTurn} disconnected too long. ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
             : null;
           setState(s => ({
             ...s,
@@ -103,7 +104,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', onAuthF
             board: msg.board,
             currentTurn: msg.currentTurn,
             status: msg.status,
-            legalMoves: msg.status === 'CHECKMATE' || msg.status === 'STALEMATE' || msg.status === 'RESIGNED' || msg.status === 'THREEFOLD_REPETITION' || msg.status === 'FIFTY_MOVE_RULE' || msg.status === 'INSUFFICIENT_MATERIAL' || msg.status === 'DRAW_AGREED' ? [] : msg.legalMoves,
+            legalMoves: msg.status === 'CHECKMATE' || msg.status === 'STALEMATE' || msg.status === 'RESIGNED' || msg.status === 'THREEFOLD_REPETITION' || msg.status === 'FIFTY_MOVE_RULE' || msg.status === 'INSUFFICIENT_MATERIAL' || msg.status === 'DRAW_AGREED' || msg.status === 'TIMEOUT' ? [] : msg.legalMoves,
             drawOfferedByOpponent: false,
             drawOfferPending: false,
             lastMove: msg.lastMove ?? null,
