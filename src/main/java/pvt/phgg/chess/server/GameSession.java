@@ -150,6 +150,10 @@ public class GameSession {
         gameId = gameRecorder.startGame(whitePlayerId, blackPlayerId, mode);
     }
 
+    public synchronized Long getGameId() {
+        return gameId;
+    }
+
     public synchronized boolean isBotTurn() {
         return botEnabled && engine.isWhiteTurn() == botIsWhite;
     }

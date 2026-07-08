@@ -307,6 +307,123 @@ class GameSessionManagerTest {
         assertTrue(ws2.lastPayload().contains("WAITING_QUEUE"));
     }
 
+    // ---- gameId indexing (Phase 1 of docs/RECONNECT_PLAN.md) ----
+
+    @Test
+    void startGame_indexesSessionByGameId() {
+        FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(42L);
+        manager.join(ws, "alice", "WHITE");
+        GameSession session = manager.getSession(ws);
+
+        manager.startGame(session);
+
+        assertEquals(42L, session.getGameId());
+    }
+
+    @Test
+    void rejoinByGameId_botGame_survivesSocketClose() throws Exception {
+        // This is the root-cause regression test: a bot game has only one
+        // WebSocketSession pointing at it. Closing it must not make the
+        // session unreachable — rejoin-by-gameId must still find it.
+        FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(42L);
+        manager.join(ws, "alice", "WHITE");
+        GameSession session = manager.getSession(ws);
+        manager.startGame(session);
+
+        manager.disconnect(ws);
+        assertNull(manager.getSession(ws), "Old socket must no longer be mapped");
+
+        FakeWs newWs = new FakeWs("a2", Map.of());
+        PlayerRole role = manager.rejoin(newWs, "alice", 42L);
+
+        assertEquals(PlayerRole.WHITE, role, "Bot game must be reachable again via its gameId");
+        assertSame(session, manager.getSession(newWs));
+    }
+
+    @Test
+    void rejoinByGameId_disambiguatesConcurrentSessionsForSameUser() throws Exception {
+        // Reproduces the ambiguity bug the username-only rejoin has once a
+        // user can hold more than one live session at a time.
+        FakeWs ws1 = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(1L, 2L);
+        manager.join(ws1, "alice", "WHITE");
+        manager.startGame(manager.getSession(ws1));
+        manager.disconnect(ws1);
+
+        FakeWs ws2 = new FakeWs("b", Map.of("botType", "barbara"));
+        manager.join(ws2, "alice", "WHITE");
+        manager.startGame(manager.getSession(ws2));
+        manager.disconnect(ws2);
+
+        FakeWs rejoinWs = new FakeWs("c", Map.of());
+        manager.rejoin(rejoinWs, "alice", 1L);
+
+        assertEquals(1L, manager.getSession(rejoinWs).getGameId());
+    }
+
+    @Test
+    void rejoinByGameId_unknownGameId_returnsNull() {
+        FakeWs ws = new FakeWs("a", Map.of());
+        assertNull(manager.rejoin(ws, "alice", 999L));
+    }
+
+    @Test
+    void rejoinByGameId_nullGameId_fallsBackToUsernameScan() throws Exception {
+        // PvP only: the opponent's still-open socket keeps the session in
+        // activeSessions, so the old username scan can find it. (A bot
+        // game's sole socket is gone the moment it disconnects — see
+        // rejoinByGameId_botGame_survivesSocketClose for why that case
+        // requires the gameId, not the fallback.)
+        FakeWs ws1 = humanWs("a");
+        FakeWs ws2 = humanWs("b");
+        stubUser("alice", 1L, 1000);
+        stubUser("bob",   2L, 1000);
+        manager.join(ws1, "alice", "WHITE");
+        manager.join(ws2, "bob",   "WHITE");
+        manager.disconnect(ws1);
+
+        FakeWs newWs = new FakeWs("a2", Map.of());
+        PlayerRole role = manager.rejoin(newWs, "alice", null);
+
+        assertEquals(PlayerRole.WHITE, role);
+    }
+
+    @Test
+    void pruneIfOver_removesFinishedGameFromIndex() {
+        FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(42L);
+        manager.join(ws, "alice", "WHITE");
+        GameSession session = manager.getSession(ws);
+        manager.startGame(session);
+        session.resign(true);
+
+        manager.pruneIfOver(session);
+
+        assertNull(manager.rejoin(new FakeWs("a2", Map.of()), "alice", 42L),
+                "A resigned game must no longer be reachable by gameId");
+    }
+
+    @Test
+    void pruneIfOver_leavesInProgressGameIndexed() throws Exception {
+        FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any())).thenReturn(42L);
+        manager.join(ws, "alice", "WHITE");
+        GameSession session = manager.getSession(ws);
+        manager.startGame(session);
+        manager.disconnect(ws);
+
+        manager.pruneIfOver(session);
+
+        assertNotNull(manager.rejoin(new FakeWs("a2", Map.of()), "alice", 42L));
+    }
+
     // ---- helpers ----
 
     private void stubUser(String username, Long id, int elo) {

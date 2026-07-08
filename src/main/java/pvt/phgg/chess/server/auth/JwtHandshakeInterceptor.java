@@ -48,6 +48,14 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             attributes.put("botType", botParam != null ? botParam : "none");
             String colorParam = req.getParameter("color");
             attributes.put("colorPreference", "WHITE".equals(colorParam) || "BLACK".equals(colorParam) ? colorParam : "RANDOM");
+            String gameIdParam = req.getParameter("gameId");
+            if (gameIdParam != null) {
+                try {
+                    attributes.put("gameId", Long.parseLong(gameIdParam));
+                } catch (NumberFormatException e) {
+                    LOGGER.warn("WS handshake: invalid gameId param '{}'", gameIdParam);
+                }
+            }
             userService.findByUsername(username)
                     .ifPresent(u -> attributes.put("userId", u.getId()));
             LOGGER.debug("WS handshake accepted for user: {}", username);
