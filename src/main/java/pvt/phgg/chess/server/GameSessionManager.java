@@ -204,14 +204,24 @@ public class GameSessionManager {
     // the session is never reachable via rejoin(ws, username, gameId).
     public synchronized void startGame(GameSession session) {
         session.onGameStart();
+        index(session);
+    }
+
+    // Registers an already-started session (gameId already assigned) rebuilt
+    // by GameRestorationService after a server restart — same indexing
+    // startGame() does, without calling onGameStart() again.
+    public synchronized void restoreSession(GameSession session) {
+        index(session);
+    }
+
+    private void index(GameSession session) {
         Long gameId = session.getGameId();
-        if (gameId != null) {
-            sessionsByGameId.put(gameId, session);
-            if (session.isBotEnabled()) {
-                Long humanId = session.getHumanPlayerId();
-                if (humanId != null) {
-                    activeBotGameId.put(botKey(humanId, session.getBotType()), gameId);
-                }
+        if (gameId == null) return;
+        sessionsByGameId.put(gameId, session);
+        if (session.isBotEnabled()) {
+            Long humanId = session.getHumanPlayerId();
+            if (humanId != null) {
+                activeBotGameId.put(botKey(humanId, session.getBotType()), gameId);
             }
         }
     }

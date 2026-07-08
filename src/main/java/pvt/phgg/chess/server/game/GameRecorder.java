@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import pvt.phgg.chess.Position;
 import pvt.phgg.chess.server.elo.EloService;
 
+import java.util.List;
+
 @Service
 public class GameRecorder {
 
@@ -21,8 +23,8 @@ public class GameRecorder {
         this.eloService = eloService;
     }
 
-    public long startGame(Long whitePlayerId, Long blackPlayerId, String mode) {
-        return gameRepository.save(new Game(whitePlayerId, blackPlayerId, mode)).getId();
+    public long startGame(Long whitePlayerId, Long blackPlayerId, String mode, String botType) {
+        return gameRepository.save(new Game(whitePlayerId, blackPlayerId, mode, botType)).getId();
     }
 
     public void recordMove(long gameId, int moveNumber, Position from, Position to, String promotionChoice) {
@@ -35,5 +37,15 @@ public class GameRecorder {
                 "UPDATE games SET result = ?, winner_color = ?, ended_at = now() WHERE id = ?",
                 result, winnerColor, gameId);
         eloService.scheduleEloUpdate(gameId);
+    }
+
+    // Used at startup to rebuild in-memory GameSessions after a restart —
+    // see GameRestorationService.
+    public List<Game> findInProgressGames() {
+        return gameRepository.findByEndedAtIsNull();
+    }
+
+    public List<GameMove> findMoves(long gameId) {
+        return gameMoveRepository.findByGameIdOrderByMoveNumber(gameId);
     }
 }

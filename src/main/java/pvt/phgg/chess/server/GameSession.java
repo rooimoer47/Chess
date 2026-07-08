@@ -11,6 +11,7 @@ import pvt.phgg.chess.server.dto.LastMoveDto;
 import pvt.phgg.chess.server.dto.LegalMove;
 import pvt.phgg.chess.server.dto.PieceDto;
 import pvt.phgg.chess.server.dto.ServerMessage;
+import pvt.phgg.chess.server.game.GameMove;
 import pvt.phgg.chess.server.game.GameRecorder;
 
 import java.io.IOException;
@@ -84,6 +85,43 @@ public class GameSession {
         this.gameRecorder = gameRecorder;
     }
 
+    // Rebuilds a live session from durable storage after a server restart —
+    // see GameRestorationService. Replays every recorded move through the
+    // same applyMove()/applyPromotion() path live play uses, so captures,
+    // check/checkmate detection, and bot opponent-move tracking all come
+    // out identical to the original game. gameId is set only after replay
+    // completes, so the replay itself never re-records into game_moves.
+    public static GameSession restore(ObjectMapper mapper, GameRecorder recorder, long gameId,
+                                       String mode, String botType,
+                                       String whiteUsername, Long whitePlayerId,
+                                       String blackUsername, Long blackPlayerId,
+                                       List<GameMove> moves) {
+        GameSession session = new GameSession(mapper, recorder);
+        session.whiteUsername = whiteUsername;
+        session.whitePlayerId = whitePlayerId;
+        session.blackUsername = blackUsername;
+        session.blackPlayerId = blackPlayerId;
+        if ("BOT".equals(mode)) {
+            session.botEnabled = true;
+            session.botType = botType;
+            session.botStrategy = selectStrategy(botType);
+            session.botIsWhite = "BOT".equals(whiteUsername);
+        }
+
+        for (GameMove move : moves) {
+            Position from = new Position(move.getFromRow(), move.getFromCol());
+            Position to = new Position(move.getToRow(), move.getToCol());
+            MoveResult result = session.applyMove(from, to);
+            if (result.type() == MoveResult.Type.PROMOTION_NEEDED) {
+                session.applyPromotion(to, PromotionChoice.valueOf(move.getPromotionChoice()));
+            }
+        }
+
+        session.gameId = gameId;
+        session.moveCount = moves.size();
+        return session;
+    }
+
     public synchronized PlayerRole join(WebSocketSession ws, String username) {
         return join(ws, username, null, "RANDOM");
     }
@@ -154,7 +192,7 @@ public class GameSession {
     public synchronized void onGameStart() {
         if (gameRecorder == null || gameId != null) return;
         String mode = botEnabled ? "BOT" : "HUMAN";
-        gameId = gameRecorder.startGame(whitePlayerId, blackPlayerId, mode);
+        gameId = gameRecorder.startGame(whitePlayerId, blackPlayerId, mode, botEnabled ? botType : null);
     }
 
     public synchronized Long getGameId() {
