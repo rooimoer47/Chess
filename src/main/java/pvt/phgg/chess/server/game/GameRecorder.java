@@ -24,7 +24,13 @@ public class GameRecorder {
     }
 
     public long startGame(Long whitePlayerId, Long blackPlayerId, String mode, String botType) {
-        return gameRepository.save(new Game(whitePlayerId, blackPlayerId, mode, botType)).getId();
+        return startGame(whitePlayerId, blackPlayerId, mode, botType, "STANDARD", "RNBQKBNR");
+    }
+
+    public long startGame(Long whitePlayerId, Long blackPlayerId, String mode, String botType,
+                          String variant, String startingPosition) {
+        return gameRepository.save(
+                new Game(whitePlayerId, blackPlayerId, mode, botType, variant, startingPosition)).getId();
     }
 
     public void recordMove(long gameId, int moveNumber, Position from, Position to, String promotionChoice) {

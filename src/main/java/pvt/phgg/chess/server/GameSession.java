@@ -32,7 +32,9 @@ public class GameSession {
     private static final String BLACK = "BLACK";
 
     private final ObjectMapper objectMapper;
-    private final GameEngine engine = new GameEngine();
+    private final String variant;            // "STANDARD" | "CHESS960"
+    private final String startingPosition;   // 8-char back rank the engine was built from
+    private final GameEngine engine;
     private final GameRecorder gameRecorder;  // null in unit-test context
 
     // Q > R > B > N > P
@@ -76,13 +78,35 @@ public class GameSession {
 
     // Used by unit tests — no recording
     public GameSession(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-        this.gameRecorder = null;
+        this(objectMapper, null, "STANDARD");
     }
 
     public GameSession(ObjectMapper objectMapper, GameRecorder gameRecorder) {
+        this(objectMapper, gameRecorder, "STANDARD");
+    }
+
+    // For CHESS960 this generates a fresh random back rank; for STANDARD it uses the classic one.
+    public GameSession(ObjectMapper objectMapper, GameRecorder gameRecorder, String variant) {
+        this(objectMapper, gameRecorder, normalizeVariant(variant), startingPositionFor(variant));
+    }
+
+    private GameSession(ObjectMapper objectMapper, GameRecorder gameRecorder,
+                        String variant, String startingPosition) {
         this.objectMapper = objectMapper;
         this.gameRecorder = gameRecorder;
+        this.variant = variant;
+        this.startingPosition = startingPosition;
+        this.engine = new GameEngine(startingPosition);
+    }
+
+    private static String normalizeVariant(String variant) {
+        return "CHESS960".equals(variant) ? "CHESS960" : "STANDARD";
+    }
+
+    private static String startingPositionFor(String variant) {
+        return "CHESS960".equals(variant)
+                ? Chess960Generator.generateBackRank()
+                : GameEngine.STANDARD_BACK_RANK;
     }
 
     // Rebuilds a live session from durable storage after a server restart —
@@ -96,7 +120,17 @@ public class GameSession {
                                        String whiteUsername, Long whitePlayerId,
                                        String blackUsername, Long blackPlayerId,
                                        List<GameMove> moves) {
-        GameSession session = new GameSession(mapper, recorder);
+        return restore(mapper, recorder, gameId, mode, botType, "STANDARD", GameEngine.STANDARD_BACK_RANK,
+                whiteUsername, whitePlayerId, blackUsername, blackPlayerId, moves);
+    }
+
+    public static GameSession restore(ObjectMapper mapper, GameRecorder recorder, long gameId,
+                                       String mode, String botType, String variant, String startingPosition,
+                                       String whiteUsername, Long whitePlayerId,
+                                       String blackUsername, Long blackPlayerId,
+                                       List<GameMove> moves) {
+        GameSession session = new GameSession(mapper, recorder, normalizeVariant(variant),
+                startingPosition != null ? startingPosition : GameEngine.STANDARD_BACK_RANK);
         session.whiteUsername = whiteUsername;
         session.whitePlayerId = whitePlayerId;
         session.blackUsername = blackUsername;
@@ -192,7 +226,16 @@ public class GameSession {
     public synchronized void onGameStart() {
         if (gameRecorder == null || gameId != null) return;
         String mode = botEnabled ? "BOT" : "HUMAN";
-        gameId = gameRecorder.startGame(whitePlayerId, blackPlayerId, mode, botEnabled ? botType : null);
+        gameId = gameRecorder.startGame(whitePlayerId, blackPlayerId, mode, botEnabled ? botType : null,
+                variant, startingPosition);
+    }
+
+    public synchronized String getVariant() {
+        return variant;
+    }
+
+    public synchronized String getStartingPosition() {
+        return startingPosition;
     }
 
     public synchronized Long getGameId() {
@@ -367,7 +410,8 @@ public class GameSession {
     }
 
     public synchronized GameSession createRematch(ObjectMapper mapper, GameRecorder recorder) {
-        GameSession next = new GameSession(mapper, recorder);
+        // A Chess960 rematch is a fresh Chess960 game — the constructor generates a new back rank.
+        GameSession next = new GameSession(mapper, recorder, variant);
         if (botEnabled) {
             if (botIsWhite) {
                 next.whiteSession = blackSession;

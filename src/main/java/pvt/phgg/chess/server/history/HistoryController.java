@@ -113,7 +113,7 @@ public class HistoryController {
                         rs.getString("promotion_choice")),
                 gameId);
 
-        GameEngine engine = new GameEngine();
+        GameEngine engine = new GameEngine(startingPositionFor(gameId));
         List<BoardSnapshotDto> snapshots = new ArrayList<>();
         snapshots.add(boardSnapshot(engine, 0, null));
 
@@ -129,6 +129,15 @@ public class HistoryController {
         }
 
         return ResponseEntity.ok(snapshots);
+    }
+
+    // Games may start from a non-standard back rank (Chess960); replay must reconstruct from the
+    // position the game was actually recorded with, not the standard one. Defaults to standard for
+    // missing/legacy rows.
+    private String startingPositionFor(long gameId) {
+        List<String> positions = jdbcTemplate.queryForList(
+                "SELECT starting_position FROM games WHERE id = ?", String.class, gameId);
+        return positions.isEmpty() ? GameEngine.STANDARD_BACK_RANK : positions.get(0);
     }
 
     private BoardSnapshotDto boardSnapshot(GameEngine engine, int moveNumber, LastMoveDto lastMove) {

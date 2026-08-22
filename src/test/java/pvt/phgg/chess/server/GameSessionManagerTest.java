@@ -314,7 +314,7 @@ class GameSessionManagerTest {
     void startGame_indexesSessionByGameId() {
         FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(42L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(42L);
         manager.join(ws, "alice", "WHITE");
         GameSession session = manager.getSession(ws);
 
@@ -330,7 +330,7 @@ class GameSessionManagerTest {
         // session unreachable — rejoin-by-gameId must still find it.
         FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(42L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(42L);
         manager.join(ws, "alice", "WHITE");
         GameSession session = manager.getSession(ws);
         manager.startGame(session);
@@ -351,7 +351,7 @@ class GameSessionManagerTest {
         // user can hold more than one live session at a time.
         FakeWs ws1 = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(1L, 2L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(1L, 2L);
         manager.join(ws1, "alice", "WHITE");
         manager.startGame(manager.getSession(ws1));
         manager.disconnect(ws1);
@@ -398,7 +398,7 @@ class GameSessionManagerTest {
     void pruneIfOver_removesFinishedGameFromIndex() {
         FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(42L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(42L);
         manager.join(ws, "alice", "WHITE");
         GameSession session = manager.getSession(ws);
         manager.startGame(session);
@@ -414,7 +414,7 @@ class GameSessionManagerTest {
     void pruneIfOver_leavesInProgressGameIndexed() throws Exception {
         FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(42L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(42L);
         manager.join(ws, "alice", "WHITE");
         GameSession session = manager.getSession(ws);
         manager.startGame(session);
@@ -434,7 +434,7 @@ class GameSessionManagerTest {
         FakeWs ws2 = humanWs("b");
         stubUser("alice", 1L, 1000);
         stubUser("bob",   2L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(99L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(99L);
         zeroGraceManager.join(ws1, "alice", "WHITE");
         zeroGraceManager.join(ws2, "bob",   "WHITE");
         GameSession session = zeroGraceManager.getSession(ws1);
@@ -455,7 +455,7 @@ class GameSessionManagerTest {
         FakeWs ws2 = humanWs("b");
         stubUser("alice", 1L, 1000);
         stubUser("bob",   2L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(99L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(99L);
         manager.join(ws1, "alice", "WHITE");
         manager.join(ws2, "bob",   "WHITE");
         GameSession session = manager.getSession(ws1);
@@ -473,7 +473,7 @@ class GameSessionManagerTest {
         GameSessionManager zeroGraceManager = managerWithGraceSeconds(0);
         FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(7L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(7L);
         zeroGraceManager.join(ws, "alice", "WHITE");
         zeroGraceManager.joinBot(ws, "alan");
         GameSession session = zeroGraceManager.getSession(ws);
@@ -494,7 +494,7 @@ class GameSessionManagerTest {
         FakeWs ws2 = humanWs("b");
         stubUser("alice", 1L, 1000);
         stubUser("bob",   2L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(99L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(99L);
         zeroGraceManager.join(ws1, "alice", "WHITE");
         zeroGraceManager.join(ws2, "bob",   "WHITE");
         GameSession session = zeroGraceManager.getSession(ws1);
@@ -518,7 +518,7 @@ class GameSessionManagerTest {
     void activeGamesFor_returnsSummaryForBotGame() {
         FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(42L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(42L);
         manager.join(ws, "alice", "WHITE");
         manager.joinBot(ws, "alan");
         manager.startGame(manager.getSession(ws));
@@ -540,7 +540,7 @@ class GameSessionManagerTest {
         FakeWs ws2 = humanWs("b");
         stubUser("alice", 1L, 1000);
         stubUser("bob",   2L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(7L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(7L);
         manager.join(ws1, "alice", "WHITE");
         manager.join(ws2, "bob",   "WHITE");
         manager.startGame(manager.getSession(ws1));
@@ -558,7 +558,7 @@ class GameSessionManagerTest {
     void activeGamesFor_excludesOtherUsersGames() {
         FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(42L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(42L);
         manager.join(ws, "alice", "WHITE");
         manager.joinBot(ws, "alan");
         manager.startGame(manager.getSession(ws));
@@ -607,7 +607,7 @@ class GameSessionManagerTest {
         // a second concurrent game for the same (user, bot) slot.
         FakeWs ws1 = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(42L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(42L);
         manager.join(ws1, "alice", "WHITE");
         manager.joinBot(ws1, "alan");
         manager.startGame(manager.getSession(ws1));
@@ -628,7 +628,7 @@ class GameSessionManagerTest {
         // the session.
         FakeWs ws1 = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(42L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(42L);
         manager.join(ws1, "alice", "WHITE");
         manager.joinBot(ws1, "alan");
         manager.startGame(manager.getSession(ws1));
@@ -644,7 +644,7 @@ class GameSessionManagerTest {
     void join_botGame_afterPreviousGameEnded_startsFreshSession() {
         FakeWs ws1 = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(1L, 2L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(1L, 2L);
         manager.join(ws1, "alice", "WHITE");
         manager.joinBot(ws1, "alan");
         GameSession first = manager.getSession(ws1);
@@ -665,7 +665,7 @@ class GameSessionManagerTest {
         FakeWs alanWs = new FakeWs("a", Map.of("botType", "alan"));
         FakeWs barbaraWs = new FakeWs("b", Map.of("botType", "barbara"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(1L, 2L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(1L, 2L);
         manager.join(alanWs, "alice", "WHITE");
         manager.joinBot(alanWs, "alan");
         manager.startGame(manager.getSession(alanWs));
@@ -681,7 +681,7 @@ class GameSessionManagerTest {
     void abandonBotGame_endsGameAndFreesTheSlot() {
         FakeWs ws1 = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(1L, 2L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(1L, 2L);
         manager.join(ws1, "alice", "WHITE");
         manager.joinBot(ws1, "alan");
         manager.startGame(manager.getSession(ws1));
@@ -703,7 +703,7 @@ class GameSessionManagerTest {
     void abandonBotGame_notAPlayerInThatGame_returnsFalse() {
         FakeWs ws = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(1L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(1L);
         manager.join(ws, "alice", "WHITE");
         manager.joinBot(ws, "alan");
         manager.startGame(manager.getSession(ws));
@@ -717,7 +717,7 @@ class GameSessionManagerTest {
         FakeWs ws2 = humanWs("b");
         stubUser("alice", 1L, 1000);
         stubUser("bob",   2L, 1000);
-        when(gameRecorder.startGame(any(), any(), any(), any())).thenReturn(1L);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(1L);
         manager.join(ws1, "alice", "WHITE");
         manager.join(ws2, "bob",   "WHITE");
         manager.startGame(manager.getSession(ws1));
