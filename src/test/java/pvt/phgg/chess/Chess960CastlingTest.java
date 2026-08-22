@@ -172,4 +172,73 @@ class Chess960CastlingTest {
         assertFalse(hasMoveTo(engine.getLegalMoves(p(0, 4)), 0, 6),
                 "Castle unavailable after the rook has moved");
     }
+
+    // --- Castling rook vacating a square that blocks an attack (Chess960-specific) ---
+
+    @Test
+    void queensideCastleIllegalWhenRookDepartureUncoversCheckOnDestination() {
+        // King e1, white queenside rook on b1 (rook home files 1/7). A black rook on a1 is blocked
+        // from the king by the white rook on b1, so white is NOT currently in check. Castling
+        // queenside moves that rook off b1 (to d1), uncovering the a1-rook's attack on c1 — the
+        // king's destination. The castle must be illegal (the king would end in check).
+        APiece[][] b = emptyBoard();
+        King king = new King(new Position(0, 4), true);
+        king.setRookFiles(1, 7);
+        b[0][4] = king;
+        b[0][1] = new Rook(new Position(0, 1), true);   // white queenside rook b1
+        b[0][0] = new Rook(new Position(0, 0), false);  // black rook a1, directly behind it
+        b[7][7] = new King(new Position(7, 7), false);  // black king out of the way
+        GameEngine engine = new GameEngine(b, true);
+
+        assertFalse(hasMoveTo(engine.getLegalMoves(p(0, 4)), 0, 2),
+                "Queenside castle must be illegal — the rook leaving b1 uncovers a check on c1");
+
+        // The king-onto-rook gesture must be rejected too (king must not land on c1).
+        engine.applyMove(p(0, 4), p(0, 1));
+        assertFalse(engine.getPiece(0, 2).isKing(), "King must not have castled into check");
+    }
+
+    @Test
+    void castleLegalWhenRankAttackerIsBlockedByANonCastlingPiece() {
+        // Positive control for the fix: a black rook on a1 is shielded from the king's path by a
+        // white knight on b1 that does NOT move. Since only the castling rook is removed when
+        // checking safety, the knight still blocks and kingside castling stays legal.
+        APiece[][] b = emptyBoard();
+        King king = new King(new Position(0, 4), true);
+        king.setRookFiles(1, 7);
+        b[0][4] = king;
+        b[0][7] = new Rook(new Position(0, 7), true);   // kingside rook h1 — the castling rook
+        b[0][1] = new Knight(new Position(0, 1), true); // non-castling blocker on b1 (stays put)
+        b[0][0] = new Rook(new Position(0, 0), false);  // black rook a1, blocked by the knight
+        b[7][7] = new King(new Position(7, 7), false);
+        GameEngine engine = new GameEngine(b, true);
+
+        assertTrue(hasMoveTo(engine.getLegalMoves(p(0, 4)), 0, 6),
+                "Kingside castle stays legal — the a1 rook is blocked by a piece that does not move");
+        MoveResult result = engine.applyMove(p(0, 4), p(0, 7)); // king onto kingside rook
+        assertTrue(result.isValid());
+        assertTrue(engine.getPiece(0, 6).isKing(), "King lands on g1");
+        assertTrue(engine.getPiece(0, 5).isRook(), "Rook lands on f1");
+    }
+
+    // --- Black castling in Chess960 geometry ---
+
+    @Test
+    void blackChess960KingsideCastle() {
+        // Black king on f8 (col 5) with its kingside rook on h8 (col 7): king → g8, rook → f8.
+        APiece[][] b = emptyBoard();
+        b[0][0] = new King(new Position(0, 0), true); // white king out of the way
+        King king = new King(new Position(7, 5), false);
+        king.setRookFiles(0, 7);
+        b[7][5] = king;
+        b[7][7] = new Rook(new Position(7, 7), false);
+        GameEngine engine = new GameEngine(b, false); // black to move
+
+        MoveResult result = engine.applyMove(p(7, 5), p(7, 7)); // king f8 onto rook h8
+
+        assertTrue(result.isValid(), "Black should be able to castle kingside in a 960 layout");
+        assertTrue(engine.getPiece(7, 6).isKing(), "Black king lands on g8");
+        assertTrue(engine.getPiece(7, 5).isRook(), "Black rook lands on f8");
+        assertFalse(engine.getPiece(7, 7).isPositionOccupied(), "h8 empty");
+    }
 }

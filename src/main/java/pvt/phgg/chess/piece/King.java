@@ -82,12 +82,20 @@ public class King extends APiece{
             return;
         }
 
-        // The king may not start in, move through, or land on an attacked square.
+        // The king may not start in, move through, or land on an attacked square. Both the king and
+        // the castling rook are leaving their squares, so neither may block an enemy attack on the
+        // king's path — evaluate safety with both removed. In Chess960 a departing rook can uncover a
+        // check that standard castling geometry never exposes (e.g. a rook shielding the king from an
+        // enemy behind it on the same rank).
+        APiece[][] vacated = boardState.deepCopy(board);
+        vacated[row][kingCol] = new EmptySquare(new Position(row, kingCol));
+        vacated[row][rookStartFile] = new EmptySquare(new Position(row, rookStartFile));
+
         List<Position> kingPath = new ArrayList<>();
         for (int col = Math.min(kingCol, kingDestCol); col <= Math.max(kingCol, kingDestCol); col++) {
             kingPath.add(new Position(row, col));
         }
-        if (!boardState.arePositionsSafe(board, kingPath, this.isWhite())) {
+        if (!boardState.arePositionsSafe(vacated, kingPath, this.isWhite())) {
             return;
         }
 
