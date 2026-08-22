@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { GameSummary } from '../types';
+import type { GameSummary, Variant } from '../types';
 
 function formatResult(game: GameSummary): { label: string; cls: string } {
   if (!game.result) return { label: 'In progress', cls: '' };
@@ -19,24 +19,43 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export function HistoryPage({ username }: { username: string }) {
+export function HistoryPage({ username, variant: initialVariant = 'STANDARD' }: { username: string; variant?: Variant }) {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [variant, setVariant] = useState<Variant>(initialVariant);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`/api/users/${encodeURIComponent(username)}/games`)
+    setLoading(true);
+    fetch(`/api/users/${encodeURIComponent(username)}/games?variant=${variant}`)
       .then(r => r.ok ? r.json() as Promise<GameSummary[]> : Promise.reject('Failed to load games'))
       .then(data => { setGames(data); setLoading(false); })
       .catch(e => { setError(String(e)); setLoading(false); });
-  }, [username]);
+  }, [username, variant]);
 
   return (
     <div className="history-page">
       <div className="history-header">
         <button className="back-btn" onClick={() => navigate('/lobby')}>← Back to Lobby</button>
-        <h2>My Games</h2>
+        <h2>My {variant === 'CHESS960' ? 'Chessnuts960' : 'Chessnuts'} Games</h2>
+      </div>
+
+      <div className="variant-toggle mode-toggle">
+        <button
+          type="button"
+          className={`mode-btn${variant === 'STANDARD' ? ' mode-btn-active' : ''}`}
+          onClick={() => setVariant('STANDARD')}
+        >
+          Standard
+        </button>
+        <button
+          type="button"
+          className={`mode-btn${variant === 'CHESS960' ? ' mode-btn-active' : ''}`}
+          onClick={() => setVariant('CHESS960')}
+        >
+          ♟ Chess960
+        </button>
       </div>
 
       {loading && <p className="history-status">Loading…</p>}

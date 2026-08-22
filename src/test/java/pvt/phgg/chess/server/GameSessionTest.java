@@ -151,6 +151,61 @@ class GameSessionTest {
         assertTrue(whiteWs.lastPayload().contains("RESIGNED"));
     }
 
+    // --- Chess960 castling legal-move representation ---
+
+    // Six half-moves that clear White's kingside (Nf3, e3, Be2) so e1-king can castle kingside,
+    // played from the standard back rank. Black just shuffles an a-pawn. White is to move after.
+    private static final int[][] KINGSIDE_CLEARING_MOVES = {
+            {0, 6, 2, 5}, {6, 0, 5, 0},  // Ng1-f3, a7-a6
+            {1, 4, 2, 4}, {5, 0, 4, 0},  // e2-e3,  a6-a5
+            {0, 5, 1, 4}, {4, 0, 3, 0},  // Bf1-e2, a5-a4
+    };
+
+    @Test
+    void chess960_castleOfferedAsKingOntoRook() throws Exception {
+        FakeWebSocketSession whiteWs = castleReadySession("CHESS960");
+
+        // Chess960: castling is expressed as king (0,4) onto its own rook (0,7), not the g-file.
+        assertTrue(hasLegalMove(whiteWs, 0, 4, 0, 7), "960 castle should target the rook square");
+        assertFalse(hasLegalMove(whiteWs, 0, 4, 0, 6), "960 castle must not target the g-file");
+    }
+
+    @Test
+    void standard_castleOfferedAsKingToGFile() throws Exception {
+        FakeWebSocketSession whiteWs = castleReadySession("STANDARD");
+
+        // Standard chess is unchanged: king (0,4) to the g-file (0,6).
+        assertTrue(hasLegalMove(whiteWs, 0, 4, 0, 6), "standard castle should target the g-file");
+        assertFalse(hasLegalMove(whiteWs, 0, 4, 0, 7), "standard castle must not target the rook square");
+    }
+
+    private FakeWebSocketSession castleReadySession(String variant) throws Exception {
+        List<pvt.phgg.chess.server.game.GameMove> moves = new ArrayList<>();
+        int n = 1;
+        for (int[] m : KINGSIDE_CLEARING_MOVES) {
+            moves.add(new pvt.phgg.chess.server.game.GameMove(1L, n++, m[0], m[1], m[2], m[3], null));
+        }
+        GameSession restored = GameSession.restore(objectMapper, null, 1L, "HUMAN", null,
+                variant, "RNBQKBNR", "alice", 1L, "bob", 2L, moves);
+
+        FakeWebSocketSession whiteWs = new FakeWebSocketSession("white");
+        restored.rejoin(whiteWs, "alice");
+        restored.rejoin(new FakeWebSocketSession("black"), "bob");
+        restored.broadcastBoardState();
+        return whiteWs;
+    }
+
+    private boolean hasLegalMove(FakeWebSocketSession ws, int fr, int fc, int tr, int tc) {
+        tools.jackson.databind.JsonNode msg = objectMapper.readTree(ws.lastPayload());
+        for (tools.jackson.databind.JsonNode m : msg.get("legalMoves")) {
+            if (m.get("fromRow").asInt() == fr && m.get("fromCol").asInt() == fc
+                    && m.get("toRow").asInt() == tr && m.get("toCol").asInt() == tc) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // --- Minimal WebSocketSession stub ---
 
     static class FakeWebSocketSession implements WebSocketSession {

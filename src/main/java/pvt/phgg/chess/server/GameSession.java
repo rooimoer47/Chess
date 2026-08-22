@@ -5,6 +5,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import pvt.phgg.chess.*;
 import pvt.phgg.chess.piece.APiece;
+import pvt.phgg.chess.piece.King;
 import pvt.phgg.chess.piece.PieceType;
 import pvt.phgg.chess.server.dto.ActiveGameSummary;
 import pvt.phgg.chess.server.dto.LastMoveDto;
@@ -325,7 +326,7 @@ public class GameSession {
         String mode = botEnabled ? "BOT" : "HUMAN";
         String opponentUsername = botEnabled ? null : (isWhite ? blackUsername : whiteUsername);
         return new ActiveGameSummary(gameId, mode, botEnabled ? botType : null,
-                opponentUsername, isWhite ? WHITE : BLACK, "IN_PROGRESS");
+                opponentUsername, isWhite ? WHITE : BLACK, "IN_PROGRESS", variant);
     }
 
     public synchronized PlayerRole roleOf(WebSocketSession ws) {
@@ -613,7 +614,7 @@ public class GameSession {
                 if (sendLegalMoves && piece.isPositionOccupied() && piece.isWhite() == engine.isWhiteTurn()) {
                     Position pos = new Position(row, col);
                     for (Position target : engine.getLegalMoves(pos)) {
-                        legalMoves.add(new LegalMove(row, col, target.getRow(), target.getCol()));
+                        legalMoves.add(toLegalMove(piece, row, col, target));
                     }
                 }
             }
@@ -630,6 +631,19 @@ public class GameSession {
         List<String> capturedW = capturedByWhite.stream().map(Enum::name).toList();
         List<String> capturedB = capturedByBlack.stream().map(Enum::name).toList();
         return ServerMessage.boardUpdate(board, turn, currentStatus.name(), legalMoves, lastMove, capturedW, capturedB, null, null);
+    }
+
+    // In Chess960 the king's castle destination (c/g-file) can coincide with a normal one-square
+    // step, so a coordinate move to it is ambiguous. Express castling as "king onto its own rook"
+    // instead — the engine translates that gesture back to the real castle. Standard games keep the
+    // classic king-two-squares target so nothing about existing play or replays changes.
+    private LegalMove toLegalMove(APiece piece, int row, int col, Position target) {
+        if ("CHESS960".equals(variant) && target.isCastle() && piece.isKing()) {
+            King king = (King) piece;
+            int rookFile = target.getCol() < 4 ? king.getQueensideRookFile() : king.getKingsideRookFile();
+            return new LegalMove(row, col, row, rookFile);
+        }
+        return new LegalMove(row, col, target.getRow(), target.getCol());
     }
 
     private void sendTo(WebSocketSession ws, ServerMessage message) throws IOException {

@@ -6,5 +6,6 @@ public record ActiveGameSummary(
         String botType,
         String opponentUsername,
         String color,
-        String status
+        String status,
+        String variant
 ) {}

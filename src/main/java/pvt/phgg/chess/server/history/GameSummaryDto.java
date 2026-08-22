@@ -9,6 +9,7 @@ public record GameSummaryDto(
         String result,
         String winnerColor,
         String mode,
+        String variant,
         OffsetDateTime startedAt,
         OffsetDateTime endedAt
 ) {}

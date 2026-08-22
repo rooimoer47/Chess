@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { Piece, LegalMove, LastMove, Color, GameStatus, ServerMessage } from '../types';
+import type { Piece, LegalMove, LastMove, Color, GameStatus, ServerMessage, Variant } from '../types';
 
 const EMPTY_BOARD: (Piece | null)[][] = Array(8).fill(null).map(() => Array(8).fill(null));
 
@@ -24,7 +24,7 @@ export interface GameState {
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000];
 
-export function useChessSocket(botType = '', colorPreference = 'RANDOM', gameId: string | null = null, onAuthFailed?: () => void) {
+export function useChessSocket(botType = '', colorPreference = 'RANDOM', gameId: string | null = null, variant: Variant = 'STANDARD', onAuthFailed?: () => void) {
   const [state, setState] = useState<GameState>({
     connected: false,
     gameStarted: false,
@@ -59,6 +59,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', gameId:
       if (botType) params.set('bot', botType);
       if (colorPreference !== 'RANDOM') params.set('color', colorPreference);
       if (gameId) params.set('gameId', gameId);
+      if (variant === 'CHESS960') params.set('variant', 'chess960');
       const query = params.size ? `?${params.toString()}` : '';
       const ws = new WebSocket(`${protocol}//${window.location.host}/ws/game${query}`);
       wsRef.current = ws;
@@ -191,7 +192,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', gameId:
       if (reconnectTimer) clearTimeout(reconnectTimer);
       wsRef.current?.close();
     };
-  }, [botType, colorPreference, gameId]);
+  }, [botType, colorPreference, gameId, variant]);
 
   const sendMove = useCallback((fromRow: number, fromCol: number, toRow: number, toCol: number) => {
     wsRef.current?.send(JSON.stringify({ type: 'MOVE', fromRow, fromCol, toRow, toCol }));

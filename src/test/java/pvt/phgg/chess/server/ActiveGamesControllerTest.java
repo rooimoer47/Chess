@@ -61,7 +61,7 @@ class ActiveGamesControllerTest {
         when(jwtUtil.isValid("token123")).thenReturn(true);
         when(jwtUtil.extractUsername("token123")).thenReturn("alice");
         List<ActiveGameSummary> games = List.of(
-                new ActiveGameSummary(1L, "BOT", "alan", null, "WHITE", "IN_PROGRESS"));
+                new ActiveGameSummary(1L, "BOT", "alan", null, "WHITE", "IN_PROGRESS", "STANDARD"));
         when(sessionManager.activeGamesFor("alice")).thenReturn(games);
 
         ResponseEntity<List<ActiveGameSummary>> result = controller.getActiveGames("alice", request);

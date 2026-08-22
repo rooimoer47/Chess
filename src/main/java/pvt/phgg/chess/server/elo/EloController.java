@@ -35,7 +35,9 @@ public class EloController {
         }
         return userService.findByUsername(username)
                 .<ResponseEntity<Object>>map(u -> ResponseEntity.ok(
-                        new EloSummaryDto(u.getElo(), u.getGamesRated(), u.getGamesRated() < PROVISIONAL_THRESHOLD)))
+                        new EloSummaryDto(
+                                u.getElo(), u.getGamesRated(), u.getGamesRated() < PROVISIONAL_THRESHOLD,
+                                u.getElo960(), u.getGamesRated960(), u.getGamesRated960() < PROVISIONAL_THRESHOLD)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
