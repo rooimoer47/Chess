@@ -138,7 +138,7 @@ public class GameSession {
         if ("BOT".equals(mode)) {
             session.botEnabled = true;
             session.botType = botType;
-            session.botStrategy = selectStrategy(botType);
+            session.botStrategy = selectStrategy(botType, session.variant);
             session.botIsWhite = "BOT".equals(whiteUsername);
         }
 
@@ -194,7 +194,7 @@ public class GameSession {
     }
 
     public synchronized boolean joinBot(String type) {
-        BotStrategy strategy = selectStrategy(type);
+        BotStrategy strategy = selectStrategy(type, variant);
         if (whiteSession == null && whiteUsername == null) {
             whiteUsername = "BOT";
             botEnabled = true;
@@ -214,11 +214,12 @@ public class GameSession {
         return false;
     }
 
-    private static BotStrategy selectStrategy(String botType) {
+    private static BotStrategy selectStrategy(String botType, String variant) {
+        boolean useBook = !"CHESS960".equals(variant); // opening book is standard-position-only
         return switch (botType) {
-            case "alan"    -> new MinimaxBotStrategy(2);
-            case "barbara" -> new MinimaxBotStrategy(3);
-            case "claude"  -> new MinimaxBotStrategy(4);
+            case "alan"    -> new MinimaxBotStrategy(2, useBook);
+            case "barbara" -> new MinimaxBotStrategy(3, useBook);
+            case "claude"  -> new MinimaxBotStrategy(4, useBook);
             default        -> new RandomBotStrategy();
         };
     }
@@ -272,6 +273,9 @@ public class GameSession {
         Position[] chosen = botStrategy.chooseMove(engine, botIsWhite);
         if (chosen.length == 0) return false;
         MoveResult result = applyMove(chosen[0], chosen[1]);
+        // Fail loudly (surfaces as "bot made no move") rather than silently freezing the game if the
+        // strategy ever returns an illegal move — the board is left untouched by applyMove.
+        if (!result.isValid()) return false;
         if (result.type() == MoveResult.Type.PROMOTION_NEEDED) {
             applyPromotion(chosen[1], PromotionChoice.QUEEN);
         }
@@ -427,7 +431,7 @@ public class GameSession {
             next.botEnabled = true;
             next.botIsWhite = !botIsWhite;
             next.botType = botType;
-            next.botStrategy = selectStrategy(botType);
+            next.botStrategy = selectStrategy(botType, next.variant);
         } else {
             next.whiteSession = blackSession;
             next.whiteUsername = blackUsername;

@@ -201,19 +201,65 @@ class EloServiceTest {
                 any(), any(), any(), any(), any());
     }
 
+    // ---- recordResult: variant rating pools ----
+
+    @Test
+    void recordResult_chess960Game_updatesElo960Columns() {
+        stubGameVariant(20L, 1L, 2L, "WHITE", "CHESS960");
+        stubUser960(1L, 1600, 50);
+        stubUser960(2L, 1400, 50);
+
+        service.recordResult(20L);
+
+        int expectedWhiteElo = service.newRating(1600, 50, 1.0, 1400);
+        verify(jdbcTemplate).update(
+                eq("UPDATE users SET elo_960 = ?, games_rated_960 = games_rated_960 + 1 WHERE id = ?"),
+                eq(expectedWhiteElo), eq(1L));
+        // The standard rating pool must be left untouched.
+        verify(jdbcTemplate, never()).update(
+                eq("UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?"),
+                any(), any());
+    }
+
+    @Test
+    void recordResult_standardGame_updatesStandardColumnsOnly() {
+        stubGameVariant(21L, 1L, 2L, "WHITE", "STANDARD");
+        stubUser(1L, 1600, 50);
+        stubUser(2L, 1400, 50);
+
+        service.recordResult(21L);
+
+        verify(jdbcTemplate).update(
+                eq("UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?"),
+                any(), eq(1L));
+        verify(jdbcTemplate, never()).update(
+                eq("UPDATE users SET elo_960 = ?, games_rated_960 = games_rated_960 + 1 WHERE id = ?"),
+                any(), any());
+    }
+
     // ---- helpers ----
 
     private void stubGame(long gameId, long whiteId, long blackId, String winner) {
+        stubGameVariant(gameId, whiteId, blackId, winner, "STANDARD");
+    }
+
+    private void stubGameVariant(long gameId, long whiteId, long blackId, String winner, String variant) {
         Map<String, Object> row = new HashMap<>();
         row.put("white_player_id", whiteId);
         row.put("black_player_id", blackId);
         row.put("mode", "HUMAN");
         row.put("winner_color", winner);
+        row.put("variant", variant);
         when(jdbcTemplate.queryForMap(anyString(), eq(gameId))).thenReturn(row);
     }
 
     private void stubUser(long userId, int elo, int gamesRated) {
         when(jdbcTemplate.queryForMap(anyString(), eq(userId)))
                 .thenReturn(Map.of("elo", elo, "games_rated", gamesRated));
+    }
+
+    private void stubUser960(long userId, int elo, int gamesRated) {
+        when(jdbcTemplate.queryForMap(anyString(), eq(userId)))
+                .thenReturn(Map.of("elo_960", elo, "games_rated_960", gamesRated));
     }
 }

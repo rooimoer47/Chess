@@ -239,6 +239,52 @@ class GameSessionManagerTest {
         assertNull(manager.getSession(ws2), "Disconnected player's session must be removed");
     }
 
+    // ---- variant partitioning ----
+
+    @Test
+    void join_standardAndChess960Players_neverMatchEachOther() {
+        FakeWs standardWs = humanWs("a");                                 // STANDARD (default)
+        FakeWs chess960Ws = new FakeWs("b", Map.of("variant", "CHESS960"));
+        stubUser("alice", 1L, 1000);
+        stubUser("bob",   2L, 1000);
+
+        manager.join(standardWs, "alice", "WHITE"); // queues as STANDARD
+        manager.join(chess960Ws, "bob",   "WHITE"); // different variant — must not match
+
+        assertNull(manager.getSession(standardWs), "Standard player must remain unmatched");
+        assertNull(manager.getSession(chess960Ws), "Chess960 player must remain unmatched");
+    }
+
+    @Test
+    void join_twoChess960Players_matchEachOther() {
+        FakeWs ws1 = new FakeWs("a", Map.of("variant", "CHESS960"));
+        FakeWs ws2 = new FakeWs("b", Map.of("variant", "CHESS960"));
+        stubUser("alice", 1L, 1000);
+        stubUser("bob",   2L, 1000);
+
+        manager.join(ws1, "alice", "WHITE");
+        manager.join(ws2, "bob",   "WHITE");
+
+        assertNotNull(manager.getSession(ws1), "Chess960 players at equal ELO must match");
+        assertSame(manager.getSession(ws1), manager.getSession(ws2), "Both share one session");
+    }
+
+    @Test
+    void matchPendingPlayers_neverPairsAcrossVariants() {
+        // Same ELO, so only the variant filter can keep them apart.
+        FakeWs standardWs = humanWs("a");
+        FakeWs chess960Ws = new FakeWs("b", Map.of("variant", "CHESS960"));
+        stubUser("alice", 1L, 1000);
+        stubUser("bob",   2L, 1000);
+        manager.join(standardWs, "alice", "WHITE");
+        manager.join(chess960Ws, "bob",   "WHITE");
+
+        manager.matchPendingPlayers();
+
+        assertNull(manager.getSession(standardWs), "Cross-variant pair must never be matched");
+        assertNull(manager.getSession(chess960Ws), "Cross-variant pair must never be matched");
+    }
+
     // ---- matchPendingPlayers ----
 
     @Test
@@ -735,7 +781,8 @@ class GameSessionManagerTest {
     private void stubUser(String username, Long id, int elo) {
         AppUser user = mock(AppUser.class);
         when(user.getId()).thenReturn(id);
-        lenient().when(user.getElo()).thenReturn(elo); // only used in human-queue path, not bot path
+        lenient().when(user.getElo()).thenReturn(elo);    // standard-queue path
+        lenient().when(user.getElo960()).thenReturn(elo); // chess960-queue path
         when(userService.findByUsername(username)).thenReturn(Optional.of(user));
     }
 

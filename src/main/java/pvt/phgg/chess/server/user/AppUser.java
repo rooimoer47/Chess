@@ -18,6 +18,8 @@ public class AppUser {
     private String boardTheme = "classic";
     private int elo = 1000;
     private int gamesRated = 0;
+    private int elo960 = 1000;
+    private int gamesRated960 = 0;
     private OffsetDateTime createdAt;
     private OffsetDateTime lastActiveAt;
 
@@ -43,6 +45,8 @@ public class AppUser {
     public String getBoardTheme() { return boardTheme; }
     public int getElo() { return elo; }
     public int getGamesRated() { return gamesRated; }
+    public int getElo960() { return elo960; }
+    public int getGamesRated960() { return gamesRated960; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getLastActiveAt() { return lastActiveAt; }
 }

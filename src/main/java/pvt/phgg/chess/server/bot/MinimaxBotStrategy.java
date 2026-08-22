@@ -86,10 +86,18 @@ public class MinimaxBotStrategy implements BotStrategy {
     };
 
     private final int depth;
+    private final boolean useOpeningBook;
     private String moveHistory = "";
 
     public MinimaxBotStrategy(int depth) {
+        this(depth, true);
+    }
+
+    // The opening book's moves are hardcoded for the standard back rank, so it must be disabled
+    // for Chess960 — otherwise it can hand back a move that is illegal in the actual position.
+    public MinimaxBotStrategy(int depth, boolean useOpeningBook) {
         this.depth = depth;
+        this.useOpeningBook = useOpeningBook;
     }
 
     @Override
@@ -99,11 +107,13 @@ public class MinimaxBotStrategy implements BotStrategy {
 
     @Override
     public Position[] chooseMove(GameEngine engine, boolean isWhite) {
-        int[] bookMove = OpeningBook.lookup(moveHistory);
-        if (bookMove.length > 0) {
-            moveHistory += "" + bookMove[0] + bookMove[1] + bookMove[2] + bookMove[3];
-            return new Position[]{new Position(bookMove[0], bookMove[1]),
-                                   new Position(bookMove[2], bookMove[3])};
+        if (useOpeningBook) {
+            int[] bookMove = OpeningBook.lookup(moveHistory);
+            if (bookMove.length > 0) {
+                moveHistory += "" + bookMove[0] + bookMove[1] + bookMove[2] + bookMove[3];
+                return new Position[]{new Position(bookMove[0], bookMove[1]),
+                                       new Position(bookMove[2], bookMove[3])};
+            }
         }
 
         List<int[]> rootMoves = collectMoves(engine, isWhite);

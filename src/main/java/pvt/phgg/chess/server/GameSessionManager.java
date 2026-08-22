@@ -114,6 +114,7 @@ public class GameSessionManager {
     }
 
     public synchronized PlayerRole join(WebSocketSession ws, String username, String colorPreference) {
+        String variant = (String) ws.getAttributes().getOrDefault("variant", "STANDARD");
         // Bot games bypass the queue — create a session immediately
         String botType = (String) ws.getAttributes().getOrDefault("botType", "none");
         if (!"none".equals(botType)) {
@@ -140,7 +141,7 @@ public class GameSessionManager {
                 }
             }
 
-            GameSession session = new GameSession(objectMapper, gameRecorder);
+            GameSession session = new GameSession(objectMapper, gameRecorder, variant);
             PlayerRole role = session.join(ws, username, userId, colorPreference);
             if (role != null) activeSessions.put(ws, session);
             return role;
@@ -152,17 +153,17 @@ public class GameSessionManager {
         humanQueue.removeIf(p -> !p.ws().isOpen());
 
         AppUser user = userService.findByUsername(username).orElse(null);
-        int elo = user != null ? user.getElo() : eloProperties.defaultElo();
+        int elo = eloForVariant(user, variant);
         Long userId = user != null ? user.getId() : null;
 
-        WaitingPlayer match = findMatch(elo);
+        WaitingPlayer match = findMatch(elo, variant);
         if (match != null) {
             humanQueue.remove(match);
-            return createMatchedSession(ws, username, userId, colorPreference, match);
+            return createMatchedSession(ws, username, userId, colorPreference, variant, match);
         }
 
         // No match found — add to queue
-        humanQueue.add(new WaitingPlayer(ws, username, userId, elo, colorPreference, Instant.now()));
+        humanQueue.add(new WaitingPlayer(ws, username, userId, elo, colorPreference, variant, Instant.now()));
         return "BLACK".equals(colorPreference) ? PlayerRole.BLACK : PlayerRole.WHITE;
     }
 
@@ -299,6 +300,7 @@ public class GameSessionManager {
                 for (int j = i + 1; j < humanQueue.size(); j++) {
                     if (claimed[j]) continue;
                     WaitingPlayer b = humanQueue.get(j);
+                    if (!a.variant().equals(b.variant())) continue; // never cross-match variants
                     int diff = Math.abs(a.elo() - b.elo());
                     int window = Math.max(windowA, getWindow(b.joinedAt(), now));
                     if (diff <= window && diff < bestDiff) {
@@ -338,7 +340,8 @@ public class GameSessionManager {
         PlayerRole roleA = resolveFirstRole(a.colorPreference(), b.colorPreference());
         PlayerRole roleB = roleA == PlayerRole.WHITE ? PlayerRole.BLACK : PlayerRole.WHITE;
 
-        GameSession session = new GameSession(objectMapper, gameRecorder);
+        // Both players are guaranteed to share a variant (matching filter above).
+        GameSession session = new GameSession(objectMapper, gameRecorder, a.variant());
         if (roleA == PlayerRole.WHITE) {
             session.join(a.ws(), a.username(), a.userId(), "WHITE");
             session.join(b.ws(), b.username(), b.userId(), "BLACK");
@@ -373,12 +376,15 @@ public class GameSessionManager {
         return Integer.MAX_VALUE;
     }
 
-    private WaitingPlayer findMatch(int elo) {
+    // A player only ever matches an opponent queued for the same variant — this equality filter is
+    // the entire "both or neither have Chess960" rule; it runs before the ELO-window comparison.
+    private WaitingPlayer findMatch(int elo, String variant) {
         Instant now = Instant.now();
         int joiningWindow = matchmakingProperties.tier1Spread();
         WaitingPlayer best = null;
         int bestDiff = Integer.MAX_VALUE;
         for (WaitingPlayer p : humanQueue) {
+            if (!p.variant().equals(variant)) continue;
             int diff = Math.abs(elo - p.elo());
             // Use the wider of the two windows: gives the waiting player benefit of their wait time
             int window = Math.max(joiningWindow, getWindow(p.joinedAt(), now));
@@ -390,12 +396,17 @@ public class GameSessionManager {
         return best;
     }
 
+    private int eloForVariant(AppUser user, String variant) {
+        if (user == null) return eloProperties.defaultElo();
+        return "CHESS960".equals(variant) ? user.getElo960() : user.getElo();
+    }
+
     private PlayerRole createMatchedSession(WebSocketSession ws, String username, Long userId,
-                                            String colorPreference, WaitingPlayer waiting) {
+                                            String colorPreference, String variant, WaitingPlayer waiting) {
         PlayerRole waitingRole = resolveFirstRole(waiting.colorPreference(), colorPreference);
         PlayerRole joiningRole = waitingRole == PlayerRole.WHITE ? PlayerRole.BLACK : PlayerRole.WHITE;
 
-        GameSession session = new GameSession(objectMapper, gameRecorder);
+        GameSession session = new GameSession(objectMapper, gameRecorder, variant);
         if (waitingRole == PlayerRole.WHITE) {
             session.join(waiting.ws(), waiting.username(), waiting.userId(), "WHITE");
             session.join(ws, username, userId, "BLACK");

@@ -10,5 +10,6 @@ record WaitingPlayer(
         Long userId,
         int elo,
         String colorPreference,
+        String variant,
         Instant joinedAt
 ) {}
