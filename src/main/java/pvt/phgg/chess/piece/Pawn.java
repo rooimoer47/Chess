@@ -24,13 +24,14 @@ public class Pawn extends APiece{
 
         if (boardState.isOnBoard(forwardPos) && !boardState.isOccupied(board, forwardPos)) {
             moves.add(new Position(forwardPos.getRow(), forwardPos.getCol()));
-        }
 
-        // initial extra jump
-        if (isOriginalPosition()) {
-            Position doubleForwardPos = forwardPos.withRowOffset(rowDirection);
-            if (boardState.isOnBoard(doubleForwardPos) && !boardState.isOccupied(board, doubleForwardPos)) {
-                moves.add(new Position(doubleForwardPos.getRow(), doubleForwardPos.getCol()));
+            // Initial two-square move — only legal when the square in front is also clear, so the
+            // pawn cannot leap over a piece directly ahead of it.
+            if (isOriginalPosition()) {
+                Position doubleForwardPos = forwardPos.withRowOffset(rowDirection);
+                if (boardState.isOnBoard(doubleForwardPos) && !boardState.isOccupied(board, doubleForwardPos)) {
+                    moves.add(new Position(doubleForwardPos.getRow(), doubleForwardPos.getCol()));
+                }
             }
         }
 

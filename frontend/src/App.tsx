@@ -10,7 +10,7 @@ import { type Theme, type BoardTheme } from './components/ThemePicker';
 import { HistoryPage } from './components/HistoryPage';
 import { EloHistoryPage } from './components/EloHistoryPage';
 import { ReplayViewer } from './components/ReplayViewer';
-import type { ActiveGameSummary } from './types';
+import type { ActiveGameSummary, Variant } from './types';
 import './App.css';
 
 export default function App() {
@@ -22,6 +22,7 @@ export default function App() {
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('classic');
   const [colorPreference, setColorPreference] = useState('RANDOM');
   const [clockMs, setClockMs] = useState(0);
+  const [variant, setVariant] = useState<Variant>('STANDARD');
   const [resumeGameId, setResumeGameId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,6 +45,7 @@ export default function App() {
         const pvp = games.find(g => g.mode === 'HUMAN');
         if (pvp) {
           setResumeGameId(String(pvp.gameId));
+          setVariant(pvp.variant);
           navigate('/game');
         }
       })
@@ -117,14 +119,16 @@ export default function App() {
           boardTheme={boardTheme}
           colorPreference={colorPreference}
           clockMs={clockMs}
+          variant={variant}
           onChangeBotType={setBotType}
           onChangeTheme={handleChangeTheme}
           onChangeBoardTheme={handleChangeBoardTheme}
           onChangeColorPreference={handleChangeColorPreference}
           onChangeClockMs={setClockMs}
+          onChangeVariant={setVariant}
           onLogout={handleLogout}
           onStartGame={() => { setResumeGameId(null); navigate('/game'); }}
-          onResumeGame={(bt, gameId) => { setBotType(bt); setResumeGameId(gameId); navigate('/game'); }}
+          onResumeGame={(bt, gameId, v) => { setBotType(bt); setResumeGameId(gameId); setVariant(v); navigate('/game'); }}
         />
       } />
       <Route path="/game" element={
@@ -134,13 +138,14 @@ export default function App() {
           colorPreference={colorPreference}
           theme={theme}
           boardTheme={boardTheme}
+          variant={variant}
           resumeGameId={resumeGameId}
           onLogout={handleLogout}
           onAuthFailed={handleLogout}
           onLeaveGame={() => { setResumeGameId(null); navigate('/lobby'); }}
         />
       } />
-      <Route path="/history" element={<HistoryPage username={username} />} />
+      <Route path="/history" element={<HistoryPage username={username} variant={variant} />} />
       <Route path="/history/:gameId" element={<ReplayViewer />} />
       <Route path="/profile" element={<EloHistoryPage username={username} />} />
       <Route path="*" element={<Navigate to="/lobby" replace />} />
@@ -148,12 +153,13 @@ export default function App() {
   );
 }
 
-function ChessGame({ username, botType, colorPreference, theme, boardTheme, resumeGameId, onLogout, onAuthFailed, onLeaveGame }: {
+function ChessGame({ username, botType, colorPreference, theme, boardTheme, variant, resumeGameId, onLogout, onAuthFailed, onLeaveGame }: {
   username: string;
   botType: string;
   colorPreference: string;
   theme: Theme;
   boardTheme: BoardTheme;
+  variant: Variant;
   resumeGameId: string | null;
   onLogout: () => void;
   onAuthFailed: () => void;
@@ -183,7 +189,7 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, resu
     sendRematchRequest,
     sendRematchDecline,
     waitSeconds,
-  } = useChessSocket(botType, colorPreference, resumeGameId, onAuthFailed);
+  } = useChessSocket(botType, colorPreference, resumeGameId, variant, onAuthFailed);
 
   if (!connected) {
     return <div className="screen"><p>Connecting to server…</p></div>;
@@ -220,6 +226,7 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, resu
   return (
     <div className="app">
       <div className="info-bar">
+        <span className="game-variant-title">{variant === 'CHESS960' ? 'Chessnuts960' : 'Chessnuts'}</span>
         <span>You: <strong>{username}</strong></span>
         <span className={`turn-indicator ${isMyTurn ? 'my-turn' : ''}`}>
           {isGameOver ? '—' : isMyTurn ? 'Your turn' : "Opponent's turn"}

@@ -55,7 +55,7 @@ export function LoginScreen({ onLogin }: Props) {
 
   return (
     <div className="screen">
-      <h2 className="login-title">Chess</h2>
+      <h2 className="login-title">Chessnuts</h2>
       <div className="login-tabs">
         <button
           type="button"

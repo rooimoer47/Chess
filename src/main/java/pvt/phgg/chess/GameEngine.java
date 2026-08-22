@@ -10,6 +10,7 @@ import java.util.Map;
 public class GameEngine {
 
     private static final int BOARD_SIZE = 8;
+    public static final String STANDARD_BACK_RANK = "RNBQKBNR";
 
     private final APiece[][] board = new APiece[BOARD_SIZE][BOARD_SIZE];
     private final BoardState boardState = new BoardState();
@@ -18,7 +19,11 @@ public class GameEngine {
     private int halfMoveClock = 0;
 
     public GameEngine() {
-        initializeBoard();
+        this(STANDARD_BACK_RANK);
+    }
+
+    public GameEngine(String backRank) {
+        initializeBoard(backRank);
     }
 
     GameEngine(APiece[][] initialBoard, boolean whiteTurn) {
@@ -53,10 +58,19 @@ public class GameEngine {
 
     public MoveResult applyMove(Position from, Position to) {
         APiece piece = board[from.getRow()][from.getCol()];
+        if (piece.isKing() && piece.isOriginalPosition()) {
+            // In Chess960 the king's castle target (c/g-file) may coincide with a normal one-square
+            // step, so castling is expressed by moving the king onto its own rook. Translate that
+            // gesture to the canonical c/g-file castle target before matching.
+            to = canonicalCastleTarget((King) piece, from, to);
+        }
         List<Position> legal = piece.getLegalPositions(board, boardState);
 
         for (Position legalPos : legal) {
-            if (legalPos.equals(to)) {
+            // Position.equals compares only row/col, so a castle and a normal one-square step can
+            // share a target square (Chess960). When the caller asked for a castle, only a castle
+            // legal move satisfies it — otherwise the normal step (listed first) would win.
+            if (legalPos.equals(to) && (!to.isCastle() || legalPos.isCastle())) {
                 boolean captureOccurred = boardState.isOccupied(board, legalPos);
                 executeMove(piece, from, legalPos);
 
@@ -123,6 +137,11 @@ public class GameEngine {
     }
 
     private void executeMove(APiece piece, Position from, Position to) {
+        if (to.isCastle()) {
+            executeCastle((King) piece, from, to);
+            return;
+        }
+
         board[to.getRow()][to.getCol()] = piece;
         piece.moved();
         clearSquare(from);
@@ -131,9 +150,6 @@ public class GameEngine {
             int capturedRow = to.getRow() + (piece.isWhite() ? -1 : 1);
             clearSquare(new Position(capturedRow, to.getCol()));
         }
-        if (to.isCastle()) {
-            handleCastling(to);
-        }
         piece.setCurrentPosition(to);
 
         if (piece.isPawn() && Math.abs(from.getRow() - to.getRow()) == 2) {
@@ -141,16 +157,55 @@ public class GameEngine {
         }
     }
 
-    private void handleCastling(Position kingPos) {
-        int row = kingPos.getRow();
-        int col = kingPos.getCol();
-        if (col > 4) {
-            APiece rook = board[row][7];
-            executeMove(rook, rook.getCurrentPosition(), new Position(row, col - 1));
-        } else {
-            APiece rook = board[row][0];
-            executeMove(rook, rook.getCurrentPosition(), new Position(row, col + 1));
+    // Maps a "king moves onto its own rook" castle gesture to the canonical c-file (2) / g-file (6)
+    // castle target. Returns `to` unchanged for every ordinary move, so standard-chess input (king
+    // steps two squares to c/g) and stored move logs are unaffected. Only fires when the target
+    // square actually holds this king's own, unmoved rook — an enemy piece or an empty square there
+    // is left as an ordinary move/capture.
+    private Position canonicalCastleTarget(King king, Position from, Position to) {
+        int row = to.getRow();
+        int col = to.getCol();
+        if (from.getRow() != row || col == from.getCol()) {
+            return to;
         }
+        if (col == king.getQueensideRookFile() && isOwnCastlingRook(row, col, king.isWhite())) {
+            return new Position(row, 2, Position.SpecialMove.CASTLE);
+        }
+        if (col == king.getKingsideRookFile() && isOwnCastlingRook(row, col, king.isWhite())) {
+            return new Position(row, 6, Position.SpecialMove.CASTLE);
+        }
+        return to;
+    }
+
+    private boolean isOwnCastlingRook(int row, int col, boolean white) {
+        APiece piece = board[row][col];
+        return piece.isRook() && piece.isWhite() == white && piece.isOriginalPosition();
+    }
+
+    // The king's destination is always the c-file (queenside) or g-file (kingside); the rook's is
+    // the d-file or f-file. In Chess960 the king or rook may already sit on a destination square, or
+    // start adjacent to each other, so both origins are cleared before either piece is placed to
+    // avoid one relocation clobbering the other.
+    private void executeCastle(King king, Position from, Position kingDest) {
+        int row = from.getRow();
+        boolean kingside = kingDest.getCol() > 4;   // destination file is fixed at c(2) or g(6)
+        int rookStartFile = kingside ? king.getKingsideRookFile() : king.getQueensideRookFile();
+        int rookDestCol = kingside ? 5 : 3;
+
+        APiece rook = board[row][rookStartFile];
+
+        clearSquare(from);
+        clearSquare(new Position(row, rookStartFile));
+
+        Position kingTo = new Position(row, kingDest.getCol());
+        board[kingTo.getRow()][kingTo.getCol()] = king;
+        king.moved();
+        king.setCurrentPosition(kingTo);
+
+        Position rookTo = new Position(row, rookDestCol);
+        board[rookTo.getRow()][rookTo.getCol()] = rook;
+        rook.moved();
+        rook.setCurrentPosition(rookTo);
     }
 
     private void clearSquare(Position pos) {
@@ -245,18 +300,29 @@ public class GameEngine {
         return sb.toString();
     }
 
-    private void initializeBoard() {
-        board[0][0] = new Rook(new Position(0, 0), true);
-        board[0][7] = new Rook(new Position(0, 7), true);
-        board[0][1] = new Knight(new Position(0, 1), true);
-        board[0][6] = new Knight(new Position(0, 6), true);
-        board[0][2] = new Bishop(new Position(0, 2), true);
-        board[0][5] = new Bishop(new Position(0, 5), true);
-        board[0][3] = new Queen(new Position(0, 3), true);
-        board[0][4] = new King(new Position(0, 4), true);
+    private void initializeBoard(String backRank) {
+        if (backRank == null || backRank.length() != BOARD_SIZE) {
+            throw new IllegalArgumentException("Back rank must be " + BOARD_SIZE + " characters: " + backRank);
+        }
+
+        int kingsideRookFile = -1;
+        int queensideRookFile = -1;
+        for (int col = 0; col < BOARD_SIZE; col++) {
+            char c = backRank.charAt(col);
+            board[0][col] = pieceFor(c, new Position(0, col), true);
+            board[7][col] = pieceFor(c, new Position(7, col), false);
+            if (c == 'R') {
+                if (queensideRookFile == -1) {
+                    queensideRookFile = col;   // lower file seen first
+                } else {
+                    kingsideRookFile = col;    // higher file
+                }
+            }
+        }
 
         for (int col = 0; col < BOARD_SIZE; col++) {
             board[1][col] = new Pawn(new Position(1, col), true);
+            board[6][col] = new Pawn(new Position(6, col), false);
         }
 
         for (int row = 2; row < 6; row++) {
@@ -265,17 +331,24 @@ public class GameEngine {
             }
         }
 
-        for (int col = 0; col < BOARD_SIZE; col++) {
-            board[6][col] = new Pawn(new Position(6, col), false);
+        // Tell each king which files its rooks start on, so castling geometry works for any layout.
+        for (int row : new int[]{0, 7}) {
+            for (int col = 0; col < BOARD_SIZE; col++) {
+                if (board[row][col] instanceof King king) {
+                    king.setRookFiles(queensideRookFile, kingsideRookFile);
+                }
+            }
         }
+    }
 
-        board[7][0] = new Rook(new Position(7, 0), false);
-        board[7][7] = new Rook(new Position(7, 7), false);
-        board[7][1] = new Knight(new Position(7, 1), false);
-        board[7][6] = new Knight(new Position(7, 6), false);
-        board[7][2] = new Bishop(new Position(7, 2), false);
-        board[7][5] = new Bishop(new Position(7, 5), false);
-        board[7][3] = new Queen(new Position(7, 3), false);
-        board[7][4] = new King(new Position(7, 4), false);
+    private APiece pieceFor(char c, Position pos, boolean white) {
+        return switch (c) {
+            case 'R' -> new Rook(pos, white);
+            case 'N' -> new Knight(pos, white);
+            case 'B' -> new Bishop(pos, white);
+            case 'Q' -> new Queen(pos, white);
+            case 'K' -> new King(pos, white);
+            default  -> throw new IllegalArgumentException("Bad back-rank char: " + c);
+        };
     }
 }

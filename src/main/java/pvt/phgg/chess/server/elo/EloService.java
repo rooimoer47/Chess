@@ -55,13 +55,19 @@ public class EloService {
 
     void recordResult(long gameId) {
         Map<String, Object> game = jdbcTemplate.queryForMap(
-                "SELECT white_player_id, black_player_id, mode, winner_color FROM games WHERE id = ?", gameId);
+                "SELECT white_player_id, black_player_id, mode, winner_color, variant FROM games WHERE id = ?", gameId);
 
         if (!"HUMAN".equals(game.get("mode"))) return;
 
         Long whiteId = (Long) game.get("white_player_id");
         Long blackId = (Long) game.get("black_player_id");
         if (whiteId == null || blackId == null) return;
+
+        // Chess960 games are rated in a separate pool so the two rating tracks don't distort each
+        // other. Column names come from a fixed two-value whitelist, never from user input.
+        boolean is960 = "CHESS960".equals(game.get("variant"));
+        String eloCol       = is960 ? "elo_960"         : "elo";
+        String gamesRatedCol = is960 ? "games_rated_960" : "games_rated";
 
         String winnerColor = (String) game.get("winner_color");
         double whiteScore;
@@ -75,23 +81,23 @@ public class EloService {
         }
 
         Map<String, Object> whiteRow = jdbcTemplate.queryForMap(
-                "SELECT elo, games_rated FROM users WHERE id = ?", whiteId);
+                "SELECT " + eloCol + ", " + gamesRatedCol + " FROM users WHERE id = ?", whiteId);
         Map<String, Object> blackRow = jdbcTemplate.queryForMap(
-                "SELECT elo, games_rated FROM users WHERE id = ?", blackId);
+                "SELECT " + eloCol + ", " + gamesRatedCol + " FROM users WHERE id = ?", blackId);
 
-        int whiteElo   = ((Number) whiteRow.get("elo")).intValue();
-        int whiteGames = ((Number) whiteRow.get("games_rated")).intValue();
-        int blackElo   = ((Number) blackRow.get("elo")).intValue();
-        int blackGames = ((Number) blackRow.get("games_rated")).intValue();
+        int whiteElo   = ((Number) whiteRow.get(eloCol)).intValue();
+        int whiteGames = ((Number) whiteRow.get(gamesRatedCol)).intValue();
+        int blackElo   = ((Number) blackRow.get(eloCol)).intValue();
+        int blackGames = ((Number) blackRow.get(gamesRatedCol)).intValue();
 
         int newWhiteElo = newRating(whiteElo, whiteGames, whiteScore, blackElo);
         int newBlackElo = newRating(blackElo, blackGames, blackScore, whiteElo);
 
         jdbcTemplate.update(
-                "UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?",
+                "UPDATE users SET " + eloCol + " = ?, " + gamesRatedCol + " = " + gamesRatedCol + " + 1 WHERE id = ?",
                 newWhiteElo, whiteId);
         jdbcTemplate.update(
-                "UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?",
+                "UPDATE users SET " + eloCol + " = ?, " + gamesRatedCol + " = " + gamesRatedCol + " + 1 WHERE id = ?",
                 newBlackElo, blackId);
 
         jdbcTemplate.update(

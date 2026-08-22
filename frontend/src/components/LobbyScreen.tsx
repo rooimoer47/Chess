@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemePicker, THEMES, type Theme, type BoardTheme } from './ThemePicker';
-import type { ActiveGameSummary } from '../types';
+import type { ActiveGameSummary, Variant } from '../types';
+
+interface EloSummary {
+  elo: number;
+  provisional: boolean;
+  elo960: number;
+  provisional960: boolean;
+}
 
 export { THEMES, type Theme, type BoardTheme };
 
@@ -32,30 +39,37 @@ interface Props {
   boardTheme: BoardTheme;
   colorPreference: string;
   clockMs: number;
+  variant: Variant;
   onChangeBotType: (type: string) => void;
   onChangeTheme: (theme: Theme) => void;
   onChangeBoardTheme: (theme: BoardTheme) => void;
   onChangeColorPreference: (pref: string) => void;
   onChangeClockMs: (ms: number) => void;
+  onChangeVariant: (variant: Variant) => void;
   onLogout: () => void;
   onStartGame: () => void;
-  onResumeGame: (botType: string, gameId: string) => void;
+  onResumeGame: (botType: string, gameId: string, variant: Variant) => void;
 }
 
-export function LobbyScreen({ username, botType, theme, boardTheme, colorPreference, clockMs, onChangeBotType, onChangeTheme, onChangeBoardTheme, onChangeColorPreference, onChangeClockMs, onLogout, onStartGame, onResumeGame }: Props) {
+export function LobbyScreen({ username, botType, theme, boardTheme, colorPreference, clockMs, variant, onChangeBotType, onChangeTheme, onChangeBoardTheme, onChangeColorPreference, onChangeClockMs, onChangeVariant, onLogout, onStartGame, onResumeGame }: Props) {
   const [themePickerOpen, setThemePickerOpen] = useState(false);
-  const [eloDisplay, setEloDisplay] = useState<string | null>(null);
+  const [elo, setElo] = useState<EloSummary | null>(null);
   const [activeBotGames, setActiveBotGames] = useState<ActiveGameSummary[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetch(`/api/users/${encodeURIComponent(username)}/elo`)
-      .then(r => r.ok ? r.json() as Promise<{ elo: number; provisional: boolean }> : null)
-      .then(data => {
-        if (data) setEloDisplay(`${data.elo}${data.provisional ? '?' : ''}`);
-      })
+      .then(r => r.ok ? r.json() as Promise<EloSummary> : null)
+      .then(data => { if (data) setElo(data); })
       .catch(() => { /* silently ignore — ELO is cosmetic */ });
   }, [username]);
+
+  // Show the rating track matching the selected variant, mirroring how lichess switches ratings.
+  const eloDisplay = elo
+    ? (variant === 'CHESS960'
+        ? `${elo.elo960}${elo.provisional960 ? '?' : ''}`
+        : `${elo.elo}${elo.provisional ? '?' : ''}`)
+    : null;
 
   useEffect(() => {
     fetch(`/api/users/${encodeURIComponent(username)}/active-games`)
@@ -80,7 +94,25 @@ export function LobbyScreen({ username, botType, theme, boardTheme, colorPrefere
 
   return (
     <div className="lobby">
-      <h1 className="lobby-title">Chess</h1>
+      <h1 className="lobby-title">{variant === 'CHESS960' ? 'Chessnuts960' : 'Chessnuts'}</h1>
+
+      <div className="variant-toggle mode-toggle">
+        <button
+          type="button"
+          className={`mode-btn${variant === 'STANDARD' ? ' mode-btn-active' : ''}`}
+          onClick={() => onChangeVariant('STANDARD')}
+        >
+          Standard
+        </button>
+        <button
+          type="button"
+          className={`mode-btn${variant === 'CHESS960' ? ' mode-btn-active' : ''}`}
+          onClick={() => onChangeVariant('CHESS960')}
+        >
+          ♟ Chess960
+        </button>
+      </div>
+
       <p className="lobby-welcome">
         Welcome, <strong>{username}</strong>
         {eloDisplay && <span className="lobby-elo"> · ELO {eloDisplay}</span>}
@@ -108,7 +140,7 @@ export function LobbyScreen({ username, botType, theme, boardTheme, colorPrefere
                 </label>
                 {active && (
                   <div className="opponent-card-actions">
-                    <button type="button" className="opponent-resume-btn" onClick={() => onResumeGame(opp.type, String(active.gameId))}>
+                    <button type="button" className="opponent-resume-btn" onClick={() => onResumeGame(opp.type, String(active.gameId), active.variant)}>
                       Resume
                     </button>
                     <button type="button" className="opponent-new-btn" onClick={() => handleNewGame(opp.type, active.gameId)}>

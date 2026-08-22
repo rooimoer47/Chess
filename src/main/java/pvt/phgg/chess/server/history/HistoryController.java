@@ -29,13 +29,15 @@ public class HistoryController {
                 g.result,
                 g.winner_color,
                 g.mode,
+                g.variant,
                 g.started_at,
                 g.ended_at
             FROM games g
             JOIN users u ON u.username = ?
             LEFT JOIN users uw ON g.white_player_id = uw.id
             LEFT JOIN users ub ON g.black_player_id = ub.id
-            WHERE g.white_player_id = u.id OR g.black_player_id = u.id
+            WHERE (g.white_player_id = u.id OR g.black_player_id = u.id)
+              AND (CAST(? AS TEXT) IS NULL OR g.variant = ?)
             ORDER BY g.started_at DESC
             """;
 
@@ -57,11 +59,16 @@ public class HistoryController {
     }
 
     @GetMapping("/users/{username:.+}/games")
-    public ResponseEntity<Object> getUserGames(@PathVariable String username, HttpServletRequest request) {
+    public ResponseEntity<Object> getUserGames(@PathVariable String username,
+                                               @RequestParam(required = false) String variant,
+                                               HttpServletRequest request) {
         String tokenUsername = extractUsername(request);
         if (tokenUsername == null || !tokenUsername.equals(username)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(UNAUTHORIZED);
         }
+
+        // variant absent → all games; "STANDARD"/"CHESS960" → only that variant.
+        String variantFilter = "STANDARD".equals(variant) || "CHESS960".equals(variant) ? variant : null;
 
         List<GameSummaryDto> games = jdbcTemplate.query(USER_GAMES_SQL,
                 (rs, rowNum) -> new GameSummaryDto(
@@ -71,9 +78,10 @@ public class HistoryController {
                         rs.getString("result"),
                         rs.getString("winner_color"),
                         rs.getString("mode"),
+                        rs.getString("variant"),
                         rs.getObject("started_at", java.time.OffsetDateTime.class),
                         rs.getObject("ended_at", java.time.OffsetDateTime.class)),
-                username);
+                username, variantFilter, variantFilter);
 
         return ResponseEntity.ok(games);
     }
@@ -113,7 +121,7 @@ public class HistoryController {
                         rs.getString("promotion_choice")),
                 gameId);
 
-        GameEngine engine = new GameEngine();
+        GameEngine engine = new GameEngine(startingPositionFor(gameId));
         List<BoardSnapshotDto> snapshots = new ArrayList<>();
         snapshots.add(boardSnapshot(engine, 0, null));
 
@@ -129,6 +137,15 @@ public class HistoryController {
         }
 
         return ResponseEntity.ok(snapshots);
+    }
+
+    // Games may start from a non-standard back rank (Chess960); replay must reconstruct from the
+    // position the game was actually recorded with, not the standard one. Defaults to standard for
+    // missing/legacy rows.
+    private String startingPositionFor(long gameId) {
+        List<String> positions = jdbcTemplate.queryForList(
+                "SELECT starting_position FROM games WHERE id = ?", String.class, gameId);
+        return positions.isEmpty() ? GameEngine.STANDARD_BACK_RANK : positions.get(0);
     }
 
     private BoardSnapshotDto boardSnapshot(GameEngine engine, int moveNumber, LastMoveDto lastMove) {

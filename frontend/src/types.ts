@@ -1,5 +1,6 @@
 export type PieceType = 'PAWN' | 'KNIGHT' | 'BISHOP' | 'ROOK' | 'QUEEN' | 'KING';
 export type Color = 'WHITE' | 'BLACK';
+export type Variant = 'STANDARD' | 'CHESS960';
 export type GameStatus = 'IN_PROGRESS' | 'CHECK' | 'CHECKMATE' | 'STALEMATE' | 'RESIGNED' | 'THREEFOLD_REPETITION' | 'FIFTY_MOVE_RULE' | 'INSUFFICIENT_MATERIAL' | 'DRAW_AGREED' | 'TIMEOUT';
 
 export interface Piece {
@@ -28,6 +29,7 @@ export interface GameSummary {
   result: string | null;
   winnerColor: Color | null;
   mode: string;
+  variant: Variant;
   startedAt: string;
   endedAt: string | null;
 }
@@ -39,6 +41,7 @@ export interface ActiveGameSummary {
   opponentUsername: string | null;
   color: Color;
   status: string;
+  variant: Variant;
 }
 
 export interface BoardSnapshot {

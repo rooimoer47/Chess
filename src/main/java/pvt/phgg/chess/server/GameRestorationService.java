@@ -64,7 +64,7 @@ public class GameRestorationService {
         String blackUsername = resolveUsername(game.getBlackPlayerId());
 
         GameSession session = GameSession.restore(objectMapper, gameRecorder, game.getId(),
-                game.getMode(), game.getBotType(),
+                game.getMode(), game.getBotType(), game.getVariant(), game.getStartingPosition(),
                 whiteUsername, game.getWhitePlayerId(),
                 blackUsername, game.getBlackPlayerId(),
                 moves);

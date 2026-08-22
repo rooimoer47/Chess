@@ -48,6 +48,8 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             attributes.put("botType", botParam != null ? botParam : "none");
             String colorParam = req.getParameter("color");
             attributes.put("colorPreference", "WHITE".equals(colorParam) || "BLACK".equals(colorParam) ? colorParam : "RANDOM");
+            String variantParam = req.getParameter("variant");
+            attributes.put("variant", "chess960".equalsIgnoreCase(variantParam) ? "CHESS960" : "STANDARD");
             String gameIdParam = req.getParameter("gameId");
             if (gameIdParam != null) {
                 try {

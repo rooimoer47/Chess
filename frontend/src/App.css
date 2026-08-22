@@ -374,6 +374,18 @@ body {
   letter-spacing: 0.06em;
 }
 
+/* Prominent Standard / Chess960 switch under the title */
+.variant-toggle {
+  max-width: 320px;
+  margin: 10px auto 4px;
+}
+
+.game-variant-title {
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  color: #7fc97f;
+}
+
 .lobby-welcome {
   font-size: 1rem;
   color: #aaa;

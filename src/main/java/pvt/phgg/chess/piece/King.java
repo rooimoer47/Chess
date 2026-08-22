@@ -8,8 +8,26 @@ import java.util.List;
 
 public class King extends APiece{
 
+    // Home files of the two rooks this king may castle with. Defaults match standard chess
+    // (queenside rook on file a=0, kingside rook on file h=7); Chess960 sets them explicitly.
+    private int queensideRookFile = 0;
+    private int kingsideRookFile = 7;
+
     public King(Position position, boolean white) {
         super(position, white);
+    }
+
+    public void setRookFiles(int queensideRookFile, int kingsideRookFile) {
+        this.queensideRookFile = queensideRookFile;
+        this.kingsideRookFile = kingsideRookFile;
+    }
+
+    public int getQueensideRookFile() {
+        return queensideRookFile;
+    }
+
+    public int getKingsideRookFile() {
+        return kingsideRookFile;
     }
 
     public List<Position> getKingMovements(APiece[][] board, BoardState boardState) {
@@ -31,46 +49,69 @@ public class King extends APiece{
     public List<Position> getValidPositions(APiece[][] board, BoardState boardState) {
         List<Position> moves = getKingMovements(board, boardState);
 
-        // castle
+        // Castling. Under FIDE Chess960 rules the king always lands on the c-file (queenside)
+        // or g-file (kingside), and the rook on the d-file or f-file, regardless of where either
+        // started. Standard chess (king on e, rooks on a/h) is just the special case where the
+        // home files happen to be 4/0/7.
         if (this.isOriginalPosition()) {
-            int kingRow = this.getCurrentPosition().getRow();
-            int kingCol = this.getCurrentPosition().getCol();
-            Position rookPos = new Position(kingRow, 0);
-            List<Position> betweenSquares = new ArrayList<>();
-            List<Position> kingSquares = List.of(
-                    this.getCurrentPosition(),
-                    new Position(kingRow, kingCol-1),
-                    new Position(kingRow, kingCol-2));
-            for (int col=1; col<kingCol; col++) {
-                betweenSquares.add(new Position(kingRow, col));
-            }
-            if (boardState.isOccupied(board, rookPos) &&
-                    board[rookPos.getRow()][rookPos.getCol()].isRook() &&
-                    board[rookPos.getRow()][rookPos.getCol()].isOriginalPosition() &&
-                    boardState.isUnOccupied(board, betweenSquares) &&
-                    boardState.arePositionsSafe(board, kingSquares , this.isWhite())) {
-                moves.add(new Position(kingRow, kingCol-2, Position.SpecialMove.CASTLE));
-            }
-
-            rookPos = new Position(kingRow, 7);
-            kingSquares = List.of(
-                    this.getCurrentPosition(),
-                    new Position(kingRow, kingCol+1),
-                    new Position(kingRow, kingCol+2));
-            betweenSquares.clear();
-            for (int col=6; col>kingCol; col--) {
-                betweenSquares.add(new Position(kingRow, col));
-            }
-            if (boardState.isOccupied(board, rookPos) &&
-                    board[rookPos.getRow()][rookPos.getCol()].isRook() &&
-                    board[rookPos.getRow()][rookPos.getCol()].isOriginalPosition() &&
-                    boardState.isUnOccupied(board, betweenSquares) &&
-                    boardState.arePositionsSafe(board, kingSquares , this.isWhite())) {
-                moves.add(new Position(kingRow, kingCol+2, Position.SpecialMove.CASTLE));
-            }
+            addCastle(board, boardState, moves, queensideRookFile, 2, 3); // king -> c-file, rook -> d-file
+            addCastle(board, boardState, moves, kingsideRookFile, 6, 5);  // king -> g-file, rook -> f-file
         }
 
         return moves;
+    }
+
+    private void addCastle(APiece[][] board, BoardState boardState, List<Position> moves,
+                           int rookStartFile, int kingDestCol, int rookDestCol) {
+        int row = getCurrentPosition().getRow();
+        int kingCol = getCurrentPosition().getCol();
+
+        if (rookStartFile < 0 || rookStartFile > 7) {
+            return;
+        }
+        APiece rook = board[row][rookStartFile];
+        if (!rook.isPositionOccupied() || !rook.isRook() || !rook.isOriginalPosition()) {
+            return;
+        }
+
+        // Every square the king and the rook travel across (including their destinations) must be
+        // vacant, except for the king's and the castling rook's own starting squares — in Chess960
+        // the king and rook can start adjacent or already occupy a destination square.
+        if (isPathBlocked(board, row, kingCol, kingDestCol, kingCol, rookStartFile)
+                || isPathBlocked(board, row, rookStartFile, rookDestCol, kingCol, rookStartFile)) {
+            return;
+        }
+
+        // The king may not start in, move through, or land on an attacked square. Both the king and
+        // the castling rook are leaving their squares, so neither may block an enemy attack on the
+        // king's path — evaluate safety with both removed. In Chess960 a departing rook can uncover a
+        // check that standard castling geometry never exposes (e.g. a rook shielding the king from an
+        // enemy behind it on the same rank).
+        APiece[][] vacated = boardState.deepCopy(board);
+        vacated[row][kingCol] = new EmptySquare(new Position(row, kingCol));
+        vacated[row][rookStartFile] = new EmptySquare(new Position(row, rookStartFile));
+
+        List<Position> kingPath = new ArrayList<>();
+        for (int col = Math.min(kingCol, kingDestCol); col <= Math.max(kingCol, kingDestCol); col++) {
+            kingPath.add(new Position(row, col));
+        }
+        if (!boardState.arePositionsSafe(vacated, kingPath, this.isWhite())) {
+            return;
+        }
+
+        moves.add(new Position(row, kingDestCol, Position.SpecialMove.CASTLE));
+    }
+
+    private boolean isPathBlocked(APiece[][] board, int row, int from, int to, int kingCol, int rookStartFile) {
+        for (int col = Math.min(from, to); col <= Math.max(from, to); col++) {
+            if (col == kingCol || col == rookStartFile) {
+                continue;
+            }
+            if (board[row][col].isPositionOccupied()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -85,6 +126,8 @@ public class King extends APiece{
 
     @Override
     public APiece copy() {
-        return copyStateTo(new King(new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol()), isWhite()));
+        King clone = new King(new Position(getCurrentPosition().getRow(), getCurrentPosition().getCol()), isWhite());
+        clone.setRookFiles(queensideRookFile, kingsideRookFile);
+        return copyStateTo(clone);
     }
 }
