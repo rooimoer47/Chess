@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Browser, type BrowserContext } from '@playwright/test';
 import { uniqueUsername, registerViaApi, expectLobby } from './fixtures';
+import { selectChess960, readRank, expectLegalBackRank } from './chess960';
 
 type ColorPref = 'Always White' | 'Always Black' | 'Random';
 
@@ -16,9 +17,35 @@ interface MatchedPair {
  * since both are freshly registered at the same default ELO, the
  * matchmaking queue pairs them with each other.
  */
-async function setupMatchedHumans(browser: Browser, prefA: ColorPref | null, prefB: ColorPref | null): Promise<MatchedPair> {
+async function setupMatchedHumans(
+  browser: Browser,
+  prefA: ColorPref | null,
+  prefB: ColorPref | null,
+  chess960 = false,
+): Promise<MatchedPair> {
   const contextA = await browser.newContext();
   const contextB = await browser.newContext();
+  try {
+    return await matchTwoHumans(contextA, contextB, prefA, prefB, chess960);
+  } catch (e) {
+    // Callers close these in their own `finally`, but only once this function
+    // has RETURNED them — a throw here would otherwise leak two live contexts,
+    // and a leaked context keeps its WebSocket (and so its queued player) alive
+    // for the rest of the worker run, where it steals the next test's partner
+    // and turns one flake into a cascade of them.
+    await contextA.close();
+    await contextB.close();
+    throw e;
+  }
+}
+
+async function matchTwoHumans(
+  contextA: BrowserContext,
+  contextB: BrowserContext,
+  prefA: ColorPref | null,
+  prefB: ColorPref | null,
+  chess960: boolean,
+): Promise<MatchedPair> {
   const pageA = await contextA.newPage();
   const pageB = await contextB.newPage();
 
@@ -34,6 +61,13 @@ async function setupMatchedHumans(browser: Browser, prefA: ColorPref | null, pre
 
   if (prefA) await pageA.locator('.color-pref-row label', { hasText: prefA }).click();
   if (prefB) await pageB.locator('.color-pref-row label', { hasText: prefB }).click();
+
+  // Both or neither — the queue is partitioned by variant, so a mixed pair
+  // would simply never match (that rule is unit-tested in GameSessionManagerTest).
+  if (chess960) {
+    await selectChess960(pageA);
+    await selectChess960(pageB);
+  }
 
   await pageA.getByRole('button', { name: 'Start Game' }).click();
   await pageB.getByRole('button', { name: 'Start Game' }).click();
@@ -70,6 +104,28 @@ test('happy path: two players are matched and a move syncs between them', async 
 
     await expect(whitePage.locator('.turn-indicator')).toHaveText("Opponent's turn");
     await expect(blackPage.locator('.turn-indicator')).toHaveText('Your turn');
+  } finally {
+    await contextA.close();
+    await contextB.close();
+  }
+});
+
+test('two Chess960 players are matched into the same randomised position', async ({ browser }) => {
+  const { pageA, pageB, contextA, contextB } = await setupMatchedHumans(browser, null, null, true);
+
+  try {
+    const rankA = await readRank(pageA, 1);
+    expectLegalBackRank(rankA);
+
+    // Both clients must see the one position the server dealt for this game —
+    // not two independently generated ones.
+    expect(await readRank(pageB, 1), 'both players must see the same dealt position').toBe(rankA);
+    expect(await readRank(pageA, 8), 'black back rank must mirror white').toBe(rankA);
+
+    // Both are in a real, playable 960 game rather than a stalled handshake.
+    const [whitePage, blackPage] = (await isWhite(pageA)) ? [pageA, pageB] : [pageB, pageA];
+    await expect(whitePage.locator('.turn-indicator')).toHaveText('Your turn');
+    await expect(blackPage.locator('.turn-indicator')).toHaveText("Opponent's turn");
   } finally {
     await contextA.close();
     await contextB.close();
