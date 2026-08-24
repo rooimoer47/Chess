@@ -375,6 +375,40 @@ public class GameSession {
         return null;
     }
 
+    /** Which side this username plays here, whether or not they are currently connected. */
+    public synchronized PlayerRole slotOf(String username) {
+        if (username.equals(whiteUsername)) return PlayerRole.WHITE;
+        if (username.equals(blackUsername)) return PlayerRole.BLACK;
+        return null;
+    }
+
+    /**
+     * Binds ws to username's slot even when another socket already holds it —
+     * "latest connection wins" — and returns the socket that was displaced
+     * (null if the slot was free, or ws already held it).
+     *
+     * Only for the case {@link #rejoin} cannot serve: a second connection for a
+     * player whose previous socket is dead but whose close has not been
+     * processed yet. Reconnecting is inherently racy — the browser can open the
+     * new socket before the old one's close reaches the server — and without
+     * this the new connection falls through to matchmaking and strands the
+     * player in the queue while this session waits on a socket nobody is
+     * listening to.
+     *
+     * Safe against the displaced socket's close arriving afterwards: {@link
+     * #disconnect} keys off {@link #roleOf}, which compares socket identity, so
+     * the late close no longer matches a slot and is ignored.
+     */
+    public synchronized WebSocketSession takeOverSlot(WebSocketSession ws, String username) {
+        PlayerRole slot = slotOf(username);
+        if (slot == null) throw new IllegalStateException(username + " holds no slot in this game");
+
+        WebSocketSession previous = slot == PlayerRole.WHITE ? whiteSession : blackSession;
+        if (slot == PlayerRole.WHITE) whiteSession = ws; else blackSession = ws;
+        disconnectedAt = null;
+        return previous == ws ? null : previous;
+    }
+
     // Called by GameSessionManager's scheduled sweep. Bot games are exempt —
     // there's no opponent waiting, so a disconnected human isn't costing
     // anyone anything.

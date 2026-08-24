@@ -668,10 +668,12 @@ class GameSessionManagerTest {
     }
 
     @Test
-    void join_botGame_occupiedSlot_rejectsSecondConnection() {
-        // Two tabs open on the same bot at once: the first is still live,
-        // so the second must be rejected rather than silently duplicating
-        // the session.
+    void join_botGame_occupiedSlot_secondConnectionTakesOverTheSlot() {
+        // A second socket for the same bot slot while the first is still live.
+        // Latest connection wins: it takes the slot over rather than being
+        // refused, because the "live" socket is usually a reconnect's dead
+        // predecessor whose close has not been processed yet. Still exactly one
+        // session either way — the duplicate this guarded against never happens.
         FakeWs ws1 = new FakeWs("a", Map.of("botType", "alan"));
         stubUser("alice", 1L, 1000);
         when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(42L);
@@ -682,8 +684,11 @@ class GameSessionManagerTest {
         FakeWs ws2 = new FakeWs("a2", Map.of("botType", "alan"));
         PlayerRole role = manager.join(ws2, "alice", "WHITE");
 
-        assertNull(role, "A second live socket for the same bot slot must be rejected");
-        assertEquals(1, manager.activeGamesFor("alice").size());
+        assertEquals(PlayerRole.WHITE, role, "The newer socket must get the slot");
+        assertEquals(42L, manager.getSession(ws2).getGameId());
+        assertEquals(1, manager.activeGamesFor("alice").size(), "Must not have created a second session");
+        assertNull(manager.getSession(ws1), "The displaced socket must no longer map to the session");
+        assertNotNull(ws1.closedWith, "The displaced socket must be closed, not left hanging");
     }
 
     @Test
@@ -776,6 +781,112 @@ class GameSessionManagerTest {
         assertFalse(manager.abandonBotGame("alice", 999L));
     }
 
+    // ---- latest connection wins ----
+    //
+    // A browser can open a replacement WebSocket before the previous one's
+    // close reaches the server (React StrictMode does it on every mount in
+    // dev; a flaky network does it in production). The vacant-slot rejoin the
+    // handler tries first finds nothing to fill, so without a takeover the new
+    // connection falls through to matchmaking and is queued as a brand-new
+    // player — stranded there while their own game waits on a dead socket.
+
+    @Test
+    void join_reconnectWhileSlotStillHeld_takesOverInsteadOfQueueing() {
+        stubUser("alice", 1L, 1000);
+        stubUser("bob", 2L, 1000);
+
+        FakeWs aliceWs = humanWs("alice-1");
+        manager.join(aliceWs, "alice", "RANDOM");          // queued, nobody to match yet
+        FakeWs bobWs = humanWs("bob-1");
+        manager.join(bobWs, "bob", "RANDOM");              // matched with alice
+
+        GameSession game = manager.getSession(bobWs);
+        assertNotNull(game, "precondition: bob is in a game");
+        PlayerRole bobRole = game.roleOf(bobWs);
+
+        // bob's browser reconnects; bob-1 is dead but its close hasn't landed.
+        FakeWs bobReconnect = humanWs("bob-2");
+        PlayerRole role = manager.join(bobReconnect, "bob", "RANDOM");
+
+        assertEquals(bobRole, role, "The reconnect must resume bob's own side");
+        assertSame(game, manager.getSession(bobReconnect), "and rejoin the same game");
+        assertEquals(bobRole, game.roleOf(bobReconnect));
+    }
+
+    @Test
+    void join_reconnectWhileSlotStillHeld_retiresTheDisplacedSocket() {
+        stubUser("alice", 1L, 1000);
+        stubUser("bob", 2L, 1000);
+        manager.join(humanWs("alice-1"), "alice", "RANDOM");
+        FakeWs bobWs = humanWs("bob-1");
+        manager.join(bobWs, "bob", "RANDOM");
+
+        manager.join(humanWs("bob-2"), "bob", "RANDOM");
+
+        assertNull(manager.getSession(bobWs), "The displaced socket must no longer map to the session");
+        assertEquals(4001, bobWs.closedWith.getCode(), "and must be closed as superseded");
+    }
+
+    @Test
+    void join_reconnectWhileSlotStillHeld_leavesNobodyStrandedInTheQueue() {
+        stubUser("alice", 1L, 1000);
+        stubUser("bob", 2L, 1000);
+        stubUser("carol", 3L, 1000);
+        manager.join(humanWs("alice-1"), "alice", "RANDOM");
+        manager.join(humanWs("bob-1"), "bob", "RANDOM");    // alice + bob now in a game
+
+        manager.join(humanWs("bob-2"), "bob", "RANDOM");    // bob reconnects
+
+        // If the reconnect had been queued instead of taking the slot over,
+        // carol would find bob waiting and be matched with a player who is
+        // already mid-game. An empty queue leaves her waiting, as it should.
+        assertNull(manager.getSession(humanWs("carol-1")) , "precondition: fresh socket is not in a game");
+        FakeWs carolWs = humanWs("carol-1");
+        manager.join(carolWs, "carol", "RANDOM");
+        assertNull(manager.getSession(carolWs), "The queue must be empty, so carol has nobody to match");
+    }
+
+    @Test
+    void join_sameUserQueuedTwice_isNeverMatchedAgainstThemselves() {
+        stubUser("alice", 1L, 1000);
+        stubUser("bob", 2L, 1000);
+
+        FakeWs first = humanWs("alice-1");
+        manager.join(first, "alice", "RANDOM");
+        FakeWs second = humanWs("alice-2");
+
+        assertNull(manager.getSession(second) , "precondition");
+        manager.join(second, "alice", "RANDOM");
+        assertNull(manager.getSession(second), "alice must not be matched against her own stale queue entry");
+
+        // Exactly one alice is left queued, and it is the live socket.
+        FakeWs bobWs = humanWs("bob-1");
+        manager.join(bobWs, "bob", "RANDOM");
+        GameSession game = manager.getSession(bobWs);
+        assertNotNull(game, "bob must match the one queued alice");
+        assertNotNull(game.roleOf(second), "the surviving entry must be alice's newest socket");
+        assertNull(game.roleOf(first), "the superseded socket must not be in the game");
+    }
+
+    @Test
+    void join_humanQueue_doesNotDragThePlayerIntoTheirLiveBotGame() {
+        // Takeover is scoped to the kind of game being asked for: a player with
+        // a bot game in progress who now queues for a human opponent must get
+        // the human queue, not be yanked back into the bot game.
+        stubUser("alice", 1L, 1000);
+        when(gameRecorder.startGame(any(), any(), any(), any(), any(), any())).thenReturn(42L);
+        FakeWs botWs = new FakeWs("bot-1", Map.of("botType", "alan"));
+        manager.join(botWs, "alice", "WHITE");
+        manager.joinBot(botWs, "alan");
+        manager.startGame(manager.getSession(botWs));
+
+        FakeWs queueWs = humanWs("alice-human");
+        manager.join(queueWs, "alice", "RANDOM");
+
+        assertNull(manager.getSession(queueWs), "alice must be queued for a human game, not reattached");
+        assertNotNull(manager.getSession(botWs), "and the bot game must be left alone");
+    }
+
     // ---- helpers ----
 
     private void stubUser(String username, Long id, int elo) {
@@ -797,6 +908,7 @@ class GameSessionManagerTest {
         private final Map<String, Object> attributes;
         private final boolean open;
         final List<TextMessage> messages = new ArrayList<>();
+        CloseStatus closedWith;
 
         FakeWs(String id, Map<String, Object> attributes) {
             this(id, attributes, true);
@@ -830,7 +942,7 @@ class GameSessionManagerTest {
         @Override public void setBinaryMessageSizeLimit(int limit){ }
         @Override public int  getBinaryMessageSizeLimit()        { return 0; }
         @Override public List<WebSocketExtension> getExtensions(){ return List.of(); }
-        @Override public void close()                            { }
-        @Override public void close(CloseStatus status)          { }
+        @Override public void close()                            { closedWith = CloseStatus.NORMAL; }
+        @Override public void close(CloseStatus status)          { closedWith = status; }
     }
 }

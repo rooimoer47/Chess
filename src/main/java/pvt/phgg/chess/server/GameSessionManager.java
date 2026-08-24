@@ -4,6 +4,7 @@ import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import pvt.phgg.chess.server.dto.ActiveGameSummary;
@@ -31,6 +32,11 @@ import java.util.concurrent.ThreadLocalRandom;
 public class GameSessionManager {
 
     private static final Logger log = LoggerFactory.getLogger(GameSessionManager.class);
+
+    // Sent to a socket that has been displaced from its slot by a newer
+    // connection for the same player. 4000+ is the application-defined range.
+    private static final CloseStatus SUPERSEDED =
+            new CloseStatus(4001, "Superseded by a newer connection");
 
     private final ObjectMapper objectMapper;
     private final GameRecorder gameRecorder;
@@ -113,6 +119,47 @@ public class GameSessionManager {
         return role;
     }
 
+    // Binds ws to the player's existing slot, displacing whatever socket held
+    // it, and retires that socket: dropped from activeSessions so its late
+    // close can't be mistaken for the live one, and closed so a genuine second
+    // tab learns it has been superseded rather than sitting on a silent board.
+    private PlayerRole takeOverSlot(GameSession session, WebSocketSession ws, String username) {
+        PlayerRole role = session.slotOf(username);
+        if (role == null) return null;
+
+        WebSocketSession displaced = session.takeOverSlot(ws, username);
+        if (displaced != null) {
+            activeSessions.remove(displaced);
+            log.info("Slot takeover: {} reattached to game {} (displaced socket {})",
+                    username, session.getGameId(), displaced.getId());
+            try {
+                displaced.close(SUPERSEDED);
+            } catch (IOException e) {
+                // Already gone is the common case and exactly what we wanted.
+                log.debug("Displaced socket {} could not be closed", displaced.getId(), e);
+            }
+        }
+        return role;
+    }
+
+    // The player's live human game, if they have one. Deliberately not any
+    // live session: a player with an in-progress bot game who now asks for a
+    // human opponent must get the human game they asked for, not be dragged
+    // back into the bot game.
+    private PlayerRole takeOverLiveHumanGame(WebSocketSession ws, String username) {
+        for (GameSession session : new HashSet<>(activeSessions.values())) {
+            if (session.isBotEnabled() || session.isGameOver()) continue;
+            if (session.slotOf(username) == null) continue;
+
+            PlayerRole role = takeOverSlot(session, ws, username);
+            if (role != null) {
+                activeSessions.put(ws, session);
+                return role;
+            }
+        }
+        return null;
+    }
+
     public synchronized PlayerRole join(WebSocketSession ws, String username, String colorPreference) {
         String variant = (String) ws.getAttributes().getOrDefault("variant", "STANDARD");
         // Bot games bypass the queue — create a session immediately
@@ -128,12 +175,15 @@ public class GameSessionManager {
                 if (existing == null || existing.isGameOver()) {
                     activeBotGameId.remove(botKey);
                 } else {
-                    // A live game already exists for this bot — reattach to
-                    // it rather than starting a duplicate. If it's occupied
-                    // by another socket (e.g. a second tab), rejoin fails
-                    // and we deliberately return null instead of falling
-                    // through to create a second session for the same slot.
+                    // A live game already exists for this bot — reattach to it
+                    // rather than starting a duplicate. If another socket still
+                    // holds the slot it is stale (a reconnect that outran its
+                    // predecessor's close, or a second tab), so take it over
+                    // rather than refusing: returning null here left the player
+                    // staring at "Game is full or you are already connected"
+                    // for a game that is theirs.
                     PlayerRole role = existing.rejoin(ws, username);
+                    if (role == null) role = takeOverSlot(existing, ws, username);
                     if (role != null) {
                         activeSessions.put(ws, existing);
                     }
@@ -151,6 +201,18 @@ public class GameSessionManager {
         // disconnect can land in the queue before its close event is fully
         // processed), then try to match immediately
         humanQueue.removeIf(p -> !p.ws().isOpen());
+
+        // The player may already be in a human game: a reconnect can land
+        // before the old socket's close is processed, so the vacant-slot
+        // rejoin the handler tried first found nothing to fill. Take the slot
+        // over instead of queueing them as a brand-new player — that stranded
+        // them in the queue while their own game waited on a dead socket.
+        PlayerRole resumed = takeOverLiveHumanGame(ws, username);
+        if (resumed != null) return resumed;
+
+        // A player must never be left with two entries in the queue (and so
+        // never be matched against themselves) — drop any earlier one.
+        humanQueue.removeIf(p -> p.username().equals(username));
 
         AppUser user = userService.findByUsername(username).orElse(null);
         int elo = eloForVariant(user, variant);
