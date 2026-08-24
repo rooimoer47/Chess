@@ -147,7 +147,7 @@ export default function App() {
       } />
       <Route path="/history" element={<HistoryPage username={username} variant={variant} />} />
       <Route path="/history/:gameId" element={<ReplayViewer />} />
-      <Route path="/profile" element={<EloHistoryPage username={username} />} />
+      <Route path="/profile" element={<EloHistoryPage username={username} variant={variant} />} />
       <Route path="*" element={<Navigate to="/lobby" replace />} />
     </Routes>
   );
