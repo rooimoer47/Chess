@@ -1,6 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { uniqueUsername, registerViaApi, expectLobby } from './fixtures';
-import { STANDARD_BACK_RANK, selectChess960, readRank, expectLegalBackRank, playAnyLegalMove } from './chess960';
+import {
+  STANDARD_BACK_RANK, selectChess960, readRank, expectLegalBackRank, playAnyLegalMove, findImmediateCastle,
+} from './chess960';
 
 /**
  * Registers a fresh user and drops them into a Chess960 game against the
@@ -91,6 +93,49 @@ test('the bot keeps replying move after move in a Chess960 game', async ({ page 
   }
 
   expect(played, 'the bot stopped responding before a single move was completed').toBeGreaterThan(0);
+});
+
+test('castling in Chess960 sends the king to c/g and the rook to d/f', async ({ page }) => {
+  // The one Chess960 mechanic the browser can reach but unit tests cannot: the
+  // king-onto-rook gesture. Rather than pin a back rank (which would mean a
+  // test-only handshake param in production code), keep dealing until one of
+  // the ~17% of positions that allow an immediate castle turns up. Expected
+  // cost is ~6 deals; 40 attempts makes a false failure about 1 in 1700.
+  const MAX_DEALS = 40;
+  let castle: Awaited<ReturnType<typeof findImmediateCastle>> = null;
+  let deals = 0;
+
+  while (castle === null && deals < MAX_DEALS) {
+    await startBotGame960(page);
+    deals++;
+    castle = await findImmediateCastle(page);
+  }
+
+  expect(castle, `no castleable position in ${MAX_DEALS} deals`).not.toBeNull();
+  const { king, rook, side } = castle!;
+
+  await page.getByTestId(`square-${rook}`).click();
+
+  // FIDE Chess960: the king always finishes on the c- or g-file and the rook
+  // on the d- or f-file, wherever the two of them started.
+  const kingDest = side === 'kingside' ? 'g1' : 'c1';
+  const rookDest = side === 'kingside' ? 'f1' : 'd1';
+
+  await expect(page.getByTestId(`square-${kingDest}`).locator('img'),
+    `${side} castle from ${king}: king must land on ${kingDest}`).toHaveAttribute('alt', 'WHITE KING');
+  await expect(page.getByTestId(`square-${rookDest}`).locator('img'),
+    `${side} castle from ${rook}: rook must land on ${rookDest}`).toHaveAttribute('alt', 'WHITE ROOK');
+
+  // Vacated squares really are vacated — catches a castle that copies pieces
+  // rather than moving them, which the destination checks alone would miss.
+  for (const square of [king, rook]) {
+    if (square === kingDest || square === rookDest) continue;
+    await expect(page.getByTestId(`square-${square}`).locator('img'),
+      `${square} must be empty after castling`).toHaveCount(0);
+  }
+
+  // And it was a real move, not a local board edit: the turn passed over.
+  await expect(page.locator('.turn-indicator')).toHaveText('Your turn', { timeout: 10_000 });
 });
 
 test('a finished Chess960 game replays from its randomised starting position', async ({ page }) => {

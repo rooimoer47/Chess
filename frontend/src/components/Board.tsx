@@ -145,7 +145,14 @@ export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, them
     const isOwnPiece = isMyTurn && piece != null && piece.color === playerColor;
     const squareSize = boardRef.current ? boardRef.current.clientWidth / 8 : 64;
 
-    if (isOwnPiece) {
+    // A square holding our own piece can still be a legal destination: a
+    // Chess960 castle is issued as king-onto-own-rook. Re-selecting here would
+    // replace the king's selection before mouseup can read it, so the castle
+    // could never be clicked — only dragged.
+    const isTargetOfSelection = selected != null && legalMoves.some(m =>
+      m.fromRow === selected.row && m.fromCol === selected.col && m.toRow === row && m.toCol === col);
+
+    if (isOwnPiece && !isTargetOfSelection) {
       setSelected({ row, col });
     }
 

@@ -62,6 +62,37 @@ export function expectLegalBackRank(backRank: string): void {
 }
 
 /**
+ * Selects White's king and reports the rook it can castle with, if any.
+ *
+ * In Chess960 a castle is issued as "king onto its own rook" — the king's c/g
+ * destination can coincide with an ordinary one-square step, so from→to cannot
+ * express it otherwise. The server sends that gesture as a legal move, and
+ * because the target square holds a piece the board marks it `.legal-capture`.
+ *
+ * ~17% of the 960 deals allow this with no clearing moves at all (measured
+ * across all 960: 162 of them), which is what makes re-dealing practical.
+ */
+export async function findImmediateCastle(
+  page: Page,
+): Promise<{ king: string; rook: string; side: 'kingside' | 'queenside' } | null> {
+  const backRank = await readRank(page, 1);
+  const kingFile = FILES[backRank.indexOf('K')];
+  await page.getByTestId(`square-${kingFile}1`).click();
+
+  for (let file = 0; file < FILES.length; file++) {
+    if (backRank[file] !== 'R') continue;
+    const rookSquare = `${FILES[file]}1`;
+    if (await page.getByTestId(`square-${rookSquare}`).locator('.legal-capture').count() === 0) continue;
+    return {
+      king: `${kingFile}1`,
+      rook: rookSquare,
+      side: file > backRank.indexOf('K') ? 'kingside' : 'queenside',
+    };
+  }
+  return null;
+}
+
+/**
  * Plays one legal move for the given side, whatever the position is.
  *
  * Selecting a piece makes the server's legal targets for it visible (Square.tsx
