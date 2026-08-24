@@ -156,22 +156,23 @@ test('Random paired with Always Black gets the opposite colour (White)', async (
   }
 });
 
-test('two Random preferences can produce either colour assignment', async ({ browser }) => {
-  // Genuinely random, so this asserts the distribution rather than a single
-  // outcome: run repeated matches (stopping early once both are observed)
-  // and fail only if the same assignment happens every single time.
-  const outcomes = new Set<boolean>();
-  const MAX_ATTEMPTS = 8;
+test('two Random preferences give the players opposite colours', async ({ browser }) => {
+  // Only the structural half of the rule is checked here: exactly one White and
+  // one Black, both ends agreeing on who is who.
+  //
+  // That both assignments actually *occur* is a distribution property, and
+  // asserting it from the browser means one fresh pair of contexts per coin
+  // flip — so few flips are affordable that the assertion fails by chance
+  // (8 flips landing alike is 1 run in 128, and it did). It lives in
+  // GameSessionManagerTest.matchedRandomPreferences_produceBothColourAssignments
+  // instead, where 200 flips cost milliseconds.
+  const { pageA, pageB, contextA, contextB } = await setupMatchedHumans(browser, null, null);
 
-  for (let i = 0; i < MAX_ATTEMPTS && outcomes.size < 2; i++) {
-    const { pageA, contextA, contextB } = await setupMatchedHumans(browser, null, null);
-    try {
-      outcomes.add(await isWhite(pageA));
-    } finally {
-      await contextA.close();
-      await contextB.close();
-    }
+  try {
+    const aIsWhite = await isWhite(pageA);
+    expect(await isWhite(pageB), 'the two players must not both be the same colour').toBe(!aIsWhite);
+  } finally {
+    await contextA.close();
+    await contextB.close();
   }
-
-  expect(outcomes.size, `expected both White and Black to occur across ${MAX_ATTEMPTS} random-vs-random matches`).toBe(2);
 });

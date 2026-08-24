@@ -887,6 +887,64 @@ class GameSessionManagerTest {
         assertNotNull(manager.getSession(botWs), "and the bot game must be left alone");
     }
 
+    // ---- colour assignment for two RANDOM preferences ----
+
+    @Test
+    void matchedRandomPreferences_produceBothColourAssignments() {
+        // The distribution property, tested where a coin flip is cheap. Doing
+        // this through the browser needs a fresh pair of contexts per flip, so
+        // it can only afford a handful — and "both outcomes in 8 fair flips"
+        // fails 1 run in 128 by construction. 200 flips here costs milliseconds
+        // and makes a false failure (2/2^200) impossible in practice.
+        stubUser("alice", 1L, 1000);
+        stubUser("bob", 2L, 1000);
+
+        int aliceWhite = 0;
+        for (int i = 0; i < 200; i++) {
+            FakeWs aliceWs = humanWs("alice-" + i);
+            FakeWs bobWs = humanWs("bob-" + i);
+            manager.join(aliceWs, "alice", "RANDOM");
+            manager.join(bobWs, "bob", "RANDOM");
+
+            GameSession game = manager.getSession(aliceWs);
+            assertNotNull(game, "the pair must be matched on flip " + i);
+            PlayerRole alice = game.roleOf(aliceWs);
+            PlayerRole bob = game.roleOf(bobWs);
+
+            assertNotEquals(alice, bob, "the two players must never get the same colour");
+            if (alice == PlayerRole.WHITE) aliceWhite++;
+
+            // Clear the pair out so the next iteration matches afresh rather
+            // than reattaching them to this game.
+            assertDoesNotThrow(() -> { manager.disconnect(aliceWs); manager.disconnect(bobWs); });
+        }
+
+        assertTrue(aliceWhite > 0, "White never went to the first player across 200 matches");
+        assertTrue(aliceWhite < 200, "Black never went to the first player across 200 matches");
+    }
+
+    @Test
+    void matchedRandomAgainstFixedPreference_alwaysYieldsTheOppositeColour() throws Exception {
+        stubUser("alice", 1L, 1000);
+        stubUser("bob", 2L, 1000);
+
+        for (String fixed : new String[]{ "WHITE", "BLACK" }) {
+            FakeWs randomWs = humanWs("alice-" + fixed);
+            FakeWs fixedWs = humanWs("bob-" + fixed);
+            manager.join(randomWs, "alice", "RANDOM");
+            manager.join(fixedWs, "bob", fixed);
+
+            GameSession game = manager.getSession(fixedWs);
+            assertEquals(PlayerRole.valueOf(fixed), game.roleOf(fixedWs),
+                    "a fixed preference must always be honoured");
+            assertNotEquals(PlayerRole.valueOf(fixed), game.roleOf(randomWs),
+                    "and the RANDOM player takes what is left");
+
+            manager.disconnect(randomWs);
+            manager.disconnect(fixedWs);
+        }
+    }
+
     // ---- helpers ----
 
     private void stubUser(String username, Long id, int elo) {
