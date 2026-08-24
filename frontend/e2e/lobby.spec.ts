@@ -20,7 +20,9 @@ test('shows the ELO badge for a freshly registered account', async ({ page }) =>
 test('navigates to My Games and back', async ({ page }) => {
   await page.getByRole('button', { name: 'My Games' }).click();
   await expect(page).toHaveURL(/\/history$/);
-  await expect(page.getByRole('heading', { name: 'My Games' })).toBeVisible();
+  // The heading is variant-labelled since Chess960 landed — "My Chessnuts Games"
+  // for standard, "My Chessnuts960 Games" when the 960 toggle is on.
+  await expect(page.getByRole('heading', { name: 'My Chessnuts Games' })).toBeVisible();
   await expect(page.getByText('No completed games yet.')).toBeVisible();
 
   await page.getByRole('button', { name: '← Back to Lobby' }).click();
