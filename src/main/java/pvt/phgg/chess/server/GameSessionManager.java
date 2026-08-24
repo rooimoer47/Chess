@@ -157,6 +157,8 @@ public class GameSessionManager {
         Long userId = user != null ? user.getId() : null;
 
         WaitingPlayer match = findMatch(elo, variant);
+        log.info("Queue join: {} variant={} elo={} queueSize={} matched={}",
+                username, variant, elo, humanQueue.size(), match != null ? match.username() : "none");
         if (match != null) {
             humanQueue.remove(match);
             return createMatchedSession(ws, username, userId, colorPreference, variant, match);
@@ -335,7 +337,8 @@ public class GameSessionManager {
     }
 
     private void startScheduledMatch(WaitingPlayer a, WaitingPlayer b) {
-        log.info("Matched {} (ELO {}) vs {} (ELO {})", a.username(), a.elo(), b.username(), b.elo());
+        log.info("Matched {} (ELO {}) vs {} (ELO {}) variant={}",
+                a.username(), a.elo(), b.username(), b.elo(), a.variant());
 
         PlayerRole roleA = resolveFirstRole(a.colorPreference(), b.colorPreference());
         PlayerRole roleB = roleA == PlayerRole.WHITE ? PlayerRole.BLACK : PlayerRole.WHITE;
