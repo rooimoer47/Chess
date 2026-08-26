@@ -91,7 +91,7 @@ export function EloHistoryPage({ username, variant: initialVariant = 'STANDARD' 
   return (
     <div className="history-page">
       <div className="history-header">
-        <button className="back-btn" onClick={() => navigate('/lobby')}>← Back to Lobby</button>
+        <button type="button" className="back-btn" onClick={() => navigate('/lobby')}>← Back to Lobby</button>
         <h2>{is960 ? 'Chessnuts960' : 'Chessnuts'} ELO Rating</h2>
       </div>
 

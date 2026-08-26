@@ -38,7 +38,7 @@ export function HistoryPage({ username, variant: initialVariant = 'STANDARD' }: 
   return (
     <div className="history-page">
       <div className="history-header">
-        <button className="back-btn" onClick={() => navigate('/lobby')}>← Back to Lobby</button>
+        <button type="button" className="back-btn" onClick={() => navigate('/lobby')}>← Back to Lobby</button>
         <h2>My {variant === 'CHESS960' ? 'Chessnuts960' : 'Chessnuts'} Games</h2>
       </div>
 
@@ -88,7 +88,7 @@ export function HistoryPage({ username, variant: initialVariant = 'STANDARD' }: 
                   <td>{game.playerColor}</td>
                   <td className={cls}>{label}</td>
                   <td>
-                    <button className="replay-btn" onClick={() => navigate(`/history/${game.id}`)}>
+                    <button type="button" className="replay-btn" onClick={() => navigate(`/history/${game.id}`)}>
                       Replay
                     </button>
                   </td>

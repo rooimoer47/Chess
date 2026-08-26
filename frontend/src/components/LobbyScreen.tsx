@@ -196,7 +196,7 @@ export function LobbyScreen({ username, botType, theme, boardTheme, colorPrefere
 
       <div className="lobby-section">
         <span className="lobby-label">Appearance</span>
-        <button className="theme-current-btn" onClick={() => setThemePickerOpen(true)}>
+        <button type="button" className="theme-current-btn" onClick={() => setThemePickerOpen(true)}>
           Theme
         </button>
       </div>
@@ -217,10 +217,10 @@ export function LobbyScreen({ username, botType, theme, boardTheme, colorPrefere
         </div>
       </div>
 
-      <button className="start-btn" onClick={onStartGame}>Start Game</button>
+      <button type="button" className="start-btn" onClick={onStartGame}>Start Game</button>
       <div className="lobby-secondary-btns">
-        <button className="lobby-games-btn" onClick={() => navigate('/history')}>My Games</button>
-        <button className="lobby-games-btn" onClick={() => navigate('/profile')}>ELO Profile</button>
+        <button type="button" className="lobby-games-btn" onClick={() => navigate('/history')}>My Games</button>
+        <button type="button" className="lobby-games-btn" onClick={() => navigate('/profile')}>ELO Profile</button>
       </div>
       <button className="logout-btn" type="button" onClick={onLogout}>Log out</button>
 

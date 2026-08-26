@@ -87,7 +87,7 @@ export function ThemePicker({ theme, boardTheme, onChangeTheme, onChangeBoardThe
       <div className="theme-picker-dialog" onClick={e => e.stopPropagation()}>
         <div className="theme-picker-header">
           <span>Pick a Theme</span>
-          <button className="theme-picker-close" onClick={onClose}>✕</button>
+          <button type="button" className="theme-picker-close" onClick={onClose}>✕</button>
         </div>
         <div className="theme-picker-body">
           <StaticBoard theme={theme} boardTheme={boardTheme} />

@@ -269,14 +269,14 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, vari
         </span>
         {!isGameOver && (
           <>
-            <button className="draw-btn" onClick={sendDrawOffer}
+            <button type="button" className="draw-btn" onClick={sendDrawOffer}
               disabled={drawOfferPending || drawOfferedByOpponent}>
               {drawOfferPending ? 'Draw offered…' : 'Offer Draw'}
             </button>
-            <button className="resign-btn" onClick={sendResign}>Resign</button>
+            <button type="button" className="resign-btn" onClick={sendResign}>Resign</button>
           </>
         )}
-        <button className="logout-btn" onClick={onLogout}>Logout</button>
+        <button type="button" className="logout-btn" onClick={onLogout}>Logout</button>
       </div>
 
       {statusMessage && (
@@ -288,8 +288,8 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, vari
       {drawOfferedByOpponent && !isGameOver && (
         <div className="draw-offer-bar">
           <span>Opponent offers a draw</span>
-          <button className="draw-accept-btn" onClick={() => sendDrawResponse(true)}>Accept</button>
-          <button className="draw-decline-btn" onClick={() => sendDrawResponse(false)}>Decline</button>
+          <button type="button" className="draw-accept-btn" onClick={() => sendDrawResponse(true)}>Accept</button>
+          <button type="button" className="draw-decline-btn" onClick={() => sendDrawResponse(false)}>Decline</button>
         </div>
       )}
 
