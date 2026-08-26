@@ -20,11 +20,18 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>21</java.version>
         <sonar.host.url>http://localhost:9000</sonar.host.url>
-        <!-- sonar.token must be passed on the command line: -Dsonar.token=<token> -->
-        <sonar.exclusions>src/main/java/pvt/phgg/chess/Board.java</sonar.exclusions>
+        <!-- sonar.token must be passed on the command line: -Dsonar.token=<token>.
+             Run ./sonar-scan.sh rather than invoking the goal directly. -->
+        <!-- The frontend is not a Maven source root, so name it explicitly to
+             get the TypeScript sources analysed alongside the Java. -->
+        <sonar.sources>src/main/java,frontend/src</sonar.sources>
+        <sonar.tests>src/test/java,frontend/e2e</sonar.tests>
+        <!-- Cognitive complexity: a method's right size is set by what it does,
+             not by a threshold. Suppressed for every language, not just Java,
+             so the Java and TypeScript sides are held to the same standard. -->
         <sonar.issue.ignore.multicriteria>e1</sonar.issue.ignore.multicriteria>
-        <sonar.issue.ignore.multicriteria.e1.ruleKey>java:S3776</sonar.issue.ignore.multicriteria.e1.ruleKey>
-        <sonar.issue.ignore.multicriteria.e1.resourceKey>**/*.java</sonar.issue.ignore.multicriteria.e1.resourceKey>
+        <sonar.issue.ignore.multicriteria.e1.ruleKey>*:S3776</sonar.issue.ignore.multicriteria.e1.ruleKey>
+        <sonar.issue.ignore.multicriteria.e1.resourceKey>**/*</sonar.issue.ignore.multicriteria.e1.resourceKey>
     </properties>
 
     <dependencies>
