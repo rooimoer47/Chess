@@ -6,33 +6,34 @@
 #   ./sonar-scan.sh --report-only         rebuild the report from the last analysis
 #   ./sonar-scan.sh --dismiss KEY falsepositive|accept "why"
 #   ./sonar-scan.sh --safe HOTSPOT_KEY "why"
-#   ./sonar-scan.sh --backup [FILE]       snapshot the server's data volume
+#   ./sonar-scan.sh --backup [FILE]       pg_dump the server's database
+#   ./sonar-scan.sh --export-triage       save dismissals + profile to sonar/
+#   ./sonar-scan.sh --replay-triage [-n]  re-apply them to a rebuilt server
 #
 # The two dismiss forms record a triage decision on the server, so the finding
 # stays out of every later report instead of being re-argued each scan.
 #
-# The server keeps everything that matters — analysis history, the Chess quality
-# profile, and every dismissal — in its data volume, on an embedded H2 database.
-# Take a --backup before upgrading SONAR_IMAGE; H2 upgrades are unsupported and
-# there is no other copy of any of it.
+# The server runs from docker-compose.sonar.yml on its own PostgreSQL. Upgrading
+# is a matter of bumping the image there and letting SonarQube migrate the
+# schema on restart — take a --backup first regardless. The durable record of
+# triage decisions lives in sonar/triage.json, which is tracked in git.
 #
-# Overridable via the environment: SONAR_URL, SONAR_CONTAINER, SONAR_IMAGE,
+# Overridable via the environment: SONAR_URL, SONAR_CONTAINER, SONAR_DB_CONTAINER,
 # SONAR_TOKEN, SONAR_ADMIN, SONAR_ADMIN_PASSWORD.
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
 SONAR_URL="${SONAR_URL:-http://localhost:9000}"
-SONAR_CONTAINER="${SONAR_CONTAINER:-sonarqube}"
-# Pinned rather than :community so the running version is answerable from the
-# repo, and an upgrade is a deliberate edit to this line.
-SONAR_IMAGE="${SONAR_IMAGE:-sonarqube:26.5.0.122743-community}"
-# Only used when creating a container from scratch. The existing container
-# predates this and sits on anonymous volumes — see the skill for migrating it.
-SONAR_DATA_VOLUME="${SONAR_DATA_VOLUME:-sonarqube_data}"
-SONAR_EXTENSIONS_VOLUME="${SONAR_EXTENSIONS_VOLUME:-sonarqube_extensions}"
+SONAR_CONTAINER="${SONAR_CONTAINER:-chess-sonarqube-1}"
+SONAR_DB_CONTAINER="${SONAR_DB_CONTAINER:-chess-sonar-db-1}"
+# The image version lives in the compose file, not here — that is the one
+# place the stack is defined.
+SONAR_COMPOSE="${SONAR_COMPOSE:-docker-compose.sonar.yml}"
 SONAR_ADMIN="${SONAR_ADMIN:-admin}"
-SONAR_ADMIN_PASSWORD="${SONAR_ADMIN_PASSWORD:-admin1234}"
+# SonarQube 26.8 enforces 12+ chars with mixed case and a symbol; the older
+# admin1234 no longer satisfies the policy.
+SONAR_ADMIN_PASSWORD="${SONAR_ADMIN_PASSWORD:-Admin1234chess!}"
 PROJECT_KEY="pvt.phgg.chess:chess"
 TOKEN_FILE=".sonar-token"
 # Deliberately not under target/ — the scan runs `mvn clean`, which would wipe
@@ -45,6 +46,8 @@ case "${1:-}" in
   --dismiss)     MODE=dismiss ;;
   --safe)        MODE=safe ;;
   --backup)      MODE=backup ;;
+  --export-triage) MODE=export ;;
+  --replay-triage) MODE=replay ;;
   -h|--help)     awk 'NR>1 && /^#/ {print; next} NR>1 {exit}' "$0"; exit 0 ;;
   "")            ;;
   *)             echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
@@ -65,21 +68,11 @@ ensure_server() {
     log "SonarQube already up at $SONAR_URL"
     return
   fi
-  if docker inspect "$SONAR_CONTAINER" >/dev/null 2>&1; then
-    log "Starting the $SONAR_CONTAINER container"
-    docker start "$SONAR_CONTAINER" >/dev/null
-  else
-    # Named volumes, so a later `docker rm` cannot orphan the database the way
-    # anonymous ones do — a fresh `docker run` reattaches to these by name.
-    log "No $SONAR_CONTAINER container — creating one from $SONAR_IMAGE"
-    docker run -d --name "$SONAR_CONTAINER" \
-      -p 9000:9000 \
-      -v "$SONAR_DATA_VOLUME:/opt/sonarqube/data" \
-      -v "$SONAR_EXTENSIONS_VOLUME:/opt/sonarqube/extensions" \
-      "$SONAR_IMAGE" >/dev/null
-  fi
-  # A cold start takes a couple of minutes; it serves STARTING until the
-  # embedded database has migrated.
+  # SonarQube needs its database, so bring the whole stack up rather than the
+  # one container; compose is a no-op for whatever is already running.
+  log "Bringing up the SonarQube stack ($SONAR_COMPOSE)"
+  docker compose -f "$SONAR_COMPOSE" up -d >/dev/null 2>&1
+  # It serves STARTING until Elasticsearch and any schema migration finish.
   for _ in $(seq 1 60); do
     [ "$(server_status)" = "UP" ] && log "SonarQube is up" && return
     sleep 5
@@ -88,30 +81,15 @@ ensure_server() {
   exit 1
 }
 
-# A consistent H2 snapshot needs the server stopped — copying sonar.mv.db out
-# from under a running SonarQube can capture a torn write.
+# The database holds everything; the SonarQube data volume is now just an
+# Elasticsearch index, which the server rebuilds on its own.
 backup_data() {
-  local out="${1:-sonarqube-backup-$(date +%Y%m%d-%H%M%S).tar.gz}"
-  local was_running=false
-  docker inspect "$SONAR_CONTAINER" >/dev/null 2>&1 || {
-    echo "No $SONAR_CONTAINER container to back up" >&2; exit 1; }
+  local out="${1:-sonarqube-backup-$(date +%Y%m%d-%H%M%S).sql.gz}"
+  docker inspect "$SONAR_DB_CONTAINER" >/dev/null 2>&1 || {
+    echo "No $SONAR_DB_CONTAINER container to back up" >&2; exit 1; }
 
-  if [ "$(docker inspect -f '{{.State.Running}}' "$SONAR_CONTAINER")" = "true" ]; then
-    was_running=true
-    log "Stopping $SONAR_CONTAINER for a consistent snapshot"
-    docker stop "$SONAR_CONTAINER" >/dev/null
-  fi
-
-  log "Archiving the data volume to $out"
-  # --volumes-from picks up whatever the container has mounted, named or not.
-  docker run --rm --volumes-from "$SONAR_CONTAINER" \
-    -v "$PWD:/backup" alpine \
-    tar czf "/backup/$out" -C /opt/sonarqube data
-
-  if [ "$was_running" = true ]; then
-    log "Restarting $SONAR_CONTAINER"
-    docker start "$SONAR_CONTAINER" >/dev/null
-  fi
+  log "Dumping the sonarqube database to $out"
+  docker exec "$SONAR_DB_CONTAINER" pg_dump -U sonarqube sonarqube | gzip > "$out"
   log "Backup written to $out ($(du -h "$out" | cut -f1))"
 }
 
@@ -205,6 +183,37 @@ build_report() {
   rm -f "$OUT_DIR/issues-pages.jsonl" "$OUT_DIR/hotspots.json"
 }
 
+# --- portable triage state -------------------------------------------------
+# The server's database is the only place dismissals live, and the embedded H2
+# one cannot be upgraded — so keep a copy in the repo that survives a rebuild.
+SONAR_PROFILE="${SONAR_PROFILE:-Chess}"
+
+export_triage() {
+  mkdir -p sonar
+  log "Exporting the $SONAR_PROFILE quality profile"
+  curl -sf -u "$SONAR_TOKEN:" \
+    "$SONAR_URL/api/qualityprofiles/backup?language=java&qualityProfile=$SONAR_PROFILE" \
+    -o sonar/quality-profile-java.xml
+  log "Exporting triage decisions"
+  SONAR_URL="$SONAR_URL" SONAR_TOKEN="$SONAR_TOKEN" PROJECT_KEY="$PROJECT_KEY" \
+    python3 sonar_triage.py export
+}
+
+replay_triage() {
+  if [ -f sonar/quality-profile-java.xml ]; then
+    log "Restoring the $SONAR_PROFILE quality profile"
+    curl -sf -u "$SONAR_TOKEN:" -X POST "$SONAR_URL/api/qualityprofiles/restore" \
+      -F "backup=@sonar/quality-profile-java.xml" -o /dev/null
+    curl -sf -u "$SONAR_TOKEN:" -X POST "$SONAR_URL/api/qualityprofiles/add_project" \
+      --data-urlencode "language=java" \
+      --data-urlencode "qualityProfile=$SONAR_PROFILE" \
+      --data-urlencode "project=$PROJECT_KEY" -o /dev/null || true
+  fi
+  log "Replaying triage decisions"
+  SONAR_URL="$SONAR_URL" SONAR_TOKEN="$SONAR_TOKEN" PROJECT_KEY="$PROJECT_KEY" \
+    python3 sonar_triage.py replay "${1:-}"
+}
+
 # --- triage decisions ------------------------------------------------------
 # Recording the verdict on the server is what keeps the report shrinking: a
 # dismissed finding never comes back, however often the project is rescanned.
@@ -249,6 +258,14 @@ case "$MODE" in
   safe)
     [ $# -ge 2 ] || { echo "Usage: $0 --safe HOTSPOT_KEY \"why\"" >&2; exit 2; }
     mark_hotspot_safe "$2" "${3:-}"
+    exit 0
+    ;;
+  export)
+    export_triage
+    exit 0
+    ;;
+  replay)
+    replay_triage "${2:-}"
     exit 0
     ;;
   scan)

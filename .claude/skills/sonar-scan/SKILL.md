@@ -5,7 +5,7 @@ description: Run the local SonarQube analysis over this project and turn the fin
 
 # SonarQube scan and triage
 
-`./sonar-scan.sh` handles the mechanics: it starts the `sonarqube` container if
+`./sonar-scan.sh` handles the mechanics: it brings up the SonarQube stack if
 needed, compiles, analyses both the Java and the frontend TypeScript, waits for
 the server to finish processing, and writes `.sonar-report/findings.md`
 (a checklist) and `findings.json` (the same data, easier to script against).
@@ -52,9 +52,12 @@ The script is the easy half. The work is deciding which findings are real.
 
 - **Test code** is held to a different standard than production code. Empty
   methods and duplicated literals in tests are usually deliberate.
-- **Cognitive complexity** (`S3776`) is already suppressed for Java in
-  `pom.xml`; the TypeScript equivalent is not. Treat them consistently — either
-  raise both or suppress both, and say which you chose.
+- **Size-threshold rules are suppressed by decision, not oversight.** `S3776`
+  (cognitive complexity) is off for every language via `*:S3776` in `pom.xml`,
+  and `S2004` (nesting depth) and `S107` (parameter count) are dismissed as
+  accepted. The user's position: a method's right size is set by what it does,
+  not by a threshold. Dismiss new rules of this family the same way rather than
+  refactoring to satisfy them.
 - **Accessibility rules** on the frontend (`S1082`, `S6847`, `S6848`) fire on
   every `onClick` on a non-button. Some are real (a control a keyboard user
   cannot reach); some are backdrop or `stopPropagation` handlers that are not
@@ -103,19 +106,40 @@ server missed it.
 
 ## Server upkeep
 
-The container runs an **embedded H2 database** (`sonar.mv.db` in the data
-volume). Everything worth keeping is in there — analysis history, the Chess
-quality profile, and every recorded dismissal — and nothing else has a copy.
+The server runs from `docker-compose.sonar.yml`: SonarQube on its **own
+PostgreSQL**, separate from the app's `chess-db-1`. It is a development tool,
+which is why it lives in its own compose file rather than the app's.
 
-- `./sonar-scan.sh --backup` stops the server, tars the data volume, restarts.
-  Roughly 330 MB and 15 seconds.
-- `SONAR_IMAGE` in the script pins the version. Upgrading means editing that
-  line, but **take a backup first**: SonarQube does not support upgrading with
-  the embedded database, so an upgrade can fail mid-migration and leave the
-  H2 file unusable.
-- The current container predates the script and sits on **anonymous** volumes.
-  A plain `docker rm` + `docker run` will silently attach fresh empty ones
-  rather than reconnecting. To recreate it, either mount the existing volumes
-  by their ID (`docker inspect sonarqube --format '{{json .Mounts}}'`) or
-  migrate to the named volumes the script creates. Never recreate it without
-  checking which volumes the new container will get.
+```bash
+docker compose -f docker-compose.sonar.yml up -d     # sonar-scan.sh does this
+./sonar-scan.sh --backup                             # pg_dump, ~6 MB
+```
+
+**Upgrading** is now supported: bump the `sonarqube:` image in the compose file
+and restart. SonarQube migrates the schema itself. Take a `--backup` first
+anyway. (It ran on embedded H2 until 2026-08-26, where upgrading was impossible
+and the database had to be thrown away — hence the migration.)
+
+Admin is `admin` / `Admin1234chess!`. SonarQube 26.8 enforces 12+ characters
+with mixed case and a symbol, so the older `admin1234` no longer qualifies.
+
+## Triage decisions are portable
+
+The server's database is the only place dismissals live, so they are exported
+to `sonar/triage.json`, which **is tracked in git**, alongside the Chess
+quality profile in `sonar/quality-profile-java.xml`.
+
+```bash
+./sonar-scan.sh --export-triage          # after any triage session
+./sonar-scan.sh --replay-triage [-n]     # onto a rebuilt server; -n is a dry run
+```
+
+Re-export after dismissing anything, or the record drifts from the server.
+Replay matches on rule + file + line, falling back to rule + file + message
+when lines have moved, and reports whatever it could not place.
+
+It also handles rules being **reclassified between versions** — `java:S2077`
+moved from Security Hotspot to Vulnerability in 26.8, so a saved hotspot that
+no longer exists as one is matched against open issues instead and dismissed
+as a false positive there. Expect more of this on future upgrades; a saved
+entry that "is no longer raised" is worth a glance rather than a shrug.
