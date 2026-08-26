@@ -22,5 +22,10 @@ RUN mvn package -DskipTests -q
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=backend /app/target/*.jar app.jar
+# Serving HTTP as root means a JVM-level compromise starts with root in the
+# container. Nothing here needs it — the jar only reads its own directory.
+RUN addgroup -S chess && adduser -S -G chess chess \
+    && chown -R chess:chess /app
+USER chess
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

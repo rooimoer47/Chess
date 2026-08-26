@@ -23,8 +23,11 @@
         <!-- sonar.token must be passed on the command line: -Dsonar.token=<token>.
              Run ./sonar-scan.sh rather than invoking the goal directly. -->
         <!-- The frontend is not a Maven source root, so name it explicitly to
-             get the TypeScript sources analysed alongside the Java. -->
-        <sonar.sources>src/main/java,frontend/src</sonar.sources>
+             get the TypeScript sources analysed alongside the Java. Dockerfile
+             is listed too — the container is deployed, so its findings matter
+             as much as the code's, and IntelliJ was catching ones the server
+             could not see. -->
+        <sonar.sources>src/main/java,frontend/src,Dockerfile</sonar.sources>
         <sonar.tests>src/test/java,frontend/e2e</sonar.tests>
         <!-- Cognitive complexity: a method's right size is set by what it does,
              not by a threshold. Suppressed for every language, not just Java,

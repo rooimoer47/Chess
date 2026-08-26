@@ -85,6 +85,22 @@ unless it is bound to the server in Connected Mode, and standalone it:
 Connected Mode fixes the first and third. The S3776 suppression is scanner-side
 and has to be mirrored in the IDE's rule list per language.
 
+**The IDE is not always wrong, though.** Two cases where it is right and the
+server is blind, both seen for real:
+
+- **Files outside `sonar.sources`.** The IDE analyses whatever is open. That is
+  how a `docker:S6471` root-user finding in the `Dockerfile` surfaced while the
+  server had never scanned it. If the IDE flags something in a file the server
+  does not cover, decide whether the file belongs in `sonar.sources` — but note
+  generated output (`frontend/playwright-report/`) should be excluded in the
+  IDE instead, never added to the scan.
+- **Rules missing from the Chess profile.** It carries fewer rules than the
+  IDE's defaults, so `java:S5673`, `java:S9016` and `java:S2143` all fired in
+  IntelliJ and nowhere else. Two were worth fixing.
+
+So triage an IDE-only finding on its merits first, and only then ask why the
+server missed it.
+
 ## Server upkeep
 
 The container runs an **embedded H2 database** (`sonar.mv.db` in the data
