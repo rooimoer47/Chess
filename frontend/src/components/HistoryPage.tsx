@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { GameSummary, Variant } from '../types';
+import { errorMessage } from '../errors';
 
 function formatResult(game: GameSummary): { label: string; cls: string } {
   if (!game.result) return { label: 'In progress', cls: '' };
@@ -19,7 +20,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export function HistoryPage({ username, variant: initialVariant = 'STANDARD' }: { username: string; variant?: Variant }) {
+export function HistoryPage({ username, variant: initialVariant = 'STANDARD' }: Readonly<{ username: string; variant?: Variant }>) {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -29,9 +30,9 @@ export function HistoryPage({ username, variant: initialVariant = 'STANDARD' }: 
   useEffect(() => {
     setLoading(true);
     fetch(`/api/users/${encodeURIComponent(username)}/games?variant=${variant}`)
-      .then(r => r.ok ? r.json() as Promise<GameSummary[]> : Promise.reject('Failed to load games'))
+      .then(r => r.ok ? r.json() as Promise<GameSummary[]> : Promise.reject(new Error('Failed to load games')))
       .then(data => { setGames(data); setLoading(false); })
-      .catch(e => { setError(String(e)); setLoading(false); });
+      .catch(e => { setError(errorMessage(e)); setLoading(false); });
   }, [username, variant]);
 
   return (

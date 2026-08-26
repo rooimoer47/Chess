@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 export const THEMES = ['classic'] as const;
 // 'generated' theme is hidden until better images are provided
 export type Theme = typeof THEMES[number];
@@ -20,7 +22,7 @@ function pieceAt(row: number, col: number): { type: string; color: string } | nu
   return { type: types[col], color };
 }
 
-function StaticBoard({ theme, boardTheme }: { theme: string; boardTheme: BoardTheme }) {
+function StaticBoard({ theme, boardTheme }: Readonly<{ theme: string; boardTheme: BoardTheme }>) {
   const { light, dark } = BOARD_COLORS[boardTheme];
   const rows = [7, 6, 5, 4, 3, 2, 1, 0];
   const cols = [0, 1, 2, 3, 4, 5, 6, 7];
@@ -52,7 +54,7 @@ function StaticBoard({ theme, boardTheme }: { theme: string; boardTheme: BoardTh
   );
 }
 
-function BoardSwatch({ light, dark }: { light: string; dark: string }) {
+function BoardSwatch({ light, dark }: Readonly<{ light: string; dark: string }>) {
   return (
     <div className="board-swatch">
       <div style={{ background: light }} />
@@ -63,13 +65,23 @@ function BoardSwatch({ light, dark }: { light: string; dark: string }) {
   );
 }
 
-export function ThemePicker({ theme, boardTheme, onChangeTheme, onChangeBoardTheme, onClose }: {
+export function ThemePicker({ theme, boardTheme, onChangeTheme, onChangeBoardTheme, onClose }: Readonly<{
   theme: Theme;
   boardTheme: BoardTheme;
   onChangeTheme: (t: Theme) => void;
   onChangeBoardTheme: (t: BoardTheme) => void;
   onClose: () => void;
-}) {
+}>) {
+  // Clicking the backdrop closes the dialog; Escape is the keyboard equivalent,
+  // so it can be dismissed without reaching for the mouse or tabbing to ✕.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   return (
     <div className="theme-picker-overlay" onClick={onClose}>
       <div className="theme-picker-dialog" onClick={e => e.stopPropagation()}>

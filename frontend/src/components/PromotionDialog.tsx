@@ -10,7 +10,7 @@ interface Props {
 
 const CHOICES = ['QUEEN', 'ROOK', 'BISHOP', 'KNIGHT'] as const;
 
-export function PromotionDialog({ color, theme, boardTheme, onChoice }: Props) {
+export function PromotionDialog({ color, theme, boardTheme, onChoice }: Readonly<Props>) {
   const { light, dark } = BOARD_COLORS[boardTheme];
   const squareColor = color === 'WHITE' ? dark : light;
 
@@ -19,17 +19,26 @@ export function PromotionDialog({ color, theme, boardTheme, onChoice }: Props) {
       <div className="promotion-dialog">
         <p>Promote pawn to:</p>
         <div className="promotion-choices">
-          {CHOICES.map(choice => (
-            <img
+          {CHOICES.map((choice, i) => (
+            <button
               key={choice}
+              type="button"
               className="promotion-piece"
               style={{ background: squareColor }}
-              src={`/images/${theme}/${choice.toLowerCase()}_${color.toLowerCase()}.png`}
-              alt={choice}
               title={choice}
+              aria-label={choice}
               onClick={() => onChoice(choice)}
-              draggable={false}
-            />
+              // Promotion blocks the game until it is answered, so put the
+              // keyboard on the first choice rather than leaving focus behind
+              // on whatever was clicked to trigger the move.
+              autoFocus={i === 0}
+            >
+              <img
+                src={`/images/${theme}/${choice.toLowerCase()}_${color.toLowerCase()}.png`}
+                alt=""
+                draggable={false}
+              />
+            </button>
           ))}
         </div>
       </div>

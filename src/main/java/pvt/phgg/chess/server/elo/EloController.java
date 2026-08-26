@@ -68,7 +68,7 @@ public class EloController {
         if (userId == null) {
             return ResponseEntity.notFound().build();
         }
-        int safeLimit = Math.max(1, Math.min(limit, MAX_HISTORY_LIMIT));
+        int safeLimit = Math.clamp(limit, 1, MAX_HISTORY_LIMIT);
         // variant absent → both tracks; "STANDARD"/"CHESS960" → only that one.
         String variantFilter = "STANDARD".equals(variant) || "CHESS960".equals(variant) ? variant : null;
 

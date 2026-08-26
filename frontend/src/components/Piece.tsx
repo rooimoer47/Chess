@@ -7,7 +7,7 @@ interface Props {
   style?: CSSProperties;
 }
 
-export function Piece({ piece, theme, style }: Props) {
+export function Piece({ piece, theme, style }: Readonly<Props>) {
   const src = `/images/${theme}/${piece.type.toLowerCase()}_${piece.color.toLowerCase()}.png`;
   return (
     <img

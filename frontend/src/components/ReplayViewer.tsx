@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Board } from './Board';
 import type { BoardTheme } from './ThemePicker';
 import type { BoardSnapshot, Color } from '../types';
+import { errorMessage } from '../errors';
 
 const PLAY_INTERVAL_MS = 800;
 
@@ -19,9 +20,9 @@ export function ReplayViewer() {
 
   useEffect(() => {
     fetch(`/api/games/${gameId}/boards`)
-      .then(r => r.ok ? r.json() as Promise<BoardSnapshot[]> : Promise.reject('Failed to load game'))
+      .then(r => r.ok ? r.json() as Promise<BoardSnapshot[]> : Promise.reject(new Error('Failed to load game')))
       .then(data => { setSnapshots(data); setLoading(false); })
-      .catch(e => { setError(String(e)); setLoading(false); });
+      .catch(e => { setError(errorMessage(e)); setLoading(false); });
   }, [gameId, navigate]);
 
   const stopPlay = useCallback(() => {

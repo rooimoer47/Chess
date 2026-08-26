@@ -14,7 +14,6 @@ import pvt.phgg.chess.server.elo.EloProperties;
 import pvt.phgg.chess.server.user.AppUser;
 import pvt.phgg.chess.server.user.UserService;
 
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;

@@ -6,7 +6,7 @@ interface Props {
   theme: string;
 }
 
-export function CapturedPieces({ pieces, color, theme }: Props) {
+export function CapturedPieces({ pieces, color, theme }: Readonly<Props>) {
   return (
     <div className="captured-pieces">
       {pieces.map((type, i) => (

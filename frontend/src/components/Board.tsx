@@ -28,7 +28,7 @@ interface DragState {
 
 const DRAG_THRESHOLD = 5;
 
-export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, theme, boardTheme, onMove }: Props) {
+export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, theme, boardTheme, onMove }: Readonly<Props>) {
   const { light: lightColor, dark: darkColor } = BOARD_COLORS[boardTheme];
   const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -66,7 +66,7 @@ export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, them
       if (!d) return;
       const dx = e.clientX - d.startX;
       const dy = e.clientY - d.startY;
-      const active = d.active || Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD;
+      const active = d.active || Math.hypot(dx, dy) > DRAG_THRESHOLD;
       setDrag(prev => prev ? { ...prev, x: e.clientX, y: e.clientY, active } : null);
     }
 
@@ -76,7 +76,7 @@ export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, them
 
       const dx = e.clientX - d.startX;
       const dy = e.clientY - d.startY;
-      const didDrag = d.active || Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD;
+      const didDrag = d.active || Math.hypot(dx, dy) > DRAG_THRESHOLD;
 
       if (!didDrag) {
         // Treat as click — replicate the click-to-select / click-to-move flow
@@ -102,7 +102,7 @@ export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, them
 
         if (imt) {
           const piece = b[row][col];
-          if (piece && piece.color === pc) {
+          if (piece?.color === pc) {
             setSelected({ row, col });
             setDrag(null);
             setDropTarget(null);
@@ -142,7 +142,7 @@ export function Board({ board, legalMoves, lastMove, playerColor, isMyTurn, them
   function handleSquareMouseDown(row: number, col: number, e: React.MouseEvent) {
     e.preventDefault();
     const piece = board[row][col];
-    const isOwnPiece = isMyTurn && piece != null && piece.color === playerColor;
+    const isOwnPiece = isMyTurn && piece?.color === playerColor;
     const squareSize = boardRef.current ? boardRef.current.clientWidth / 8 : 64;
 
     // A square holding our own piece can still be a legal destination: a

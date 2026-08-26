@@ -13,18 +13,6 @@ class PieceMoveTest {
 
     private static Position p(int row, int col) { return new Position(row, col); }
 
-    private static GameEngine emptyBoard(boolean whiteTurn) {
-        APiece[][] board = new APiece[8][8];
-        for (int r = 0; r < 8; r++)
-            for (int c = 0; c < 8; c++)
-                board[r][c] = new EmptySquare(p(r, c));
-        return new GameEngine(board, whiteTurn);
-    }
-
-    private static void place(APiece[][] board, APiece piece, int row, int col) {
-        board[row][col] = piece;
-    }
-
     private static APiece[][] blankBoard() {
         APiece[][] board = new APiece[8][8];
         for (int r = 0; r < 8; r++)

@@ -309,8 +309,7 @@ class GameSessionManagerTest {
         FakeWs ws1 = humanWs("a");
         FakeWs ws2 = humanWs("b");
 
-        // Manually add players to queue with joinedAt 25s ago → tier3 window ±400
-        Instant longAgo = Instant.now().minusSeconds(25);
+        // Equal ratings, so they match in the narrowest window regardless of wait.
         stubUser("alice", 1L, 1000);
         stubUser("bob",   2L, 1000);
         manager.join(ws1, "alice", "WHITE");

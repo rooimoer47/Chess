@@ -6,7 +6,12 @@ interface Props {
 
 type Tab = 'login' | 'register';
 
-export function LoginScreen({ onLogin }: Props) {
+function submitLabel(tab: Tab, loading: boolean): string {
+  if (tab === 'login') return loading ? 'Signing in…' : 'Play';
+  return loading ? 'Creating account…' : 'Register & Play';
+}
+
+export function LoginScreen({ onLogin }: Readonly<Props>) {
   const [tab, setTab] = useState<Tab>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -32,8 +37,8 @@ export function LoginScreen({ onLogin }: Props) {
         body: JSON.stringify({
           username,
           password,
-          ...(tab === 'register' && startingElo.trim() !== '' && !isNaN(parseInt(startingElo, 10))
-            ? { startingElo: parseInt(startingElo, 10) }
+          ...(tab === 'register' && startingElo.trim() !== '' && !Number.isNaN(Number.parseInt(startingElo, 10))
+            ? { startingElo: Number.parseInt(startingElo, 10) }
             : {}),
         }),
       });
@@ -103,9 +108,7 @@ export function LoginScreen({ onLogin }: Props) {
         )}
         {error && <p className="login-error">{error}</p>}
         <button className="login-button" type="submit" disabled={loading}>
-          {loading
-            ? (tab === 'login' ? 'Signing in…' : 'Creating account…')
-            : (tab === 'login' ? 'Play' : 'Register & Play')}
+          {submitLabel(tab, loading)}
         </button>
       </form>
     </div>

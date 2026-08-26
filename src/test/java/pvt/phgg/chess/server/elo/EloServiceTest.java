@@ -135,11 +135,11 @@ class EloServiceTest {
         int expectedBlackElo = service.newRating(1400, 50, 0.0, 1600);
 
         verify(jdbcTemplate).update(
-                eq("UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?"),
-                eq(expectedWhiteElo), eq(1L));
+                "UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?",
+                expectedWhiteElo, 1L);
         verify(jdbcTemplate).update(
-                eq("UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?"),
-                eq(expectedBlackElo), eq(2L));
+                "UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?",
+                expectedBlackElo, 2L);
     }
 
     @Test
@@ -154,11 +154,11 @@ class EloServiceTest {
         int expectedBlackElo = service.newRating(1400, 50, 1.0, 1600);
 
         verify(jdbcTemplate).update(
-                eq("UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?"),
-                eq(expectedWhiteElo), eq(1L));
+                "UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?",
+                expectedWhiteElo, 1L);
         verify(jdbcTemplate).update(
-                eq("UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?"),
-                eq(expectedBlackElo), eq(2L));
+                "UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?",
+                expectedBlackElo, 2L);
     }
 
     @Test
@@ -170,11 +170,11 @@ class EloServiceTest {
         service.recordResult(12L);
 
         verify(jdbcTemplate).update(
-                eq("UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?"),
-                eq(1500), eq(1L));
+                "UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?",
+                1500, 1L);
         verify(jdbcTemplate).update(
-                eq("UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?"),
-                eq(1500), eq(2L));
+                "UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?",
+                1500, 2L);
     }
 
     @Test
@@ -213,8 +213,8 @@ class EloServiceTest {
 
         int expectedWhiteElo = service.newRating(1600, 50, 1.0, 1400);
         verify(jdbcTemplate).update(
-                eq("UPDATE users SET elo_960 = ?, games_rated_960 = games_rated_960 + 1 WHERE id = ?"),
-                eq(expectedWhiteElo), eq(1L));
+                "UPDATE users SET elo_960 = ?, games_rated_960 = games_rated_960 + 1 WHERE id = ?",
+                expectedWhiteElo, 1L);
         // The standard rating pool must be left untouched.
         verify(jdbcTemplate, never()).update(
                 eq("UPDATE users SET elo = ?, games_rated = games_rated + 1 WHERE id = ?"),

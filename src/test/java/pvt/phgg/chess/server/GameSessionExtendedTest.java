@@ -125,7 +125,7 @@ class GameSessionExtendedTest {
     }
 
     @Test
-    void isBotTurn_afterWhiteMove_trueForBlackBot() throws Exception {
+    void isBotTurn_afterWhiteMove_trueForBlackBot() {
         GameSession s = new GameSession(objectMapper);
         s.join(whiteWs, "alice", null, "WHITE");
         s.joinBot("alan");
@@ -136,14 +136,14 @@ class GameSessionExtendedTest {
     // ---- Terminal state: resign ----
 
     @Test
-    void resign_whiteResigns_gameOver() throws Exception {
+    void resign_whiteResigns_gameOver() {
         GameSession s = newSession();
         s.resign(true); // white resigns
         assertTrue(s.isGameOver());
     }
 
     @Test
-    void resign_blackResigns_gameOver() throws Exception {
+    void resign_blackResigns_gameOver() {
         GameSession s = newSession();
         s.resign(false);
         assertTrue(s.isGameOver());
@@ -175,13 +175,6 @@ class GameSessionExtendedTest {
         assertFalse(s.isGameOver());
     }
 
-    @Test
-    void isGameOver_afterResign_isTrue() throws Exception {
-        GameSession s = newSession();
-        s.resign(true);
-        assertTrue(s.isGameOver());
-    }
-
     // ---- applyMove: captured pieces recorded ----
 
     @Test
@@ -209,7 +202,7 @@ class GameSessionExtendedTest {
     // ---- createRematch: colors are swapped ----
 
     @Test
-    void createRematch_swapsColors() throws Exception {
+    void createRematch_swapsColors() {
         GameSession s = newSession();
         s.resign(true); // end game so rematch is allowed
 

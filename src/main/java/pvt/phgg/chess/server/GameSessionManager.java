@@ -33,6 +33,10 @@ public class GameSessionManager {
 
     private static final Logger log = LoggerFactory.getLogger(GameSessionManager.class);
 
+    // The wire values for a colour preference or an assigned side.
+    private static final String WHITE = "WHITE";
+    private static final String BLACK = "BLACK";
+
     // Sent to a socket that has been displaced from its slot by a newer
     // connection for the same player. 4000+ is the application-defined range.
     private static final CloseStatus SUPERSEDED =
@@ -228,7 +232,7 @@ public class GameSessionManager {
 
         // No match found — add to queue
         humanQueue.add(new WaitingPlayer(ws, username, userId, elo, colorPreference, variant, Instant.now()));
-        return "BLACK".equals(colorPreference) ? PlayerRole.BLACK : PlayerRole.WHITE;
+        return BLACK.equals(colorPreference) ? PlayerRole.BLACK : PlayerRole.WHITE;
     }
 
     public synchronized boolean joinBot(WebSocketSession ws, String botType) {
@@ -393,7 +397,7 @@ public class GameSessionManager {
         Instant afterMatch = Instant.now();
         for (WaitingPlayer p : humanQueue) {
             int waitSecs = (int) Duration.between(p.joinedAt(), afterMatch).getSeconds();
-            String color = "BLACK".equals(p.colorPreference()) ? "BLACK" : "WHITE";
+            String color = BLACK.equals(p.colorPreference()) ? BLACK : WHITE;
             sendMessage(p.ws(), ServerMessage.waitingInQueue(color, waitSecs));
         }
     }
@@ -408,11 +412,11 @@ public class GameSessionManager {
         // Both players are guaranteed to share a variant (matching filter above).
         GameSession session = new GameSession(objectMapper, gameRecorder, a.variant());
         if (roleA == PlayerRole.WHITE) {
-            session.join(a.ws(), a.username(), a.userId(), "WHITE");
-            session.join(b.ws(), b.username(), b.userId(), "BLACK");
+            session.join(a.ws(), a.username(), a.userId(), WHITE);
+            session.join(b.ws(), b.username(), b.userId(), BLACK);
         } else {
-            session.join(b.ws(), b.username(), b.userId(), "WHITE");
-            session.join(a.ws(), a.username(), a.userId(), "BLACK");
+            session.join(b.ws(), b.username(), b.userId(), WHITE);
+            session.join(a.ws(), a.username(), a.userId(), BLACK);
         }
         activeSessions.put(a.ws(), session);
         activeSessions.put(b.ws(), session);
@@ -473,11 +477,11 @@ public class GameSessionManager {
 
         GameSession session = new GameSession(objectMapper, gameRecorder, variant);
         if (waitingRole == PlayerRole.WHITE) {
-            session.join(waiting.ws(), waiting.username(), waiting.userId(), "WHITE");
-            session.join(ws, username, userId, "BLACK");
+            session.join(waiting.ws(), waiting.username(), waiting.userId(), WHITE);
+            session.join(ws, username, userId, BLACK);
         } else {
-            session.join(ws, username, userId, "WHITE");
-            session.join(waiting.ws(), waiting.username(), waiting.userId(), "BLACK");
+            session.join(ws, username, userId, WHITE);
+            session.join(waiting.ws(), waiting.username(), waiting.userId(), BLACK);
         }
         activeSessions.put(waiting.ws(), session);
         activeSessions.put(ws, session);
@@ -496,25 +500,28 @@ public class GameSessionManager {
      * as before this method existed.
      */
     private PlayerRole resolveFirstRole(String prefFirst, String prefSecond) {
-        boolean firstRandom = !"WHITE".equals(prefFirst) && !"BLACK".equals(prefFirst);
-        boolean secondRandom = !"WHITE".equals(prefSecond) && !"BLACK".equals(prefSecond);
+        boolean firstRandom = !WHITE.equals(prefFirst) && !BLACK.equals(prefFirst);
+        boolean secondRandom = !WHITE.equals(prefSecond) && !BLACK.equals(prefSecond);
 
         if (firstRandom && secondRandom) {
             return ThreadLocalRandom.current().nextBoolean() ? PlayerRole.WHITE : PlayerRole.BLACK;
         }
         if (firstRandom) {
-            return "WHITE".equals(prefSecond) ? PlayerRole.BLACK : PlayerRole.WHITE;
+            return WHITE.equals(prefSecond) ? PlayerRole.BLACK : PlayerRole.WHITE;
         }
-        return "BLACK".equals(prefFirst) ? PlayerRole.BLACK : PlayerRole.WHITE;
+        return BLACK.equals(prefFirst) ? PlayerRole.BLACK : PlayerRole.WHITE;
     }
 
     private void sendMessage(WebSocketSession ws, ServerMessage message) {
+        // Guard before the try rather than inside it, so the catch block can
+        // name the socket without re-checking for null.
+        if (ws == null || !ws.isOpen()) {
+            return;
+        }
         try {
-            if (ws != null && ws.isOpen()) {
-                ws.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
-            }
+            ws.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
         } catch (Exception e) {
-            log.error("Failed to send message to {}", ws != null ? ws.getId() : "null", e);
+            log.error("Failed to send message to {}", ws.getId(), e);
         }
     }
 }

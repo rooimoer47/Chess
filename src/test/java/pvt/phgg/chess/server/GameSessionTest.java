@@ -163,20 +163,20 @@ class GameSessionTest {
 
     @Test
     void chess960_castleOfferedAsKingOntoRook() throws Exception {
-        FakeWebSocketSession whiteWs = castleReadySession("CHESS960");
+        FakeWebSocketSession ws = castleReadySession("CHESS960");
 
         // Chess960: castling is expressed as king (0,4) onto its own rook (0,7), not the g-file.
-        assertTrue(hasLegalMove(whiteWs, 0, 4, 0, 7), "960 castle should target the rook square");
-        assertFalse(hasLegalMove(whiteWs, 0, 4, 0, 6), "960 castle must not target the g-file");
+        assertTrue(hasLegalMove(ws, 0, 4, 0, 7), "960 castle should target the rook square");
+        assertFalse(hasLegalMove(ws, 0, 4, 0, 6), "960 castle must not target the g-file");
     }
 
     @Test
     void standard_castleOfferedAsKingToGFile() throws Exception {
-        FakeWebSocketSession whiteWs = castleReadySession("STANDARD");
+        FakeWebSocketSession ws = castleReadySession("STANDARD");
 
         // Standard chess is unchanged: king (0,4) to the g-file (0,6).
-        assertTrue(hasLegalMove(whiteWs, 0, 4, 0, 6), "standard castle should target the g-file");
-        assertFalse(hasLegalMove(whiteWs, 0, 4, 0, 7), "standard castle must not target the rook square");
+        assertTrue(hasLegalMove(ws, 0, 4, 0, 6), "standard castle should target the g-file");
+        assertFalse(hasLegalMove(ws, 0, 4, 0, 7), "standard castle must not target the rook square");
     }
 
     private FakeWebSocketSession castleReadySession(String variant) throws Exception {
@@ -188,11 +188,11 @@ class GameSessionTest {
         GameSession restored = GameSession.restore(objectMapper, null, 1L, "HUMAN", null,
                 variant, "RNBQKBNR", "alice", 1L, "bob", 2L, moves);
 
-        FakeWebSocketSession whiteWs = new FakeWebSocketSession("white");
-        restored.rejoin(whiteWs, "alice");
+        FakeWebSocketSession ws = new FakeWebSocketSession("white");
+        restored.rejoin(ws, "alice");
         restored.rejoin(new FakeWebSocketSession("black"), "bob");
         restored.broadcastBoardState();
-        return whiteWs;
+        return ws;
     }
 
     private boolean hasLegalMove(FakeWebSocketSession ws, int fr, int fc, int tr, int tc) {
