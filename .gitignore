@@ -12,3 +12,4 @@
 /basic/
 /.sonar-token
 /.sonar-report/
+/sonarqube-backup-*.tar.gz

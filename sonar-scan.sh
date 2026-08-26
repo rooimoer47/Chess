@@ -6,18 +6,31 @@
 #   ./sonar-scan.sh --report-only         rebuild the report from the last analysis
 #   ./sonar-scan.sh --dismiss KEY falsepositive|accept "why"
 #   ./sonar-scan.sh --safe HOTSPOT_KEY "why"
+#   ./sonar-scan.sh --backup [FILE]       snapshot the server's data volume
 #
 # The two dismiss forms record a triage decision on the server, so the finding
 # stays out of every later report instead of being re-argued each scan.
 #
-# Overridable via the environment: SONAR_URL, SONAR_CONTAINER, SONAR_TOKEN,
-# SONAR_ADMIN, SONAR_ADMIN_PASSWORD.
+# The server keeps everything that matters — analysis history, the Chess quality
+# profile, and every dismissal — in its data volume, on an embedded H2 database.
+# Take a --backup before upgrading SONAR_IMAGE; H2 upgrades are unsupported and
+# there is no other copy of any of it.
+#
+# Overridable via the environment: SONAR_URL, SONAR_CONTAINER, SONAR_IMAGE,
+# SONAR_TOKEN, SONAR_ADMIN, SONAR_ADMIN_PASSWORD.
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
 SONAR_URL="${SONAR_URL:-http://localhost:9000}"
 SONAR_CONTAINER="${SONAR_CONTAINER:-sonarqube}"
+# Pinned rather than :community so the running version is answerable from the
+# repo, and an upgrade is a deliberate edit to this line.
+SONAR_IMAGE="${SONAR_IMAGE:-sonarqube:26.5.0.122743-community}"
+# Only used when creating a container from scratch. The existing container
+# predates this and sits on anonymous volumes — see the skill for migrating it.
+SONAR_DATA_VOLUME="${SONAR_DATA_VOLUME:-sonarqube_data}"
+SONAR_EXTENSIONS_VOLUME="${SONAR_EXTENSIONS_VOLUME:-sonarqube_extensions}"
 SONAR_ADMIN="${SONAR_ADMIN:-admin}"
 SONAR_ADMIN_PASSWORD="${SONAR_ADMIN_PASSWORD:-admin1234}"
 PROJECT_KEY="pvt.phgg.chess:chess"
@@ -31,6 +44,7 @@ case "${1:-}" in
   --report-only) MODE=report ;;
   --dismiss)     MODE=dismiss ;;
   --safe)        MODE=safe ;;
+  --backup)      MODE=backup ;;
   -h|--help)     awk 'NR>1 && /^#/ {print; next} NR>1 {exit}' "$0"; exit 0 ;;
   "")            ;;
   *)             echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
@@ -51,8 +65,19 @@ ensure_server() {
     log "SonarQube already up at $SONAR_URL"
     return
   fi
-  log "Starting the $SONAR_CONTAINER container"
-  docker start "$SONAR_CONTAINER" >/dev/null
+  if docker inspect "$SONAR_CONTAINER" >/dev/null 2>&1; then
+    log "Starting the $SONAR_CONTAINER container"
+    docker start "$SONAR_CONTAINER" >/dev/null
+  else
+    # Named volumes, so a later `docker rm` cannot orphan the database the way
+    # anonymous ones do — a fresh `docker run` reattaches to these by name.
+    log "No $SONAR_CONTAINER container — creating one from $SONAR_IMAGE"
+    docker run -d --name "$SONAR_CONTAINER" \
+      -p 9000:9000 \
+      -v "$SONAR_DATA_VOLUME:/opt/sonarqube/data" \
+      -v "$SONAR_EXTENSIONS_VOLUME:/opt/sonarqube/extensions" \
+      "$SONAR_IMAGE" >/dev/null
+  fi
   # A cold start takes a couple of minutes; it serves STARTING until the
   # embedded database has migrated.
   for _ in $(seq 1 60); do
@@ -61,6 +86,33 @@ ensure_server() {
   done
   echo "SonarQube did not come up within 5 minutes" >&2
   exit 1
+}
+
+# A consistent H2 snapshot needs the server stopped — copying sonar.mv.db out
+# from under a running SonarQube can capture a torn write.
+backup_data() {
+  local out="${1:-sonarqube-backup-$(date +%Y%m%d-%H%M%S).tar.gz}"
+  local was_running=false
+  docker inspect "$SONAR_CONTAINER" >/dev/null 2>&1 || {
+    echo "No $SONAR_CONTAINER container to back up" >&2; exit 1; }
+
+  if [ "$(docker inspect -f '{{.State.Running}}' "$SONAR_CONTAINER")" = "true" ]; then
+    was_running=true
+    log "Stopping $SONAR_CONTAINER for a consistent snapshot"
+    docker stop "$SONAR_CONTAINER" >/dev/null
+  fi
+
+  log "Archiving the data volume to $out"
+  # --volumes-from picks up whatever the container has mounted, named or not.
+  docker run --rm --volumes-from "$SONAR_CONTAINER" \
+    -v "$PWD:/backup" alpine \
+    tar czf "/backup/$out" -C /opt/sonarqube data
+
+  if [ "$was_running" = true ]; then
+    log "Restarting $SONAR_CONTAINER"
+    docker start "$SONAR_CONTAINER" >/dev/null
+  fi
+  log "Backup written to $out ($(du -h "$out" | cut -f1))"
 }
 
 # --- token -----------------------------------------------------------------
@@ -179,6 +231,12 @@ mark_hotspot_safe() {
 }
 
 # --- main ------------------------------------------------------------------
+# Backup is the one action that must work with the server down.
+if [ "$MODE" = backup ]; then
+  backup_data "${2:-}"
+  exit 0
+fi
+
 ensure_server
 ensure_token
 

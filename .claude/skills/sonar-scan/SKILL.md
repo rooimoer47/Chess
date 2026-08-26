@@ -69,3 +69,37 @@ Rule configuration lives in `pom.xml` (`sonar.sources`, `sonar.tests`, the
 `sonar.issue.ignore.multicriteria` entries) and in the custom **Chess** quality
 profile on the server. Prefer dismissing individual findings over disabling a
 rule; disable a rule only when it is wrong for the whole project, and say so.
+
+## The IDE shows different findings from the script
+
+Expected, and not a bug in either. The IntelliJ plugin runs **standalone**
+unless it is bound to the server in Connected Mode, and standalone it:
+
+- cannot see findings dismissed on the server;
+- never reads `pom.xml`, so the `sonar.issue.ignore.multicriteria` suppressions
+  (S3776) do not apply there — the IDE needs its own rule toggles;
+- uses the default rule set rather than the Chess profile;
+- analyses open and changed files only, so its count will not match a full scan
+  even once bound.
+
+Connected Mode fixes the first and third. The S3776 suppression is scanner-side
+and has to be mirrored in the IDE's rule list per language.
+
+## Server upkeep
+
+The container runs an **embedded H2 database** (`sonar.mv.db` in the data
+volume). Everything worth keeping is in there — analysis history, the Chess
+quality profile, and every recorded dismissal — and nothing else has a copy.
+
+- `./sonar-scan.sh --backup` stops the server, tars the data volume, restarts.
+  Roughly 330 MB and 15 seconds.
+- `SONAR_IMAGE` in the script pins the version. Upgrading means editing that
+  line, but **take a backup first**: SonarQube does not support upgrading with
+  the embedded database, so an upgrade can fail mid-migration and leave the
+  H2 file unusable.
+- The current container predates the script and sits on **anonymous** volumes.
+  A plain `docker rm` + `docker run` will silently attach fresh empty ones
+  rather than reconnecting. To recreate it, either mount the existing volumes
+  by their ID (`docker inspect sonarqube --format '{{json .Mounts}}'`) or
+  migrate to the named volumes the script creates. Never recreate it without
+  checking which volumes the new container will get.
