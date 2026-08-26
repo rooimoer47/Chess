@@ -3,18 +3,37 @@ import { useNavigate } from 'react-router-dom';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import type { GameSummary } from '../types';
+import type { GameSummary, Variant } from '../types';
+import { errorMessage } from '../errors';
 
 interface EloSummary {
   elo: number;
   gamesRated: number;
   provisional: boolean;
+  elo960: number;
+  gamesRated960: number;
+  provisional960: boolean;
+}
+
+/** The one rating track the page is showing, or zeroes before the fetch lands. */
+function trackOf(summary: EloSummary | null, is960: boolean) {
+  if (!summary) return { rating: 0, ratedGames: 0, isProvisional: false };
+  return is960
+    ? { rating: summary.elo960, ratedGames: summary.gamesRated960, isProvisional: summary.provisional960 }
+    : { rating: summary.elo, ratedGames: summary.gamesRated, isProvisional: summary.provisional };
+}
+
+function deltaClass(delta: number): string {
+  if (delta > 0) return 'result-win';
+  if (delta < 0) return 'result-loss';
+  return '';
 }
 
 interface EloHistoryEntry {
   gameId: number;
   eloAfter: number;
   delta: number;
+  variant: Variant;
   recordedAt: string;
 }
 
@@ -32,20 +51,22 @@ function formatResult(game: GameSummary): string {
   return game.result;
 }
 
-export function EloHistoryPage({ username }: { username: string }) {
+export function EloHistoryPage({ username, variant: initialVariant = 'STANDARD' }: Readonly<{ username: string; variant?: Variant }>) {
   const [summary, setSummary] = useState<EloSummary | null>(null);
   const [history, setHistory] = useState<EloHistoryEntry[]>([]);
   const [gamesMap, setGamesMap] = useState<Map<number, GameSummary>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [variant, setVariant] = useState<Variant>(initialVariant);
   const navigate = useNavigate();
 
   useEffect(() => {
+    setLoading(true);
     const enc = encodeURIComponent(username);
     Promise.all([
-      fetch(`/api/users/${enc}/elo`).then(r => r.ok ? r.json() as Promise<EloSummary> : Promise.reject('Failed to load ELO')),
-      fetch(`/api/users/${enc}/elo-history?limit=50`).then(r => r.ok ? r.json() as Promise<EloHistoryEntry[]> : Promise.reject('Failed to load ELO history')),
-      fetch(`/api/users/${enc}/games`).then(r => r.ok ? r.json() as Promise<GameSummary[]> : Promise.reject('Failed to load games')),
+      fetch(`/api/users/${enc}/elo`).then(r => r.ok ? r.json() as Promise<EloSummary> : Promise.reject(new Error('Failed to load ELO'))),
+      fetch(`/api/users/${enc}/elo-history?limit=50&variant=${variant}`).then(r => r.ok ? r.json() as Promise<EloHistoryEntry[]> : Promise.reject(new Error('Failed to load ELO history'))),
+      fetch(`/api/users/${enc}/games?variant=${variant}`).then(r => r.ok ? r.json() as Promise<GameSummary[]> : Promise.reject(new Error('Failed to load games'))),
     ])
       .then(([sum, hist, games]) => {
         setSummary(sum);
@@ -55,8 +76,14 @@ export function EloHistoryPage({ username }: { username: string }) {
         setGamesMap(map);
         setLoading(false);
       })
-      .catch(e => { setError(String(e)); setLoading(false); });
-  }, [username]);
+      .catch(e => { setError(errorMessage(e)); setLoading(false); });
+  }, [username, variant]);
+
+  // The two tracks are separate ratings, so the page shows one at a time —
+  // interleaving them would make both the chart and the "ELO before → after"
+  // column jump between unrelated numbers.
+  const is960 = variant === 'CHESS960';
+  const { rating, ratedGames, isProvisional } = trackOf(summary, is960);
 
   // Chart needs oldest-first; history arrives newest-first
   const chartData = [...history].reverse().map((e, i) => ({ game: i + 1, elo: e.eloAfter }));
@@ -64,8 +91,25 @@ export function EloHistoryPage({ username }: { username: string }) {
   return (
     <div className="history-page">
       <div className="history-header">
-        <button className="back-btn" onClick={() => navigate('/lobby')}>← Back to Lobby</button>
-        <h2>ELO Rating</h2>
+        <button type="button" className="back-btn" onClick={() => navigate('/lobby')}>← Back to Lobby</button>
+        <h2>{is960 ? 'Chessnuts960' : 'Chessnuts'} ELO Rating</h2>
+      </div>
+
+      <div className="variant-toggle mode-toggle">
+        <button
+          type="button"
+          className={`mode-btn${variant === 'STANDARD' ? ' mode-btn-active' : ''}`}
+          onClick={() => setVariant('STANDARD')}
+        >
+          Standard
+        </button>
+        <button
+          type="button"
+          className={`mode-btn${variant === 'CHESS960' ? ' mode-btn-active' : ''}`}
+          onClick={() => setVariant('CHESS960')}
+        >
+          ♟ Chess960
+        </button>
       </div>
 
       {loading && <p className="history-status">Loading…</p>}
@@ -75,11 +119,11 @@ export function EloHistoryPage({ username }: { username: string }) {
         <>
           <div className="elo-summary">
             <span className="elo-rating">
-              {summary.elo}
-              {summary.provisional && <span className="elo-provisional">?</span>}
+              {rating}
+              {isProvisional && <span className="elo-provisional">?</span>}
             </span>
             <span className="elo-games">
-              {summary.gamesRated} rated game{summary.gamesRated !== 1 ? 's' : ''}
+              {ratedGames} rated game{ratedGames !== 1 ? 's' : ''}
             </span>
           </div>
 
@@ -121,7 +165,7 @@ export function EloHistoryPage({ username }: { username: string }) {
                   const game = gamesMap.get(entry.gameId);
                   const eloBefore = entry.eloAfter - entry.delta;
                   const deltaLabel = entry.delta > 0 ? `+${entry.delta}` : String(entry.delta);
-                  const deltaCls = entry.delta > 0 ? 'result-win' : entry.delta < 0 ? 'result-loss' : '';
+                  const deltaCls = deltaClass(entry.delta);
                   return (
                     <tr key={entry.gameId}>
                       <td>{formatDate(entry.recordedAt)}</td>

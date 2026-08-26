@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ThemePicker, THEMES, type Theme, type BoardTheme } from './ThemePicker';
+import { ThemePicker, type Theme, type BoardTheme } from './ThemePicker';
 import type { ActiveGameSummary, Variant } from '../types';
 
 interface EloSummary {
@@ -10,7 +10,12 @@ interface EloSummary {
   provisional960: boolean;
 }
 
-export { THEMES, type Theme, type BoardTheme };
+export { THEMES, type Theme, type BoardTheme } from './ThemePicker';
+
+/** A provisional rating is marked with "?", the way lichess and FIDE show one. */
+function ratingLabel(rating: number, provisional: boolean): string {
+  return `${rating}${provisional ? '?' : ''}`;
+}
 
 export const CLOCK_OPTIONS = [
   { label: 'No Clock', ms: 0 },
@@ -51,7 +56,7 @@ interface Props {
   onResumeGame: (botType: string, gameId: string, variant: Variant) => void;
 }
 
-export function LobbyScreen({ username, botType, theme, boardTheme, colorPreference, clockMs, variant, onChangeBotType, onChangeTheme, onChangeBoardTheme, onChangeColorPreference, onChangeClockMs, onChangeVariant, onLogout, onStartGame, onResumeGame }: Props) {
+export function LobbyScreen({ username, botType, theme, boardTheme, colorPreference, clockMs, variant, onChangeBotType, onChangeTheme, onChangeBoardTheme, onChangeColorPreference, onChangeClockMs, onChangeVariant, onLogout, onStartGame, onResumeGame }: Readonly<Props>) {
   const [themePickerOpen, setThemePickerOpen] = useState(false);
   const [elo, setElo] = useState<EloSummary | null>(null);
   const [activeBotGames, setActiveBotGames] = useState<ActiveGameSummary[]>([]);
@@ -65,11 +70,12 @@ export function LobbyScreen({ username, botType, theme, boardTheme, colorPrefere
   }, [username]);
 
   // Show the rating track matching the selected variant, mirroring how lichess switches ratings.
-  const eloDisplay = elo
-    ? (variant === 'CHESS960'
-        ? `${elo.elo960}${elo.provisional960 ? '?' : ''}`
-        : `${elo.elo}${elo.provisional ? '?' : ''}`)
-    : null;
+  let eloDisplay: string | null = null;
+  if (elo) {
+    eloDisplay = variant === 'CHESS960'
+      ? ratingLabel(elo.elo960, elo.provisional960)
+      : ratingLabel(elo.elo, elo.provisional);
+  }
 
   useEffect(() => {
     fetch(`/api/users/${encodeURIComponent(username)}/active-games`)
@@ -190,7 +196,7 @@ export function LobbyScreen({ username, botType, theme, boardTheme, colorPrefere
 
       <div className="lobby-section">
         <span className="lobby-label">Appearance</span>
-        <button className="theme-current-btn" onClick={() => setThemePickerOpen(true)}>
+        <button type="button" className="theme-current-btn" onClick={() => setThemePickerOpen(true)}>
           Theme
         </button>
       </div>
@@ -211,10 +217,10 @@ export function LobbyScreen({ username, botType, theme, boardTheme, colorPrefere
         </div>
       </div>
 
-      <button className="start-btn" onClick={onStartGame}>Start Game</button>
+      <button type="button" className="start-btn" onClick={onStartGame}>Start Game</button>
       <div className="lobby-secondary-btns">
-        <button className="lobby-games-btn" onClick={() => navigate('/history')}>My Games</button>
-        <button className="lobby-games-btn" onClick={() => navigate('/profile')}>ELO Profile</button>
+        <button type="button" className="lobby-games-btn" onClick={() => navigate('/history')}>My Games</button>
+        <button type="button" className="lobby-games-btn" onClick={() => navigate('/profile')}>ELO Profile</button>
       </div>
       <button className="logout-btn" type="button" onClick={onLogout}>Log out</button>
 

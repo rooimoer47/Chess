@@ -1,4 +1,4 @@
-# Chess — v1.1.0
+# Chess — v1.1.1
 
 A multiplayer chess app with bot opponents, game history, and replay.
 Live at **[chessnuts.eu](https://chessnuts.eu)**.

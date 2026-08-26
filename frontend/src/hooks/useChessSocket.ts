@@ -1,7 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Piece, LegalMove, LastMove, Color, GameStatus, ServerMessage, Variant } from '../types';
 
-const EMPTY_BOARD: (Piece | null)[][] = Array(8).fill(null).map(() => Array(8).fill(null));
+const EMPTY_BOARD: (Piece | null)[][] = new Array(8).fill(null).map(() => new Array(8).fill(null));
+
+/**
+ * The banner text for a board update, or null while the game is simply running.
+ *
+ * `currentTurn` is the side to move, so for a decisive result it is the side
+ * that lost — the winner is the other one.
+ */
+function statusMessage(status: GameStatus, currentTurn: Color): string | null {
+  const winner = currentTurn === 'WHITE' ? 'Black' : 'White';
+  switch (status) {
+    case 'CHECKMATE':             return `Checkmate! ${winner} wins!`;
+    case 'STALEMATE':             return 'Draw — stalemate!';
+    case 'RESIGNED':              return `${currentTurn} resigned. ${winner} wins!`;
+    case 'THREEFOLD_REPETITION':  return 'Draw — threefold repetition!';
+    case 'FIFTY_MOVE_RULE':       return 'Draw — fifty-move rule!';
+    case 'INSUFFICIENT_MATERIAL': return 'Draw — insufficient material!';
+    case 'DRAW_AGREED':           return 'Draw by agreement!';
+    case 'CHECK':                 return `${currentTurn} is in check!`;
+    case 'TIMEOUT':               return `${currentTurn} disconnected too long. ${winner} wins!`;
+    default:                      return null;
+  }
+}
 
 export interface GameState {
   connected: boolean;
@@ -99,17 +121,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', gameId:
             break;
 
           case 'BOARD_UPDATE': {
-            const message =
-              msg.status === 'CHECKMATE'            ? `Checkmate! ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
-              : msg.status === 'STALEMATE'           ? 'Draw — stalemate!'
-              : msg.status === 'RESIGNED'            ? `${msg.currentTurn} resigned. ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
-              : msg.status === 'THREEFOLD_REPETITION'? 'Draw — threefold repetition!'
-              : msg.status === 'FIFTY_MOVE_RULE'     ? 'Draw — fifty-move rule!'
-              : msg.status === 'INSUFFICIENT_MATERIAL'? 'Draw — insufficient material!'
-              : msg.status === 'DRAW_AGREED'         ? 'Draw by agreement!'
-              : msg.status === 'CHECK'               ? `${msg.currentTurn} is in check!`
-              : msg.status === 'TIMEOUT'              ? `${msg.currentTurn} disconnected too long. ${msg.currentTurn === 'WHITE' ? 'Black' : 'White'} wins!`
-              : null;
+            const message = statusMessage(msg.status, msg.currentTurn);
             setState(s => ({
               ...s,
               gameStarted: true,
@@ -161,7 +173,7 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', gameId:
             setState({
               connected: true,
               gameStarted: true,
-              playerColor: msg.color as Color,
+              playerColor: msg.color,
               board: EMPTY_BOARD,
               currentTurn: 'WHITE',
               status: 'IN_PROGRESS',

@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import pvt.phgg.chess.MoveResult;
 import pvt.phgg.chess.Position;
 import pvt.phgg.chess.piece.PieceType;
 import pvt.phgg.chess.server.game.GameMove;

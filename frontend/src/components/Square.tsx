@@ -17,7 +17,7 @@ interface Props {
   onMouseEnter: () => void;
 }
 
-export function Square({ row, col, piece, isSelected, isLegalTarget, isLastMove, isLegalDropTarget, isDraggingSource, theme, lightColor, darkColor, onMouseDown, onMouseEnter }: Props) {
+export function Square({ row, col, piece, isSelected, isLegalTarget, isLastMove, isLegalDropTarget, isDraggingSource, theme, lightColor, darkColor, onMouseDown, onMouseEnter }: Readonly<Props>) {
   const isLight = (row + col) % 2 === 0;
 
   let background = isLight ? lightColor : darkColor;
@@ -27,7 +27,7 @@ export function Square({ row, col, piece, isSelected, isLegalTarget, isLastMove,
   else if (isLegalTarget)     background = isLight ? '#cdd16e' : '#aaa23a';
 
   // board[0][0] = a1 (see GameEngine.initializeBoard) — col 0 = 'a' file, row 0 = rank 1
-  const square = `${String.fromCharCode(97 + col)}${row + 1}`;
+  const square = `${String.fromCodePoint(97 + col)}${row + 1}`;
 
   return (
     <div

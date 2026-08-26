@@ -9,3 +9,7 @@
 /nginx/nginx.conf
 /src/main/resources/static/
 /docs/
+/basic/
+/.sonar-token
+/.sonar-report/
+/sonarqube-backup-*

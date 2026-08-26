@@ -14,7 +14,6 @@ import pvt.phgg.chess.server.elo.EloProperties;
 import pvt.phgg.chess.server.user.AppUser;
 import pvt.phgg.chess.server.user.UserService;
 
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -199,7 +198,8 @@ class AuthControllerValidationTest {
     // ---- helpers ----
 
     private void stubSuccessfulRegistration(String username) {
-        when(userService.register(eq(username), anyString(), any())).thenReturn(mock(AppUser.class));
+        AppUser registered = mock(AppUser.class);
+        when(userService.register(eq(username), anyString(), any())).thenReturn(registered);
         when(jwtUtil.generateToken(username)).thenReturn("token");
         when(jwtUtil.createAuthCookie("token")).thenReturn(
                 org.springframework.http.ResponseCookie.from("jwt", "token").build());

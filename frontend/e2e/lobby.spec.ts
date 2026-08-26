@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { uniqueUsername, registerViaApi, expectLobby } from './fixtures';
+import { selectChess960 } from './chess960';
 
 async function selectColorPreference(page: Page, label: 'Always White' | 'Always Black' | 'Random') {
   await page.locator('.color-pref-row label', { hasText: label }).click();
@@ -20,11 +21,41 @@ test('shows the ELO badge for a freshly registered account', async ({ page }) =>
 test('navigates to My Games and back', async ({ page }) => {
   await page.getByRole('button', { name: 'My Games' }).click();
   await expect(page).toHaveURL(/\/history$/);
-  await expect(page.getByRole('heading', { name: 'My Games' })).toBeVisible();
+  // The heading is variant-labelled since Chess960 landed — "My Chessnuts Games"
+  // for standard, "My Chessnuts960 Games" when the 960 toggle is on.
+  await expect(page.getByRole('heading', { name: 'My Chessnuts Games' })).toBeVisible();
   await expect(page.getByText('No completed games yet.')).toBeVisible();
 
   await page.getByRole('button', { name: '← Back to Lobby' }).click();
   await expect(page).toHaveURL(/\/lobby$/);
+});
+
+test('the Chess960 toggle rebrands the lobby and switches the rating track', async ({ page }) => {
+  await expect(page.locator('.lobby-title')).toHaveText('Chessnuts');
+  await expect(page.locator('.lobby-elo')).toContainText('ELO 1000?');
+
+  await selectChess960(page);
+
+  // A fresh account is provisional at 1000 in both tracks, so the badge text
+  // alone can't prove the switch — but the two are separate columns
+  // (elo / elo_960), and the toggle is what picks which one is shown.
+  await expect(page.locator('.lobby-elo')).toContainText('ELO 1000?');
+
+  await page.locator('.variant-toggle .mode-btn', { hasText: 'Standard' }).click();
+  await expect(page.locator('.lobby-title')).toHaveText('Chessnuts');
+});
+
+test('the Chess960 toggle carries through to the games list', async ({ page }) => {
+  await selectChess960(page);
+
+  await page.getByRole('button', { name: 'My Games' }).click();
+  await expect(page.getByRole('heading', { name: 'My Chessnuts960 Games' })).toBeVisible();
+  await expect(page.getByText('No completed games yet.')).toBeVisible();
+
+  // The list has its own toggle, seeded from the lobby's — flipping it back
+  // re-filters to standard games without leaving the page.
+  await page.locator('.variant-toggle .mode-btn', { hasText: 'Standard' }).click();
+  await expect(page.getByRole('heading', { name: 'My Chessnuts Games' })).toBeVisible();
 });
 
 test('navigates to the ELO profile page and back', async ({ page }) => {

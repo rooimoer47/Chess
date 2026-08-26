@@ -4,11 +4,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 import pvt.phgg.chess.server.game.Game;
 import pvt.phgg.chess.server.game.GameMove;
 import pvt.phgg.chess.server.game.GameRecorder;
+import pvt.phgg.chess.server.user.AppUser;
 import pvt.phgg.chess.server.user.UserService;
 
 import java.util.List;
@@ -18,7 +19,7 @@ import java.util.List;
 // missing from memory. On startup, replay each one back into a live
 // GameSession so reconnecting after a redeploy works the same as
 // reconnecting after a phone lock.
-@Component
+@Service
 public class GameRestorationService {
 
     private static final Logger log = LoggerFactory.getLogger(GameRestorationService.class);
@@ -82,6 +83,6 @@ public class GameRestorationService {
 
     private String resolveUsername(Long playerId) {
         if (playerId == null) return "BOT";
-        return userService.findById(playerId).map(u -> u.getUsername()).orElse("BOT");
+        return userService.findById(playerId).map(AppUser::getUsername).orElse("BOT");
     }
 }

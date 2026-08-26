@@ -147,13 +147,18 @@ export default function App() {
       } />
       <Route path="/history" element={<HistoryPage username={username} variant={variant} />} />
       <Route path="/history/:gameId" element={<ReplayViewer />} />
-      <Route path="/profile" element={<EloHistoryPage username={username} />} />
+      <Route path="/profile" element={<EloHistoryPage username={username} variant={variant} />} />
       <Route path="*" element={<Navigate to="/lobby" replace />} />
     </Routes>
   );
 }
 
-function ChessGame({ username, botType, colorPreference, theme, boardTheme, variant, resumeGameId, onLogout, onAuthFailed, onLeaveGame }: {
+function turnLabel(isGameOver: boolean, isMyTurn: boolean): string {
+  if (isGameOver) return '\u2014';
+  return isMyTurn ? 'Your turn' : "Opponent's turn";
+}
+
+function ChessGame({ username, botType, colorPreference, theme, boardTheme, variant, resumeGameId, onLogout, onAuthFailed, onLeaveGame }: Readonly<{
   username: string;
   botType: string;
   colorPreference: string;
@@ -164,7 +169,7 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, vari
   onLogout: () => void;
   onAuthFailed: () => void;
   onLeaveGame: () => void;
-}) {
+}>) {
   const {
     connected,
     gameStarted,
@@ -219,6 +224,37 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, vari
     || status === 'INSUFFICIENT_MATERIAL' || status === 'DRAW_AGREED' || status === 'TIMEOUT';
   const isMyTurn = currentTurn === playerColor;
 
+  function rematchControls() {
+    if (rematchState === 'waiting') {
+      return (
+        <>
+          <p className="rematch-status">Waiting for opponent…</p>
+          <button type="button" className="lobby-games-btn" onClick={() => { sendRematchDecline(); onLeaveGame(); }}>
+            Cancel
+          </button>
+        </>
+      );
+    }
+    if (rematchState === 'declined') {
+      return (
+        <>
+          <p className="rematch-status rematch-declined">Opponent did not want a rematch.</p>
+          <button type="button" className="start-btn" onClick={onLeaveGame}>
+            Back to Lobby
+          </button>
+        </>
+      );
+    }
+    return (
+      <>
+        <button type="button" className="start-btn" onClick={sendRematchRequest}>Rematch</button>
+        <button type="button" className="lobby-games-btn" onClick={onLeaveGame}>
+          Back to Lobby
+        </button>
+      </>
+    );
+  }
+
   const myLost       = playerColor === 'WHITE' ? capturedByBlack : capturedByWhite;
   const opponentLost = playerColor === 'WHITE' ? capturedByWhite : capturedByBlack;
   const opponentColor = playerColor === 'WHITE' ? 'BLACK' : 'WHITE';
@@ -229,18 +265,18 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, vari
         <span className="game-variant-title">{variant === 'CHESS960' ? 'Chessnuts960' : 'Chessnuts'}</span>
         <span>You: <strong>{username}</strong></span>
         <span className={`turn-indicator ${isMyTurn ? 'my-turn' : ''}`}>
-          {isGameOver ? '—' : isMyTurn ? 'Your turn' : "Opponent's turn"}
+          {turnLabel(isGameOver, isMyTurn)}
         </span>
         {!isGameOver && (
           <>
-            <button className="draw-btn" onClick={sendDrawOffer}
+            <button type="button" className="draw-btn" onClick={sendDrawOffer}
               disabled={drawOfferPending || drawOfferedByOpponent}>
               {drawOfferPending ? 'Draw offered…' : 'Offer Draw'}
             </button>
-            <button className="resign-btn" onClick={sendResign}>Resign</button>
+            <button type="button" className="resign-btn" onClick={sendResign}>Resign</button>
           </>
         )}
-        <button className="logout-btn" onClick={onLogout}>Logout</button>
+        <button type="button" className="logout-btn" onClick={onLogout}>Logout</button>
       </div>
 
       {statusMessage && (
@@ -252,8 +288,8 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, vari
       {drawOfferedByOpponent && !isGameOver && (
         <div className="draw-offer-bar">
           <span>Opponent offers a draw</span>
-          <button className="draw-accept-btn" onClick={() => sendDrawResponse(true)}>Accept</button>
-          <button className="draw-decline-btn" onClick={() => sendDrawResponse(false)}>Decline</button>
+          <button type="button" className="draw-accept-btn" onClick={() => sendDrawResponse(true)}>Accept</button>
+          <button type="button" className="draw-decline-btn" onClick={() => sendDrawResponse(false)}>Decline</button>
         </div>
       )}
 
@@ -274,28 +310,7 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, vari
 
       {isGameOver && (
         <div className="play-again">
-          {rematchState === 'waiting' ? (
-            <>
-              <p className="rematch-status">Waiting for opponent…</p>
-              <button type="button" className="lobby-games-btn" onClick={() => { sendRematchDecline(); onLeaveGame(); }}>
-                Cancel
-              </button>
-            </>
-          ) : rematchState === 'declined' ? (
-            <>
-              <p className="rematch-status rematch-declined">Opponent did not want a rematch.</p>
-              <button type="button" className="start-btn" onClick={onLeaveGame}>
-                Back to Lobby
-              </button>
-            </>
-          ) : (
-            <>
-              <button type="button" className="start-btn" onClick={sendRematchRequest}>Rematch</button>
-              <button type="button" className="lobby-games-btn" onClick={onLeaveGame}>
-                Back to Lobby
-              </button>
-            </>
-          )}
+          {rematchControls()}
         </div>
       )}
 

@@ -1,0 +1,175 @@
+{
+  "project": "pvt.phgg.chess:chess",
+  "exported": "2026-08-26T06:32:18.984247+00:00",
+  "issues": [
+    {
+      "rule": "java:S135",
+      "path": "src/main/java/pvt/phgg/chess/server/GameSessionManager.java",
+      "line": 154,
+      "message": "Reduce the total number of break and continue statements in this loop to use at most one.",
+      "resolution": "WONTFIX",
+      "reason": "The continues are guard clauses that skip non-matching sessions. Collapsing them into one exit would mean nesting the body in conditionals \u2014 strictly harder to read."
+    },
+    {
+      "rule": "java:S135",
+      "path": "src/main/java/pvt/phgg/chess/server/GameSessionManager.java",
+      "line": 368,
+      "message": "Reduce the total number of break and continue statements in this loop to use at most one.",
+      "resolution": "WONTFIX",
+      "reason": "The continues are guard clauses that skip claimed or mismatched queue entries. Collapsing them into one exit would mean nesting the body in conditionals \u2014 strictly harder to read."
+    },
+    {
+      "rule": "java:S2077",
+      "path": "src/main/java/pvt/phgg/chess/server/elo/EloService.java",
+      "line": 84,
+      "message": "Make sure using a dynamically formatted SQL query is safe here.",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "eloCol/gamesRatedCol are chosen from a boolean between two hardcoded column names; no user input reaches the SQL string, and all values are bound as parameters."
+    },
+    {
+      "rule": "java:S2077",
+      "path": "src/main/java/pvt/phgg/chess/server/elo/EloService.java",
+      "line": 86,
+      "message": "Make sure using a dynamically formatted SQL query is safe here.",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "The only concatenated part is a column name chosen by a boolean between two hardcoded identifiers (elo/elo_960). No user input reaches the SQL text; every value is bound as a parameter."
+    },
+    {
+      "rule": "java:S2077",
+      "path": "src/main/java/pvt/phgg/chess/server/elo/EloService.java",
+      "line": 97,
+      "message": "Make sure using a dynamically formatted SQL query is safe here.",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "The only concatenated part is a column name chosen by a boolean between two hardcoded identifiers (elo/elo_960). No user input reaches the SQL text; every value is bound as a parameter."
+    },
+    {
+      "rule": "java:S2077",
+      "path": "src/main/java/pvt/phgg/chess/server/elo/EloService.java",
+      "line": 100,
+      "message": "Make sure using a dynamically formatted SQL query is safe here.",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "The only concatenated part is a column name chosen by a boolean between two hardcoded identifiers (elo/elo_960). No user input reaches the SQL text; every value is bound as a parameter."
+    },
+    {
+      "rule": "java:S107",
+      "path": "src/main/java/pvt/phgg/chess/server/GameSession.java",
+      "line": 130,
+      "message": "Method has 12 parameters, which is greater than 7 authorized.",
+      "resolution": "WONTFIX",
+      "reason": "restore() maps a persisted game row onto a session; the parameters are the columns. A cap of 7 is the same arbitrary threshold as method length, which this project suppresses."
+    },
+    {
+      "rule": "java:S107",
+      "path": "src/main/java/pvt/phgg/chess/server/GameSession.java",
+      "line": 121,
+      "message": "Method has 10 parameters, which is greater than 7 authorized.",
+      "resolution": "WONTFIX",
+      "reason": "restore() maps a persisted game row onto a session; the parameters are the columns. A cap of 7 is the same arbitrary threshold as method length, which this project suppresses."
+    },
+    {
+      "rule": "typescript:S6848",
+      "path": "frontend/src/components/Square.tsx",
+      "line": 33,
+      "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.",
+      "resolution": "WONTFIX",
+      "reason": "A board square is a drag/drop surface, not a control. Making the board keyboard-playable means arrow-key square navigation with a focus cursor \u2014 a real feature to design, not a role attribute to bolt on. Tracked separately if we take it on."
+    },
+    {
+      "rule": "java:S1186",
+      "path": "src/test/java/pvt/phgg/chess/server/GameSessionExtendedTest.java",
+      "line": 251,
+      "message": "Add a nested comment explaining why this method is empty, throw an UnsupportedOperationException or complete the implementation.",
+      "resolution": "WONTFIX",
+      "reason": "No-op stub in a FakeWebSocketSession test double. The interface demands the method; the test does not exercise it. An empty body is the correct implementation."
+    },
+    {
+      "rule": "java:S1186",
+      "path": "src/test/java/pvt/phgg/chess/server/GameSessionExtendedTest.java",
+      "line": 253,
+      "message": "Add a nested comment explaining why this method is empty, throw an UnsupportedOperationException or complete the implementation.",
+      "resolution": "WONTFIX",
+      "reason": "No-op stub in a FakeWebSocketSession test double. The interface demands the method; the test does not exercise it. An empty body is the correct implementation."
+    },
+    {
+      "rule": "java:S1186",
+      "path": "src/test/java/pvt/phgg/chess/server/GameSessionExtendedTest.java",
+      "line": 256,
+      "message": "Add a nested comment explaining why this method is empty, throw an UnsupportedOperationException or complete the implementation.",
+      "resolution": "WONTFIX",
+      "reason": "No-op stub in a FakeWebSocketSession test double. The interface demands the method; the test does not exercise it. An empty body is the correct implementation."
+    },
+    {
+      "rule": "java:S1186",
+      "path": "src/test/java/pvt/phgg/chess/server/GameSessionExtendedTest.java",
+      "line": 257,
+      "message": "Add a nested comment explaining why this method is empty, throw an UnsupportedOperationException or complete the implementation.",
+      "resolution": "WONTFIX",
+      "reason": "No-op stub in a FakeWebSocketSession test double. The interface demands the method; the test does not exercise it. An empty body is the correct implementation."
+    },
+    {
+      "rule": "java:S1186",
+      "path": "src/test/java/pvt/phgg/chess/server/GameSessionManagerTest.java",
+      "line": 997,
+      "message": "Add a nested comment explaining why this method is empty, throw an UnsupportedOperationException or complete the implementation.",
+      "resolution": "WONTFIX",
+      "reason": "No-op stub in a FakeWebSocketSession test double. The interface demands the method; the test does not exercise it. An empty body is the correct implementation."
+    },
+    {
+      "rule": "java:S1186",
+      "path": "src/test/java/pvt/phgg/chess/server/GameSessionManagerTest.java",
+      "line": 999,
+      "message": "Add a nested comment explaining why this method is empty, throw an UnsupportedOperationException or complete the implementation.",
+      "resolution": "WONTFIX",
+      "reason": "No-op stub in a FakeWebSocketSession test double. The interface demands the method; the test does not exercise it. An empty body is the correct implementation."
+    },
+    {
+      "rule": "typescript:S1082",
+      "path": "frontend/src/components/ThemePicker.tsx",
+      "line": 86,
+      "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener.",
+      "resolution": "WONTFIX",
+      "reason": "Backdrop click-to-dismiss. The keyboard path exists: the dialog closes on Escape (useEffect keydown listener) and has a focusable close button."
+    },
+    {
+      "rule": "typescript:S6848",
+      "path": "frontend/src/components/ThemePicker.tsx",
+      "line": 86,
+      "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.",
+      "resolution": "WONTFIX",
+      "reason": "Backdrop click-to-dismiss. The keyboard path exists: the dialog closes on Escape (useEffect keydown listener) and has a focusable close button."
+    },
+    {
+      "rule": "typescript:S6848",
+      "path": "frontend/src/components/ThemePicker.tsx",
+      "line": 87,
+      "message": "Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "Inner div's onClick only calls stopPropagation to keep backdrop clicks from closing the dialog; it is not an interactive control, so a keyboard handler is meaningless here."
+    },
+    {
+      "rule": "typescript:S1082",
+      "path": "frontend/src/components/ThemePicker.tsx",
+      "line": 87,
+      "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener.",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "The inner div's onClick only calls stopPropagation, so a backdrop click does not close the dialog through it. Not an interactive control; a keyboard handler would be meaningless."
+    },
+    {
+      "rule": "java:S2143",
+      "path": "src/main/java/pvt/phgg/chess/server/auth/JwtUtil.java",
+      "line": null,
+      "message": "Use the \"java.time\" API for date and time.",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "JwtUtil already models time with java.time (Instant, Duration). Date.from() appears only at the JJWT API boundary, whose issuedAt/expiration signatures take java.util.Date \u2014 there is no java.time overload to switch to."
+    },
+    {
+      "rule": "typescript:S6479",
+      "path": "frontend/src/components/CapturedPieces.tsx",
+      "line": 14,
+      "message": "Do not use Array index in keys",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "Captured pieces are append-only and never reordered or removed, and the list holds duplicates (two rooks, eight pawns) so no value-based key exists. Index keys are correct for this list."
+    }
+  ],
+  "hotspots": []
+}

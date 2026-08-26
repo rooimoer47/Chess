@@ -31,6 +31,8 @@ public class GameSession {
     private static final int BOARD_SIZE = 8;
     private static final String WHITE = "WHITE";
     private static final String BLACK = "BLACK";
+    private static final String STANDARD = "STANDARD";
+    private static final String CHESS960 = "CHESS960";
 
     private final ObjectMapper objectMapper;
     private final String variant;            // "STANDARD" | "CHESS960"
@@ -79,11 +81,11 @@ public class GameSession {
 
     // Used by unit tests — no recording
     public GameSession(ObjectMapper objectMapper) {
-        this(objectMapper, null, "STANDARD");
+        this(objectMapper, null, STANDARD);
     }
 
     public GameSession(ObjectMapper objectMapper, GameRecorder gameRecorder) {
-        this(objectMapper, gameRecorder, "STANDARD");
+        this(objectMapper, gameRecorder, STANDARD);
     }
 
     // For CHESS960 this generates a fresh random back rank; for STANDARD it uses the classic one.
@@ -101,11 +103,11 @@ public class GameSession {
     }
 
     private static String normalizeVariant(String variant) {
-        return "CHESS960".equals(variant) ? "CHESS960" : "STANDARD";
+        return CHESS960.equals(variant) ? CHESS960 : STANDARD;
     }
 
     private static String startingPositionFor(String variant) {
-        return "CHESS960".equals(variant)
+        return CHESS960.equals(variant)
                 ? Chess960Generator.generateBackRank()
                 : GameEngine.STANDARD_BACK_RANK;
     }
@@ -121,7 +123,7 @@ public class GameSession {
                                        String whiteUsername, Long whitePlayerId,
                                        String blackUsername, Long blackPlayerId,
                                        List<GameMove> moves) {
-        return restore(mapper, recorder, gameId, mode, botType, "STANDARD", GameEngine.STANDARD_BACK_RANK,
+        return restore(mapper, recorder, gameId, mode, botType, STANDARD, GameEngine.STANDARD_BACK_RANK,
                 whiteUsername, whitePlayerId, blackUsername, blackPlayerId, moves);
     }
 
@@ -216,7 +218,7 @@ public class GameSession {
     }
 
     private static BotStrategy selectStrategy(String botType, String variant) {
-        boolean useBook = !"CHESS960".equals(variant); // opening book is standard-position-only
+        boolean useBook = !CHESS960.equals(variant); // opening book is standard-position-only
         return switch (botType) {
             case "alan"    -> new MinimaxBotStrategy(2, useBook);
             case "barbara" -> new MinimaxBotStrategy(3, useBook);
@@ -324,7 +326,8 @@ public class GameSession {
         }
         boolean isWhite = username.equals(whiteUsername);
         String mode = botEnabled ? "BOT" : "HUMAN";
-        String opponentUsername = botEnabled ? null : (isWhite ? blackUsername : whiteUsername);
+        String humanOpponent = isWhite ? blackUsername : whiteUsername;
+        String opponentUsername = botEnabled ? null : humanOpponent;
         return new ActiveGameSummary(gameId, mode, botEnabled ? botType : null,
                 opponentUsername, isWhite ? WHITE : BLACK, "IN_PROGRESS", variant);
     }
@@ -373,6 +376,40 @@ public class GameSession {
             return PlayerRole.BLACK;
         }
         return null;
+    }
+
+    /** Which side this username plays here, whether or not they are currently connected. */
+    public synchronized PlayerRole slotOf(String username) {
+        if (username.equals(whiteUsername)) return PlayerRole.WHITE;
+        if (username.equals(blackUsername)) return PlayerRole.BLACK;
+        return null;
+    }
+
+    /**
+     * Binds ws to username's slot even when another socket already holds it —
+     * "latest connection wins" — and returns the socket that was displaced
+     * (null if the slot was free, or ws already held it).
+     *
+     * Only for the case {@link #rejoin} cannot serve: a second connection for a
+     * player whose previous socket is dead but whose close has not been
+     * processed yet. Reconnecting is inherently racy — the browser can open the
+     * new socket before the old one's close reaches the server — and without
+     * this the new connection falls through to matchmaking and strands the
+     * player in the queue while this session waits on a socket nobody is
+     * listening to.
+     *
+     * Safe against the displaced socket's close arriving afterwards: {@link
+     * #disconnect} keys off {@link #roleOf}, which compares socket identity, so
+     * the late close no longer matches a slot and is ignored.
+     */
+    public synchronized WebSocketSession takeOverSlot(WebSocketSession ws, String username) {
+        PlayerRole slot = slotOf(username);
+        if (slot == null) throw new IllegalStateException(username + " holds no slot in this game");
+
+        WebSocketSession previous = slot == PlayerRole.WHITE ? whiteSession : blackSession;
+        if (slot == PlayerRole.WHITE) whiteSession = ws; else blackSession = ws;
+        disconnectedAt = null;
+        return previous == ws ? null : previous;
     }
 
     // Called by GameSessionManager's scheduled sweep. Bot games are exempt —
@@ -638,7 +675,7 @@ public class GameSession {
     // instead — the engine translates that gesture back to the real castle. Standard games keep the
     // classic king-two-squares target so nothing about existing play or replays changes.
     private LegalMove toLegalMove(APiece piece, int row, int col, Position target) {
-        if ("CHESS960".equals(variant) && target.isCastle() && piece.isKing()) {
+        if (CHESS960.equals(variant) && target.isCastle() && piece.isKing()) {
             King king = (King) piece;
             int rookFile = target.getCol() < 4 ? king.getQueensideRookFile() : king.getKingsideRookFile();
             return new LegalMove(row, col, row, rookFile);
