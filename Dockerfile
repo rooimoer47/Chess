@@ -24,8 +24,12 @@ WORKDIR /app
 COPY --from=backend /app/target/*.jar app.jar
 # Serving HTTP as root means a JVM-level compromise starts with root in the
 # container. Nothing here needs it — the jar only reads its own directory.
+# /logs is logback's default destination (see logback.xml) and has to exist
+# up front: an unprivileged user cannot create a directory at the filesystem
+# root, so without this the file appender silently fails to open.
 RUN addgroup -S chess && adduser -S -G chess chess \
-    && chown -R chess:chess /app
+    && mkdir -p /logs \
+    && chown -R chess:chess /app /logs
 USER chess
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

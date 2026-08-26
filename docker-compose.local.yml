@@ -26,6 +26,11 @@ services:
       DB_URL: jdbc:postgresql://db:5432/chess
       DB_USER: chess
       DB_PASSWORD: changeme
+    # ./logs is bind-mounted, so the container writes into a host directory
+    # owned by whoever checked the repo out — not by the image's `chess` user.
+    # Run as the host user instead, which also stops the container leaving
+    # files behind that the host account cannot delete.
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
     volumes:
       - ./logs:/logs
     entrypoint: ["sh", "-c", ": > /logs/chess.log && exec java -jar /app/app.jar"]

@@ -15,11 +15,10 @@ export DB_URL="${DB_URL//db:5432/localhost:5432}"
 export LOG_PATH="${LOG_PATH:-$PWD/logs}"
 mkdir -p "$LOG_PATH"
 
-# If docker-compose has run before, the container (running as root) leaves
-# chess.log owned by root in the bind-mounted ./logs — remove it so logback
-# can recreate it as the current user. Safe: directory write access is all
-# that's needed to unlink a file you don't own, and this only ever touches
-# this one specific log file.
+# docker-compose.local.yml now runs the container as the host user, so it no
+# longer leaves a root-owned chess.log in the bind-mounted ./logs. This clears
+# one left behind by an older run. Safe: directory write access is all that's
+# needed to unlink a file you don't own, and it only touches this one file.
 rm -f "$LOG_PATH/chess.log"
 
 mvn spring-boot:run -Dspring-boot.run.mainClass=pvt.phgg.chess.ChessApplication
