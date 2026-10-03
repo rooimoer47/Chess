@@ -72,6 +72,12 @@ public abstract class APiece {
             tempBoard[candidate.getRow()][candidate.getCol()] = this.copy();
             tempBoard[this.pos.getRow()][this.pos.getCol()] = new EmptySquare(this.pos);
             tempBoard[candidate.getRow()][candidate.getCol()].setCurrentPosition(candidate);
+            if (candidate.isEnPassant()) {
+                // The captured pawn sits beside the capturing one, not on the target square. Leaving
+                // it on the board would block checks it no longer blocks and keep a checking pawn alive.
+                Position captured = new Position(this.pos.getRow(), candidate.getCol());
+                tempBoard[captured.getRow()][captured.getCol()] = new EmptySquare(captured);
+            }
             if (!boardState.isInCheck(tempBoard, this.isWhite())) {
                 legalPositions.add(candidate);
             }

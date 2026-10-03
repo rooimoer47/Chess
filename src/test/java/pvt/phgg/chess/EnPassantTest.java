@@ -1,6 +1,7 @@
 package pvt.phgg.chess;
 
 import org.junit.jupiter.api.Test;
+import pvt.phgg.chess.piece.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -90,5 +91,60 @@ class EnPassantTest {
         MoveResult result = engine.applyMove(p(4, 4), p(5, 3)); // white tries e5xd6 e.p. — too late
 
         assertEquals(MoveResult.Type.INVALID, result.type(), "En passant should be invalid after the window expires");
+    }
+
+    // --- En passant and check: the captured pawn is not on the target square, so the check test
+    // must remove it from the board as well. ---
+
+    private static APiece[][] emptyBoard() {
+        APiece[][] b = new APiece[8][8];
+        for (int r = 0; r < 8; r++)
+            for (int c = 0; c < 8; c++)
+                b[r][c] = new EmptySquare(new Position(r, c));
+        return b;
+    }
+
+    private static <T extends APiece> T place(APiece[][] b, T piece, boolean hasMoved) {
+        if (hasMoved) piece.moved();
+        b[piece.getCurrentPosition().getRow()][piece.getCurrentPosition().getCol()] = piece;
+        return piece;
+    }
+
+    @Test
+    void enPassantCanCaptureTheCheckingPawn() {
+        // White Ke4, Pe5; Black Kh8, Pd7. Black plays d7-d5, checking the king on e4. Taking the
+        // checking pawn en passant (exd6) is a legal way out of check.
+        APiece[][] b = emptyBoard();
+        place(b, new King(p(3, 4), true), true);
+        place(b, new Pawn(p(4, 4), true), true);
+        place(b, new King(p(7, 7), false), true);
+        place(b, new Pawn(p(6, 3), false), false);
+        GameEngine engine = new GameEngine(b, false);
+        move(engine, 6, 3, 4, 3);  // black d7-d5+
+        assertEquals(GameStatus.CHECK, engine.getStatus());
+
+        MoveResult result = engine.applyMove(p(4, 4), p(5, 3)); // white e5xd6 e.p.
+
+        assertTrue(result.isValid(), "En passant that removes the checking pawn should be legal");
+        assertFalse(engine.getPiece(4, 3).isPositionOccupied(), "Captured pawn on d5 should be gone");
+        assertNotEquals(GameStatus.CHECK, engine.getStatus());
+    }
+
+    @Test
+    void enPassantCannotExposeTheKingAlongTheRank() {
+        // White Ka5, Pb5; Black Rh5, Kh8, Pc7. After c7-c5 the two pawns are all that stand between
+        // the rook and the king. bxc6 e.p. would take both off the rank, so it is illegal.
+        APiece[][] b = emptyBoard();
+        place(b, new King(p(4, 0), true), true);
+        place(b, new Pawn(p(4, 1), true), true);
+        place(b, new Rook(p(4, 7), false), true);
+        place(b, new King(p(7, 7), false), true);
+        place(b, new Pawn(p(6, 2), false), false);
+        GameEngine engine = new GameEngine(b, false);
+        move(engine, 6, 2, 4, 2);  // black c7-c5
+
+        assertTrue(engine.getLegalMoves(p(4, 1)).stream().noneMatch(Position::isEnPassant),
+                "bxc6 e.p. should not be offered");
+        assertEquals(MoveResult.Type.INVALID, engine.applyMove(p(4, 1), p(5, 2)).type());
     }
 }
