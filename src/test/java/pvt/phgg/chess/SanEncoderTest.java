@@ -7,6 +7,7 @@ import pvt.phgg.chess.GameReplay.ReplayedPosition;
 import pvt.phgg.chess.piece.*;
 
 import java.util.List;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static pvt.phgg.chess.FenSerializerTest.moves;
@@ -16,7 +17,7 @@ class SanEncoderTest {
     private static List<String> sans(String backRank, boolean chess960, String uciMoves) {
         return GameReplay.replay(backRank, chess960, moves(uciMoves)).stream()
                 .map(ReplayedPosition::playedSan)
-                .filter(san -> san != null)
+                .filter(Objects::nonNull)
                 .toList();
     }
 

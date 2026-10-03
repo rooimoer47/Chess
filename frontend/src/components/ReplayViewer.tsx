@@ -59,7 +59,10 @@ export function ReplayViewer() {
   const requestAnalysis = () => {
     setAnalysisError('');
     fetch(`/api/games/${gameId}/analysis`, { method: 'POST' })
-      .then(r => r.ok ? loadAnalysis() : r.text().then(t => Promise.reject(new Error(t || 'Could not start the analysis'))))
+      .then(async r => {
+        if (!r.ok) throw new Error((await r.text()) || 'Could not start the analysis');
+        loadAnalysis();
+      })
       .catch(e => setAnalysisError(errorMessage(e)));
   };
 

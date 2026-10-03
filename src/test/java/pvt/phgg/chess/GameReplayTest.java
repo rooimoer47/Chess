@@ -32,8 +32,9 @@ class GameReplayTest {
 
     @Test
     void illegalRecordedMoveIsRejected() {
+        List<RecordedMove> pawnMovedTwice = moves("e2e4 e2e4");
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
-                () -> GameReplay.replay(GameEngine.STANDARD_BACK_RANK, false, moves("e2e4 e2e4")));
+                () -> GameReplay.replay(GameEngine.STANDARD_BACK_RANK, false, pawnMovedTwice));
         assertTrue(e.getMessage().contains("move 2"));
     }
 

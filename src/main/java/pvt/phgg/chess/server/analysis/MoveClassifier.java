@@ -38,8 +38,12 @@ public final class MoveClassifier {
         double white;
         if (eval.mateIn() != null) {
             int mate = eval.mateIn();
-            // mate_in 0: the side to move is checkmated.
-            white = mate > 0 ? 1 : mate < 0 ? -1 : (whiteToMove ? -1 : 1);
+            if (mate != 0) {
+                white = mate > 0 ? 1 : -1;
+            } else {
+                // mate_in 0: the side to move is checkmated.
+                white = whiteToMove ? -1 : 1;
+            }
         } else {
             white = winChance(eval.evalCp());
         }
