@@ -122,7 +122,7 @@ public class GameEngine {
         return halfMoveClock;
     }
 
-    Position getLastMoveTarget() {
+    public Position getLastMoveTarget() {
         return lastMoveTarget;
     }
 
