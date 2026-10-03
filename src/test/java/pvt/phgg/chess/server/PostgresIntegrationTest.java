@@ -14,7 +14,11 @@ import java.lang.annotation.Target;
 // available, so `mvn test` still runs the rest of the suite without it.
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@SpringBootTest(properties = "chess.jwt.secret=aW50ZWdyYXRpb24tdGVzdHMtb25seS1ub3QtYS1yZWFsLWp3dC1zZWNyZXQ=")
+@SpringBootTest(properties = {
+        "chess.jwt.secret=aW50ZWdyYXRpb24tdGVzdHMtb25seS1ub3QtYS1yZWFsLWp3dC1zZWNyZXQ=",
+        // Tests drive the analysis worker step by step instead of racing a background thread.
+        "chess.analysis.worker-enabled=false"
+})
 @Import(PostgresTestConfig.class)
 @Testcontainers(disabledWithoutDocker = true)
 public @interface PostgresIntegrationTest {
