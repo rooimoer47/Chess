@@ -235,6 +235,17 @@ function ChessGame({ username, botType, colorPreference, theme, boardTheme, vari
         </>
       );
     }
+    if (rematchState === 'offered') {
+      return (
+        <>
+          <p className="rematch-status">Opponent wants a rematch.</p>
+          <button type="button" className="start-btn" onClick={sendRematchRequest}>Accept</button>
+          <button type="button" className="lobby-games-btn" onClick={() => { sendRematchDecline(); onLeaveGame(); }}>
+            Decline
+          </button>
+        </>
+      );
+    }
     if (rematchState === 'declined') {
       return (
         <>

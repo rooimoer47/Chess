@@ -1,7 +1,79 @@
 {
   "project": "pvt.phgg.chess:chess",
-  "exported": "2026-08-26T06:32:18.984247+00:00",
+  "exported": "2026-10-03T21:04:38.586846+00:00",
   "issues": [
+    {
+      "rule": "java:S2925",
+      "path": "src/test/java/pvt/phgg/chess/server/analysis/AnalysisQueueIntegrationTest.java",
+      "line": 344,
+      "message": "Remove this use of \"Thread.sleep()\".",
+      "resolution": "WONTFIX",
+      "reason": "The one test that drives the real worker thread: a short pause before a bounded poll. Not worth adding Awaitility for a single test."
+    },
+    {
+      "rule": "java:S2925",
+      "path": "src/test/java/pvt/phgg/chess/server/analysis/AnalysisQueueIntegrationTest.java",
+      "line": 351,
+      "message": "Remove this use of \"Thread.sleep()\".",
+      "resolution": "WONTFIX",
+      "reason": "Bounded poll (5 s deadline) waiting for the real worker thread to finish a review. Not worth adding Awaitility for a single test."
+    },
+    {
+      "rule": "java:S135",
+      "path": "src/main/java/pvt/phgg/chess/SanEncoder.java",
+      "line": 96,
+      "message": "Reduce the total number of break and continue statements in this loop to use at most one.",
+      "resolution": "WONTFIX",
+      "reason": "Two guard-clause continues read more clearly than nesting the loop body; a style threshold the project does not enforce."
+    },
+    {
+      "rule": "java:S1602",
+      "path": "src/main/java/pvt/phgg/chess/server/analysis/GameAnalysisService.java",
+      "line": 76,
+      "message": "Remove useless curly braces around statement",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "The braces make the lambda void-only so it binds to JdbcTemplate's RowCallbackHandler (one call per row). Without them the call is ambiguous with ResultSetExtractor and does not compile (verified)."
+    },
+    {
+      "rule": "java:S1602",
+      "path": "src/main/java/pvt/phgg/chess/server/analysis/GameAnalysisService.java",
+      "line": 121,
+      "message": "Remove useless curly braces around statement",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "The braces make the lambda void-only so it binds to JdbcTemplate's RowCallbackHandler (one call per row). Without them the call is ambiguous with ResultSetExtractor and does not compile (verified)."
+    },
+    {
+      "rule": "java:S3077",
+      "path": "src/main/java/pvt/phgg/chess/server/analysis/AnalysisWorker.java",
+      "line": 30,
+      "message": "Use a thread-safe type; adding \"volatile\" is not enough to make this field thread-safe.",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "The field only hands a Thread reference between start/stop and the worker loop; volatile is exactly what that needs, and Thread itself is thread-safe for interrupt/join."
+    },
+    {
+      "rule": "java:S2142",
+      "path": "src/main/java/pvt/phgg/chess/server/analysis/AnalysisWorker.java",
+      "line": 74,
+      "message": "Either re-interrupt this method or rethrow the \"InterruptedException\" that can be caught here.",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "Top-level loop of the worker's own thread: an interrupt is the stop signal and returning ends the thread, so there is no caller left to observe the interrupt flag."
+    },
+    {
+      "rule": "java:S2142",
+      "path": "src/main/java/pvt/phgg/chess/server/analysis/AnalysisWorker.java",
+      "line": 80,
+      "message": "Either re-interrupt this method or rethrow the \"InterruptedException\" that can be caught here.",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "Top-level loop of the worker's own thread: an interrupt is the stop signal and returning ends the thread, so there is no caller left to observe the interrupt flag."
+    },
+    {
+      "rule": "java:S125",
+      "path": "src/main/java/pvt/phgg/chess/server/analysis/AnalysisWorker.java",
+      "line": 115,
+      "message": "This block of commented-out lines of code should be removed.",
+      "resolution": "FALSE-POSITIVE",
+      "reason": "Not code: an English note ('Step 5 adds: re-run the LLM step for reviews stuck in COMMENTING') marking where the planned LLM step plugs in."
+    },
     {
       "rule": "java:S135",
       "path": "src/main/java/pvt/phgg/chess/server/GameSessionManager.java",

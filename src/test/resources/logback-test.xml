@@ -1,0 +1,17 @@
+<configuration>
+
+    <!-- Tests log to the console only. The main logback.xml also writes to
+         /logs, which exists inside the container but not on a dev machine. -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="pvt.phgg.chess" level="DEBUG" />
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+</configuration>

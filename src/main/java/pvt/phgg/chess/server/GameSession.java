@@ -549,7 +549,7 @@ public class GameSession {
                     pendingPromotionTo = to;
                     pendingPromotionWasWhite = wasWhiteTurn;
                 } else {
-                    gameRecorder.recordMove(gameId, ++moveCount, from, to, null);
+                    gameRecorder.recordMove(gameId, ++moveCount, from, recordedTarget(to), null);
                     if (isTerminalResult(result.type())) {
                         endRecording(result.type(), wasWhiteTurn);
                     }
@@ -557,6 +557,20 @@ public class GameSession {
             }
         }
         return result;
+    }
+
+    // Records a Chess960 castle as the king moving onto its own rook. The c/g-file target the
+    // random bot passes can also be a plain one-square king step, and replay (restore, the replay
+    // viewer) only sees the stored squares, so it would make that step instead of the castle.
+    // Every other move is recorded exactly as requested.
+    private Position recordedTarget(Position requested) {
+        Position resolved = engine.getLastMoveTarget();
+        if (!CHESS960.equals(variant) || !resolved.isCastle()) {
+            return requested;
+        }
+        King king = (King) engine.getPiece(resolved.getRow(), resolved.getCol());
+        int rookFile = resolved.getCol() < 4 ? king.getQueensideRookFile() : king.getKingsideRookFile();
+        return new Position(resolved.getRow(), rookFile);
     }
 
     private void recordCapture(boolean byWhite, PieceType pieceType) {

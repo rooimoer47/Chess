@@ -3,12 +3,15 @@ package pvt.phgg.chess.server;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import pvt.phgg.chess.Position;
 import pvt.phgg.chess.piece.PieceType;
 import pvt.phgg.chess.server.game.GameMove;
 import pvt.phgg.chess.server.game.GameRecorder;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -69,6 +72,72 @@ class GameSessionVariantTest {
 
         assertEquals("CHESS960", session.getVariant());
         assertBoardMatchesBackRank(session, backRank);
+    }
+
+    /**
+     * RNBBQKNR puts the king on f1 and the kingside rook on h1. Once the g1 knight has gone, g1 is
+     * both a plain king step and the castle target, so a castle recorded as "f1 to g1" would replay
+     * as the plain step. The random bot castles like this, passing the engine's own castle-flagged
+     * target, so the recording has to say "castle" on its own.
+     */
+    @Test
+    void chess960CastleWithAmbiguousTargetReplaysAsCastle() {
+        List<GameMove> opening = List.of(
+                new GameMove(1L, 1, 0, 6, 2, 7, null),   // Ng1-h3
+                new GameMove(1L, 2, 6, 0, 5, 0, null));  // a7-a6
+        GameSession live = GameSession.restore(objectMapper, gameRecorder, 1L, "HUMAN", null,
+                "CHESS960", "RNBBQKNR", "alice", 1L, "bob", 2L, opening);
+
+        assertTrue(live.applyMove(new Position(0, 5), new Position(0, 6, Position.SpecialMove.CASTLE)).isValid());
+        assertCastledKingside(live, "live game");
+
+        ArgumentCaptor<Position> from = ArgumentCaptor.forClass(Position.class);
+        ArgumentCaptor<Position> to = ArgumentCaptor.forClass(Position.class);
+        verify(gameRecorder).recordMove(eq(1L), eq(3), from.capture(), to.capture(), isNull());
+        List<GameMove> recorded = new ArrayList<>(opening);
+        recorded.add(new GameMove(1L, 3, from.getValue().getRow(), from.getValue().getCol(),
+                to.getValue().getRow(), to.getValue().getCol(), null));
+
+        GameSession replayed = GameSession.restore(objectMapper, gameRecorder, 1L, "HUMAN", null,
+                "CHESS960", "RNBBQKNR", "alice", 1L, "bob", 2L, recorded);
+        assertCastledKingside(replayed, "replay of the recorded moves");
+    }
+
+    /**
+     * RNBKQBNR puts the king on d1 and the queenside rook on a1. Once b1 and c1 are clear, c1 is both a
+     * plain king step and the queenside castle target.
+     */
+    @Test
+    void chess960QueensideCastleWithAmbiguousTargetReplaysAsCastle() {
+        List<GameMove> opening = List.of(
+                new GameMove(1L, 1, 0, 1, 2, 2, null),   // Nb1-c3
+                new GameMove(1L, 2, 6, 0, 5, 0, null),   // a7-a6
+                new GameMove(1L, 3, 1, 3, 2, 3, null),   // d2-d3
+                new GameMove(1L, 4, 5, 0, 4, 0, null),   // a6-a5
+                new GameMove(1L, 5, 0, 2, 2, 4, null),   // Bc1-e3
+                new GameMove(1L, 6, 6, 7, 5, 7, null));  // h7-h6
+        GameSession live = GameSession.restore(objectMapper, gameRecorder, 1L, "HUMAN", null,
+                "CHESS960", "RNBKQBNR", "alice", 1L, "bob", 2L, opening);
+
+        assertTrue(live.applyMove(new Position(0, 3), new Position(0, 2, Position.SpecialMove.CASTLE)).isValid());
+
+        ArgumentCaptor<Position> to = ArgumentCaptor.forClass(Position.class);
+        verify(gameRecorder).recordMove(eq(1L), eq(7), any(), to.capture(), isNull());
+        assertEquals(new Position(0, 0), to.getValue(), "recorded as the king onto its a1 rook");
+
+        List<GameMove> recorded = new ArrayList<>(opening);
+        recorded.add(new GameMove(1L, 7, 0, 3, 0, 0, null));
+        GameSession replayed = GameSession.restore(objectMapper, gameRecorder, 1L, "HUMAN", null,
+                "CHESS960", "RNBKQBNR", "alice", 1L, "bob", 2L, recorded);
+        assertEquals(PieceType.KING, replayed.getPiece(0, 2).getPieceType(), "king on c1");
+        assertEquals(PieceType.ROOK, replayed.getPiece(0, 3).getPieceType(), "rook on d1");
+        assertFalse(replayed.getPiece(0, 0).isPositionOccupied(), "a1 empty");
+    }
+
+    private static void assertCastledKingside(GameSession session, String which) {
+        assertEquals(PieceType.KING, session.getPiece(0, 6).getPieceType(), which + ": king on g1");
+        assertEquals(PieceType.ROOK, session.getPiece(0, 5).getPieceType(), which + ": rook on f1");
+        assertFalse(session.getPiece(0, 7).isPositionOccupied(), which + ": h1 empty");
     }
 
     private void assertBoardMatchesBackRank(GameSession session, String backRank) {
