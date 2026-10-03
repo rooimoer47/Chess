@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import pvt.phgg.chess.GameEngine;
 import pvt.phgg.chess.GameReplay;
 import pvt.phgg.chess.GameReplay.ReplayedPosition;
@@ -13,7 +15,9 @@ import pvt.phgg.chess.server.analysis.GameAnalysisService.GameAnalysis;
 import pvt.phgg.chess.server.analysis.GameAnalysisService.MoveReview;
 import pvt.phgg.chess.server.game.GameAccess;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -31,6 +35,7 @@ class GameAnalysisServiceIntegrationTest {
     @Autowired GameAnalysisService service;
     @Autowired GameAccess gameAccess;
     @Autowired StubAnalyzerConfig.StubAnalyzer analyzer;
+    @Autowired ObjectMapper objectMapper;
 
     @BeforeEach
     void reset() {
@@ -174,5 +179,39 @@ class GameAnalysisServiceIntegrationTest {
         assertEquals("f6", moves.get(3).san());
         assertEquals("Weakens the king.", moves.get(3).comment());
         assertTrue(moves.subList(0, 3).stream().allMatch(m -> m.comment() == null));
+    }
+
+    private static Set<String> fieldNames(JsonNode node) {
+        return new HashSet<>(node.propertyNames());
+    }
+
+    /**
+     * The JSON the replay viewer reads, as the app's own mapper writes it. Field names must match
+     * GameAnalysis / MoveReview / Eval in frontend/src/types.ts, and nulls must be written out
+     * (the frontend checks for null, not a missing field).
+     */
+    @Test
+    void reviewJsonMatchesTheFrontendTypes() {
+        List<String> epd = epds(GAME);
+        analyzer.failFor = epd.get(1)::equals;  // one missing evaluation, so a null appears in evals
+        long game = TestGames.ended(jdbc, GAME);
+        queue.enqueueGame(game);
+        drain();
+
+        JsonNode json = objectMapper.readTree(objectMapper.writeValueAsString(service.analysis(game).orElseThrow()));
+
+        assertEquals(Set.of("status", "positionsTotal", "positionsDone", "evals", "moves"), fieldNames(json));
+        assertEquals("DONE", json.get("status").asString());
+        assertTrue(json.get("evals").get(1).isNull(), "missing evaluation written as null");
+        assertEquals(Set.of("cp", "mate"), fieldNames(json.get("evals").get(0)));
+        assertTrue(json.get("evals").get(0).get("mate").isNull());
+
+        JsonNode move = json.get("moves").get(0);
+        assertEquals(Set.of("ply", "san", "uci", "from", "to", "classification", "bestSan", "bestUci",
+                "bestFrom", "bestTo", "line", "comment"), fieldNames(move));
+        assertEquals(1, move.get("ply").asInt());
+        assertEquals("UNKNOWN", move.get("classification").asString(), "enum written by name");
+        assertTrue(move.get("line").isArray());
+        assertTrue(move.get("comment").isNull());
     }
 }
