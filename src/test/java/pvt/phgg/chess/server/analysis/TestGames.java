@@ -34,10 +34,19 @@ final class TestGames {
 
     // endedAtSql is an SQL expression, e.g. "now()" or "NULL" for a game still in progress.
     static long insert(JdbcTemplate jdbc, String uciMoves, String endedAtSql, Long whitePlayerId, Long blackPlayerId) {
+        return insert(jdbc, uciMoves, endedAtSql, whitePlayerId, blackPlayerId, "STANDARD", "RNBQKBNR");
+    }
+
+    static long ended960(JdbcTemplate jdbc, String backRank, String uciMoves) {
+        return insert(jdbc, uciMoves, "now()", null, null, "CHESS960", backRank);
+    }
+
+    static long insert(JdbcTemplate jdbc, String uciMoves, String endedAtSql, Long whitePlayerId, Long blackPlayerId,
+                       String variant, String startingPosition) {
         Long id = jdbc.queryForObject("""
-                INSERT INTO games (white_player_id, black_player_id, mode, result, ended_at)
-                VALUES (?, ?, 'HUMAN', 'RESIGNED', %s) RETURNING id
-                """.formatted(endedAtSql), Long.class, whitePlayerId, blackPlayerId);
+                INSERT INTO games (white_player_id, black_player_id, mode, result, ended_at, variant, starting_position)
+                VALUES (?, ?, 'HUMAN', 'RESIGNED', %s, ?, ?) RETURNING id
+                """.formatted(endedAtSql), Long.class, whitePlayerId, blackPlayerId, variant, startingPosition);
         int number = 0;
         for (String uci : uciMoves.isBlank() ? new String[0] : uciMoves.split(" ")) {
             UciMove m = UciMoveCodec.decode(uci);

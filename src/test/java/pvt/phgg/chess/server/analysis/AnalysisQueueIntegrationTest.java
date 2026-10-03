@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import pvt.phgg.chess.server.PostgresIntegrationTest;
 import pvt.phgg.chess.server.analysis.AnalysisQueue.EnqueueResult;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -259,5 +260,102 @@ class AnalysisQueueIntegrationTest {
         });
         t.start();
         return t;
+    }
+
+    private static final String START_EPD = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+
+    private void cache(String epd, int depth, String engine) {
+        jdbc.update("""
+                INSERT INTO position_evals (epd, chess960, depth, eval_cp, best_uci, pv_uci, engine)
+                VALUES (?, false, ?, 20, 'e2e4', 'e2e4', ?)
+                """, epd, depth, engine);
+    }
+
+    private Integer cachedDepth(String epd) {
+        return jdbc.queryForObject("SELECT depth FROM position_evals WHERE epd = ? AND chess960 = false",
+                Integer.class, epd);
+    }
+
+    @Test
+    void promotionsAreReadBackFromTheDatabase() {
+        long game = endedGame("a2a4 b7b5 a4b5 a7a6 b5a6 c8b7 a6b7 b8c6 b7a8n");
+
+        assertEquals(EnqueueResult.QUEUED, queue.enqueueGame(game));
+        drain();
+
+        assertEquals(10, jobs(game, "DONE"));
+        assertEquals("DONE", reviewStatus(game));
+    }
+
+    @Test
+    void gameThatCannotBeReplayedFailsItsReview() {
+        long game = endedGame("e2e4 e7e5 e4e6");  // the third move isn't legal
+
+        assertEquals(EnqueueResult.UNREADABLE, queue.enqueueGame(game));
+
+        assertEquals("FAILED", reviewStatus(game));
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM analysis_jobs WHERE game_id = ?", Integer.class, game));
+    }
+
+    /** Raising the configured depth: positions cached by a shallower search are analysed again. */
+    @Test
+    void shallowerCachedEvalIsAnalysedAgain() {
+        cache(START_EPD, 10, "old");
+        queue.enqueueGame(endedGame("e2e4 e7e5"));
+        drain();
+
+        assertTrue(analyzer.analyzed.contains(START_EPD));
+        assertEquals(16, cachedDepth(START_EPD));
+    }
+
+    /** Lowering the configured depth: deeper cached results still count. */
+    @Test
+    void deeperCachedEvalIsUsed() {
+        cache(START_EPD, 30, "deep");
+        queue.enqueueGame(endedGame("e2e4 e7e5"));
+        drain();
+
+        assertFalse(analyzer.analyzed.contains(START_EPD));
+        assertEquals(30, cachedDepth(START_EPD));
+    }
+
+    @Test
+    void savingNeverReplacesADeeperEval() {
+        cache(START_EPD, 10, "old");
+        // An engine that answers shallower than what's already stored (e.g. stopped early).
+        analyzer.answers.put(START_EPD, new PositionEval(5, null, "d2d4", "d2d4", 8));
+        queue.enqueueGame(endedGame("e2e4 e7e5"));
+        drain();
+
+        assertEquals(10, cachedDepth(START_EPD));
+        assertEquals("old", jdbc.queryForObject("SELECT engine FROM position_evals WHERE epd = ?", String.class, START_EPD));
+    }
+
+    /** The background thread production runs, rather than tests calling runOnce() themselves. */
+    @Test
+    void workerThreadIsWokenByARequestAndStopsCleanly() throws InterruptedException {
+        // A long poll interval: the game only gets analysed in time if the request wakes the worker.
+        AnalysisProperties properties = new AnalysisProperties(true, "unused", 16, 1, 32, 0, 6, 3,
+                Duration.ofSeconds(30), Duration.ofSeconds(5));
+        AnalysisWorker running = new AnalysisWorker(jdbc, queue, analyzer, properties);
+        queue.awaitWork(Duration.ZERO);  // clear wake-ups left over from earlier tests
+        running.start();
+        try {
+            Thread.sleep(300);  // let it run recovery and go idle
+            long game = endedGame("e2e4 e7e5 g1f3");
+
+            queue.requestAnalysis(game);
+
+            long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+            while (!"DONE".equals(reviewStatus(game)) && System.nanoTime() < deadline) {
+                Thread.sleep(50);
+            }
+            assertEquals("DONE", reviewStatus(game));
+        } finally {
+            running.stop();
+        }
+        assertTrue(Thread.getAllStackTraces().keySet().stream()
+                        .noneMatch(t -> t.getName().equals("analysis-worker") && t.isAlive()),
+                "worker thread has stopped");
     }
 }

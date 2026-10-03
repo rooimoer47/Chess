@@ -94,4 +94,22 @@ class FenSerializerTest {
         assertEquals("r1bqkb1r/pppppppp/2n2n2/8/8/2N2N2/PPPPPPPP/R1BQKB1R w KQkq -", viaNf3First.getLast().epd());
         assertEquals(viaNf3First.getLast().epd(), viaNc3First.getLast().epd());
     }
+
+    @Test
+    void enPassantSquareWhenBlackCanCapture() {
+        assertEquals("rnbqkbnr/pppp1ppp/8/8/P2Pp3/8/1PP1PPPP/RNBQKBNR b KQkq d3 0 3",
+                finalFen(STANDARD, false, "a2a3 e7e5 a3a4 e5e4 d2d4"));
+    }
+
+    @Test
+    void noCastlingRightsLeft() {
+        assertEquals("rnbq1bnr/ppppkppp/8/4p3/4P3/8/PPPPKPPP/RNBQ1BNR w - - 2 3",
+                finalFen(STANDARD, false, "e2e4 e7e5 e1e2 e8e7"));
+    }
+
+    @Test
+    void chess960AfterQueensideCastling() {
+        assertEquals("rnbkqbnr/1pppppp1/7p/p7/8/2NPB3/PPP1PPPP/2KRQBNR b ha - 1 4",
+                finalFen("RNBKQBNR", true, "b1c3 a7a6 d2d3 a6a5 c1e3 h7h6 d1a1"));
+    }
 }

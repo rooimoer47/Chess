@@ -36,6 +36,27 @@ async function playShortGameAndOpenReplay(page: Page): Promise<{ gameId: string;
   return { gameId, reply: { from: square(bot.fromRow, bot.fromCol), to: square(bot.toRow, bot.toCol) } };
 }
 
+/**
+ * Checks that an arrow's tail sits on `from` and its tip on `to`, as drawn on screen. The polygon's
+ * points are in board units (viewBox 0..8); the tail is between the first and last points and the
+ * tip is the fourth (see ReviewArrows).
+ */
+async function expectArrowOnScreen(page: Page, testId: string, from: string, to: string) {
+  const svg = (await page.locator('.review-arrows').boundingBox())!;
+  const points = (await page.getByTestId(testId).getAttribute('points'))!
+    .split(' ').map(p => p.split(',').map(Number));
+  const toScreen = ([x, y]: number[]) => ({ x: svg.x + x / 8 * svg.width, y: svg.y + y / 8 * svg.height });
+  const tail = toScreen([(points[0][0] + points[6][0]) / 2, (points[0][1] + points[6][1]) / 2]);
+  const tip = toScreen(points[3]);
+  for (const [point, square] of [[tail, from], [tip, to]] as const) {
+    const box = (await page.getByTestId(`square-${square}`).boundingBox())!;
+    expect(point.x, `${testId} over ${square}`).toBeGreaterThan(box.x);
+    expect(point.x, `${testId} over ${square}`).toBeLessThan(box.x + box.width);
+    expect(point.y, `${testId} over ${square}`).toBeGreaterThan(box.y);
+    expect(point.y, `${testId} over ${square}`).toBeLessThan(box.y + box.height);
+  }
+}
+
 test('a replay is only visible to the players of the game', async ({ page }) => {
   const { gameId } = await playShortGameAndOpenReplay(page);
   await expect(page.locator('.board')).toBeVisible();
@@ -83,6 +104,17 @@ test('a review shows labels, arrows and the engine move', async ({ page }) => {
   await expect(page.getByTestId('arrow-played')).toHaveAttribute('data-to', reply.to);
   await expect(page.getByTestId('arrow-best')).toHaveAttribute('data-to', best.to);
   await expect(page.getByTestId('eval-bar')).toHaveAttribute('title', '+4.0');
+  await expectArrowOnScreen(page, 'arrow-played', reply.from, reply.to);
+  await expectArrowOnScreen(page, 'arrow-best', best.from, best.to);
+  await expect(page.locator('.eval-bar-white')).toHaveCSS('bottom', '0px');
+
+  // Seen from Black's side the board flips, and the arrows and eval bar must flip with it.
+  await page.getByRole('button', { name: 'View as WHITE' }).click();
+  await expect(page.getByRole('button', { name: 'View as BLACK' })).toBeVisible();
+  await expectArrowOnScreen(page, 'arrow-played', reply.from, reply.to);
+  await expectArrowOnScreen(page, 'arrow-best', best.from, best.to);
+  await expect(page.locator('.eval-bar-white')).toHaveCSS('top', '0px');
+  await page.getByRole('button', { name: 'View as BLACK' }).click();
 
   // Back one move: the engine's move was played, so there is no second arrow.
   await page.keyboard.press('ArrowLeft');

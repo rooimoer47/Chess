@@ -81,4 +81,15 @@ class MoveClassifierTest {
         assertEquals(UNKNOWN, MoveClassifier.classify(null, cp(0, null), true, "e2e4"));
         assertEquals(UNKNOWN, MoveClassifier.classify(cp(0, "e2e4"), null, true, "e2e4"));
     }
+
+    @Test
+    void blackDeliveringCheckmateIsBest() {
+        // After Black's move White is to move and checkmated: mate_in 0.
+        assertEquals(BEST, MoveClassifier.classify(mate(-1), mate(0), false, "d8h4"));
+    }
+
+    @Test
+    void blackWalkingIntoMateIsABlunder() {
+        assertEquals(BLUNDER, MoveClassifier.classify(cp(0, "e7e5"), mate(2), false, "f7f6"));
+    }
 }

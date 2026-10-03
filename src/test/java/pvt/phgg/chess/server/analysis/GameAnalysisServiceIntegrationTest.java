@@ -138,4 +138,41 @@ class GameAnalysisServiceIntegrationTest {
         assertFalse(gameAccess.isPlayer("review_stranger", game));
         assertFalse(gameAccess.isPlayer("review_nobody", game));
     }
+
+    /** The cache is keyed by variant as well as position; a 960 review must look in the 960 cache. */
+    @Test
+    void chess960GameIsReviewedFromThe960Cache() {
+        long game = TestGames.ended960(jdbc, "RNBKQBNR", "b1c3 a7a6 d2d3 a6a5 c1e3 h7h6 d1a1 b7b6");
+        queue.enqueueGame(game);
+        drain();
+
+        GameAnalysis analysis = service.analysis(game).orElseThrow();
+
+        assertEquals(Boolean.TRUE, jdbc.queryForObject(
+                "SELECT bool_and(chess960) FROM analysis_jobs WHERE game_id = ?", Boolean.class, game),
+                "every position queued as a 960 position");
+        assertEquals("DONE", analysis.status());
+        assertTrue(analysis.evals().stream().allMatch(e -> e != null), "every position found in the 960 cache");
+        MoveReview castle = analysis.moves().get(6);
+        assertEquals("O-O-O", castle.san());
+        assertEquals("d1a1", castle.uci());
+        assertEquals("d1", castle.from());
+        assertEquals("c1", castle.to(), "arrow goes to where the king lands, not onto the rook");
+        assertNotEquals(MoveClassification.UNKNOWN, castle.classification());
+    }
+
+    @Test
+    void commentsAttachToTheMoveTheyDescribe() {
+        long game = TestGames.ended(jdbc, GAME);
+        queue.enqueueGame(game);
+        drain();
+        // ply 4 is the position after Black's 2...f6, i.e. the fourth move.
+        jdbc.update("INSERT INTO move_comments (game_id, ply, comment) VALUES (?, 4, 'Weakens the king.')", game);
+
+        List<MoveReview> moves = service.analysis(game).orElseThrow().moves();
+
+        assertEquals("f6", moves.get(3).san());
+        assertEquals("Weakens the king.", moves.get(3).comment());
+        assertTrue(moves.subList(0, 3).stream().allMatch(m -> m.comment() == null));
+    }
 }

@@ -120,4 +120,26 @@ class SanEncoderTest {
         assertEquals(List.of("Nf3", "Nc6", "Bb5"), game.sanLine(2, List.of("g1f3", "b8c6", "f1b5")));
         assertEquals(List.of("Nf3"), game.sanLine(2, List.of("g1f3", "e2e4")), "stops at the first illegal move");
     }
+
+    @Test
+    void underpromotion() {
+        assertEquals("bxa8=N", sans("a2a4 b7b5 a4b5 a7a6 b5a6 c8b7 a6b7 b8c6 b7a8n").getLast());
+    }
+
+    @Test
+    void chess960QueensideCastle() {
+        ReplayedGame game = GameReplay.replayGame("RNBKQBNR", true, moves("b1c3 a7a6 d2d3 a6a5 c1e3 h7h6 d1a1"));
+
+        assertEquals("O-O-O", game.positions().get(6).playedSan());
+        assertEquals(new MoveDisplay("O-O-O", "d1", "c1"), game.describe(6, "d1a1"));
+    }
+
+    @Test
+    void illegalMovesAreRejected() {
+        ReplayedGame game = GameReplay.replayGame(GameEngine.STANDARD_BACK_RANK, false, List.of());
+
+        assertThrows(IllegalArgumentException.class, () -> game.describe(0, "e2e5"), "pawn can't move three");
+        assertThrows(IllegalArgumentException.class, () -> game.describe(0, "e7e5"), "not White's piece");
+        assertThrows(IllegalArgumentException.class, () -> game.describe(0, "e3e4"), "empty square");
+    }
 }

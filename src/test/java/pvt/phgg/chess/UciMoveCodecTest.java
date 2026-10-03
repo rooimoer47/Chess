@@ -97,4 +97,30 @@ class UciMoveCodecTest {
         assertEquals("d1e1", lastPlayedUci("RNBKQBNR", true,
                 with(moves(CLEAR_960_KINGSIDE), stored(0, 3, 0, 4))));
     }
+
+    // Clears b1 and c1 so White can castle queenside from RNBKQBNR: the king stays next to c1, so a
+    // c1 target is also a plain king step, and only king-onto-rook (d1 onto a1) is unambiguous.
+    private static final String CLEAR_960_QUEENSIDE = "b1c3 a7a6 d2d3 a6a5 c1e3 h7h6";
+
+    @Test
+    void chess960QueensideCastleIsKingOntoQueensideRook() {
+        assertEquals("d1a1", lastPlayedUci("RNBKQBNR", true,
+                with(moves(CLEAR_960_QUEENSIDE), stored(0, 3, 0, 0))));
+    }
+
+    @Test
+    void underpromotionsKeepTheirPiece() {
+        String toTheEighth = "a2a4 b7b5 a4b5 a7a6 b5a6 c8b7 a6b7 b8c6 ";
+        assertEquals("b7a8n", lastPlayedUci(GameEngine.STANDARD_BACK_RANK, false, moves(toTheEighth + "b7a8n")));
+        assertEquals("b7a8r", lastPlayedUci(GameEngine.STANDARD_BACK_RANK, false, moves(toTheEighth + "b7a8r")));
+        assertEquals("b7a8b", lastPlayedUci(GameEngine.STANDARD_BACK_RANK, false, moves(toTheEighth + "b7a8b")));
+    }
+
+    @Test
+    void decodesEveryPromotionPiece() {
+        assertEquals(PromotionChoice.QUEEN, UciMoveCodec.decode("a7a8q").promotion());
+        assertEquals(PromotionChoice.ROOK, UciMoveCodec.decode("a7a8r").promotion());
+        assertEquals(PromotionChoice.BISHOP, UciMoveCodec.decode("a7a8b").promotion());
+        assertEquals(PromotionChoice.KNIGHT, UciMoveCodec.decode("a7a8n").promotion());
+    }
 }
