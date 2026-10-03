@@ -115,10 +115,17 @@ docker compose -f docker-compose.sonar.yml up -d     # sonar-scan.sh does this
 ./sonar-scan.sh --backup                             # pg_dump, ~6 MB
 ```
 
-**Upgrading** is now supported: bump the `sonarqube:` image in the compose file
-and restart. SonarQube migrates the schema itself. Take a `--backup` first
-anyway. (It ran on embedded H2 until 2026-08-26, where upgrading was impossible
-and the database had to be thrown away — hence the migration.)
+**Upgrading** is now supported: take a `--backup`, bump the `sonarqube:` image in
+the compose file, and `up -d`. The server then stops at `DB_MIGRATION_NEEDED`
+(see `/api/system/status`) until the schema migration is triggered:
+
+```bash
+curl -X POST http://localhost:9000/api/system/migrate_db   # then wait for status UP
+```
+
+(Done this way for 26.8 → 26.9 on 2026-10-03. It ran on embedded H2 until
+2026-08-26, where upgrading was impossible and the database had to be thrown
+away — hence the move to PostgreSQL.)
 
 Admin is `admin` / `Admin1234chess!`. SonarQube 26.8 enforces 12+ characters
 with mixed case and a symbol, so the older `admin1234` no longer qualifies.
