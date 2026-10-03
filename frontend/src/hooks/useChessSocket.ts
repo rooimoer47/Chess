@@ -40,7 +40,9 @@ export interface GameState {
   statusMessage: string | null;
   drawOfferedByOpponent: boolean;
   drawOfferPending: boolean;
-  rematchState: null | 'waiting' | 'declined';
+  // waiting: we asked and the opponent hasn't answered; offered: the opponent asked us;
+  // declined: the opponent said no to our request.
+  rematchState: null | 'waiting' | 'offered' | 'declined';
   waitSeconds: number | null;
 }
 
@@ -161,8 +163,9 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', gameId:
             setState(s => ({ ...s, statusMessage: 'Opponent disconnected.', legalMoves: [] }));
             break;
 
+          // The server sends this to the player being asked, not to the one asking.
           case 'REMATCH_REQUESTED':
-            setState(s => ({ ...s, rematchState: 'waiting' }));
+            setState(s => ({ ...s, rematchState: 'offered' }));
             break;
 
           case 'REMATCH_DECLINED':
@@ -197,10 +200,15 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', gameId:
       };
     };
 
-    connect();
+    // Connect on the next tick, not straight away. React StrictMode (development only) mounts this
+    // effect, cleans it up and mounts it again in one go; connecting immediately opened a socket in
+    // the throwaway first mount too. The server then saw two connections for one player, and on a
+    // slow server the dead one could take the player's place in the matchmaking queue.
+    const startTimer = setTimeout(connect, 0);
 
     return () => {
       cleanedUp = true;
+      clearTimeout(startTimer);
       if (reconnectTimer) clearTimeout(reconnectTimer);
       wsRef.current?.close();
     };
@@ -228,8 +236,11 @@ export function useChessSocket(botType = '', colorPreference = 'RANDOM', gameId:
     setState(s => ({ ...s, drawOfferedByOpponent: false }));
   }, []);
 
+  // Asking for a rematch, or accepting the opponent's request: the server starts the new game once
+  // both players have asked.
   const sendRematchRequest = useCallback(() => {
     wsRef.current?.send(JSON.stringify({ type: 'REMATCH_REQUEST' }));
+    setState(s => ({ ...s, rematchState: s.rematchState === 'offered' ? s.rematchState : 'waiting' }));
   }, []);
 
   const sendRematchDecline = useCallback(() => {
