@@ -3,99 +3,45 @@ package pvt.phgg.chess.server.analysis;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import pvt.phgg.chess.UciMoveCodec;
-import pvt.phgg.chess.UciMoveCodec.UciMove;
 import pvt.phgg.chess.server.PostgresIntegrationTest;
 import pvt.phgg.chess.server.analysis.AnalysisQueue.EnqueueResult;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /** The analysis queue against real Postgres, with Stockfish replaced by a stub. */
 @PostgresIntegrationTest
+@Import(StubAnalyzerConfig.class)
 class AnalysisQueueIntegrationTest {
 
     // Nf3/Nc3 and Nc3/Nf3 orders reach the same position after four plies.
     private static final String KNIGHTS_KINGSIDE_FIRST = "g1f3 g8f6 b1c3 b8c6";
     private static final String KNIGHTS_QUEENSIDE_FIRST = "b1c3 b8c6 g1f3 g8f6";
 
-    @TestConfiguration
-    static class StubConfig {
-        @Bean
-        @Primary
-        StubAnalyzer stubAnalyzer() {
-            return new StubAnalyzer();
-        }
-    }
-
-    static class StubAnalyzer implements PositionAnalyzer {
-        final List<String> analyzed = Collections.synchronizedList(new ArrayList<>());
-        volatile Predicate<String> failFor = epd -> false;
-        volatile boolean available = true;
-
-        @Override
-        public PositionEval analyze(String fen, boolean chess960) throws AnalysisException {
-            analyzed.add(fen);
-            if (failFor.test(fen)) throw new AnalysisException("stub failure");
-            return new PositionEval(Math.floorMod(fen.hashCode(), 100), null, "e2e4", "e2e4 e7e5", 16);
-        }
-
-        @Override
-        public String engineName() {
-            return "stub";
-        }
-
-        @Override
-        public boolean isAvailable() {
-            return available;
-        }
-    }
-
     @Autowired JdbcTemplate jdbc;
     @Autowired AnalysisQueue queue;
     @Autowired AnalysisWorker worker;
-    @Autowired StubAnalyzer analyzer;
+    @Autowired StubAnalyzerConfig.StubAnalyzer analyzer;
 
     @BeforeEach
     void reset() {
-        jdbc.execute("""
-                TRUNCATE move_comments, analysis_jobs, game_reviews, position_evals,
-                         game_moves, elo_history, games RESTART IDENTITY CASCADE
-                """);
-        analyzer.analyzed.clear();
-        analyzer.failFor = epd -> false;
-        analyzer.available = true;
+        TestGames.clear(jdbc);
+        analyzer.reset();
     }
 
     private long endedGame(String uciMoves) {
-        return game(uciMoves, "now()");
+        return TestGames.ended(jdbc, uciMoves);
     }
 
     private long game(String uciMoves, String endedAtSql) {
-        Long id = jdbc.queryForObject(
-                "INSERT INTO games (mode, result, ended_at) VALUES ('HUMAN', 'RESIGNED', " + endedAtSql + ") RETURNING id",
-                Long.class);
-        int number = 0;
-        for (String uci : uciMoves.isBlank() ? new String[0] : uciMoves.split(" ")) {
-            UciMove m = UciMoveCodec.decode(uci);
-            jdbc.update("""
-                    INSERT INTO game_moves (game_id, move_number, from_row, from_col, to_row, to_col, promotion_choice)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """, id, ++number, m.from().getRow(), m.from().getCol(), m.to().getRow(), m.to().getCol(),
-                    m.promotion() == null ? null : m.promotion().name());
-        }
-        return id;
+        return TestGames.insert(jdbc, uciMoves, endedAtSql, null, null);
     }
 
     private void drain() {

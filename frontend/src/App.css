@@ -754,6 +754,170 @@ body {
 
 .replay-controls button:hover { background: #3e3e3e; }
 
+/* ---- Game review (replay viewer) ---- */
+
+.review-layout {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.review-board-row {
+  display: flex;
+  gap: 6px;
+}
+
+/* Leave room for the eval bar beside the board on narrow screens. */
+.review-board-row .board {
+  width: min(576px, 100vw - 40px);
+}
+
+.board-wrap {
+  position: relative;
+}
+
+.review-arrows {
+  position: absolute;
+  inset: 2px; /* inside the board's border */
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  pointer-events: none;
+}
+
+.eval-bar {
+  position: relative;
+  width: 18px;
+  background: #3a3a3a;
+  border: 1px solid #555;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.eval-bar-white {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: #e8e8e8;
+  transition: height 0.25s ease;
+}
+
+.eval-bar-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.55rem;
+  font-weight: bold;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  padding: 4px 0;
+}
+
+.eval-bar-label-bottom { bottom: 0; color: #333; }
+.eval-bar-label-top { top: 0; color: #ddd; }
+
+.review-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(280px, 100vw - 16px);
+}
+
+.review-panel {
+  background: #242424;
+  border: 1px solid #383838;
+  border-radius: 6px;
+  padding: 10px 12px;
+  min-height: 64px;
+}
+
+.review-panel p { margin: 0; }
+.review-panel p + p { margin-top: 6px; }
+
+.review-move {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: bold;
+}
+
+.review-label { font-size: 0.9rem; }
+.review-best { color: #ccc; font-size: 0.92rem; }
+.review-line { color: #888; }
+.review-comment { color: #ddd; font-size: 0.92rem; line-height: 1.4; }
+.review-muted { color: #888; }
+
+.move-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 360px;
+  overflow-y: auto;
+  background: #242424;
+  border: 1px solid #383838;
+  border-radius: 6px;
+}
+
+.move-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 1fr;
+  align-items: center;
+}
+
+.move-number {
+  color: #777;
+  font-size: 0.85rem;
+  text-align: right;
+  padding-right: 6px;
+}
+
+.move-cell {
+  padding: 3px 6px;
+  font-size: 0.92rem;
+  text-align: left;
+}
+
+.move-btn {
+  border: none;
+  background: none;
+  color: #ddd;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.move-btn:hover { background: #333; }
+.move-current { background: #3d4f63; color: #fff; }
+.move-current:hover { background: #46596e; }
+
+.move-badge {
+  margin-left: 2px;
+  font-weight: bold;
+}
+
+.review-status {
+  color: #aaa;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.review-status.error { color: #e06060; }
+
+.analyse-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #5a7a9a;
+  background: #2e3d4d;
+  color: #e6eef6;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.analyse-btn:hover { background: #3a4d61; }
+
 /* ---- Opponent cards ---- */
 
 .opponent-cards {

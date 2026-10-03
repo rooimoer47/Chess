@@ -1,0 +1,141 @@
+package pvt.phgg.chess.server.analysis;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import pvt.phgg.chess.GameEngine;
+import pvt.phgg.chess.GameReplay;
+import pvt.phgg.chess.GameReplay.ReplayedPosition;
+import pvt.phgg.chess.server.PostgresIntegrationTest;
+import pvt.phgg.chess.server.analysis.GameAnalysisService.GameAnalysis;
+import pvt.phgg.chess.server.analysis.GameAnalysisService.MoveReview;
+import pvt.phgg.chess.server.game.GameAccess;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/** The review the replay viewer reads, built from the queue's results (stub engine, real Postgres). */
+@PostgresIntegrationTest
+@Import(StubAnalyzerConfig.class)
+class GameAnalysisServiceIntegrationTest {
+
+    // 3...f6 is given a losing evaluation below, so it comes out as a blunder.
+    private static final String GAME = "e2e4 e7e5 g1f3 f7f6";
+
+    @Autowired JdbcTemplate jdbc;
+    @Autowired AnalysisQueue queue;
+    @Autowired AnalysisWorker worker;
+    @Autowired GameAnalysisService service;
+    @Autowired GameAccess gameAccess;
+    @Autowired StubAnalyzerConfig.StubAnalyzer analyzer;
+
+    @BeforeEach
+    void reset() {
+        TestGames.clear(jdbc);
+        jdbc.update("DELETE FROM users WHERE username LIKE 'review_%'");
+        analyzer.reset();
+    }
+
+    private void drain() {
+        for (int i = 0; i < 1000 && worker.runOnce(); i++) {
+            // analyse everything queued
+        }
+    }
+
+    private static List<String> epds(String uciMoves) {
+        return GameReplay.replay(GameEngine.STANDARD_BACK_RANK, false, TestGames.moves(uciMoves)).stream()
+                .map(ReplayedPosition::epd).toList();
+    }
+
+    @Test
+    void doneReviewHasEveryMoveWithLabelsAndEngineAdvice() {
+        List<String> epd = epds(GAME);
+        analyzer.answers.put(epd.get(2), new PositionEval(30, null, "g1f3", "g1f3 b8c6 f1b5", 16));
+        analyzer.answers.put(epd.get(3), new PositionEval(30, null, "b8c6", "b8c6 f1b5", 16));
+        analyzer.answers.put(epd.get(4), new PositionEval(600, null, "f3e5", "f3e5", 16));
+        long game = TestGames.ended(jdbc, GAME);
+        queue.enqueueGame(game);
+        drain();
+
+        GameAnalysis analysis = service.analysis(game).orElseThrow();
+
+        assertEquals("DONE", analysis.status());
+        assertEquals(5, analysis.positionsTotal());
+        assertEquals(5, analysis.positionsDone());
+        assertEquals(5, analysis.evals().size(), "one per position, start included");
+        assertEquals(600, analysis.evals().get(4).cp());
+        assertEquals(List.of("e4", "e5", "Nf3", "f6"), analysis.moves().stream().map(MoveReview::san).toList());
+
+        MoveReview nf3 = analysis.moves().get(2);
+        assertEquals(3, nf3.ply());
+        assertEquals("g1", nf3.from());
+        assertEquals("f3", nf3.to());
+        assertEquals(MoveClassification.BEST, nf3.classification(), "played the engine's move");
+
+        MoveReview f6 = analysis.moves().get(3);
+        assertEquals(MoveClassification.BLUNDER, f6.classification());
+        assertEquals("Nc6", f6.bestSan());
+        assertEquals("b8c6", f6.bestUci());
+        assertEquals("b8", f6.bestFrom());
+        assertEquals("c6", f6.bestTo());
+        assertEquals(List.of("Nc6", "Bb5"), f6.line());
+        assertNull(f6.comment());
+    }
+
+    @Test
+    void positionWithoutEvaluationGivesUnknownMoves() {
+        List<String> epd = epds(GAME);
+        analyzer.failFor = epd.get(2)::equals;
+        long game = TestGames.ended(jdbc, GAME);
+        queue.enqueueGame(game);
+        drain();
+
+        GameAnalysis analysis = service.analysis(game).orElseThrow();
+
+        assertEquals("DONE", analysis.status(), "one failure in five doesn't fail the review");
+        assertNull(analysis.evals().get(2));
+        assertEquals(MoveClassification.UNKNOWN, analysis.moves().get(1).classification(), "the move into it");
+        assertEquals(MoveClassification.UNKNOWN, analysis.moves().get(2).classification(), "the move out of it");
+        assertNull(analysis.moves().get(2).bestSan());
+        assertEquals(List.of(), analysis.moves().get(2).line());
+    }
+
+    @Test
+    void notQueuedAndInProgressReviewsOnlyReportProgress() {
+        long game = TestGames.ended(jdbc, GAME);
+        assertEquals("NONE", service.analysis(game).orElseThrow().status());
+
+        queue.enqueueGame(game);
+        worker.runOnce();
+        GameAnalysis analysis = service.analysis(game).orElseThrow();
+
+        assertEquals("ENGINE", analysis.status());
+        assertEquals(5, analysis.positionsTotal());
+        assertEquals(1, analysis.positionsDone());
+        assertTrue(analysis.moves().isEmpty());
+        assertTrue(analysis.evals().isEmpty());
+    }
+
+    @Test
+    void liveAndMissingGamesHaveNoReview() {
+        long live = TestGames.insert(jdbc, GAME, "NULL", null, null);
+
+        assertTrue(service.analysis(live).isEmpty());
+        assertTrue(service.analysis(999_999).isEmpty());
+    }
+
+    @Test
+    void onlyTheTwoPlayersHaveAccess() {
+        Long white = jdbc.queryForObject(
+                "INSERT INTO users (username, password_hash) VALUES ('review_white', 'x') RETURNING id", Long.class);
+        jdbc.update("INSERT INTO users (username, password_hash) VALUES ('review_stranger', 'x')");
+        long game = TestGames.insert(jdbc, GAME, "now()", white, null);
+
+        assertTrue(gameAccess.isPlayer("review_white", game));
+        assertFalse(gameAccess.isPlayer("review_stranger", game));
+        assertFalse(gameAccess.isPlayer("review_nobody", game));
+    }
+}

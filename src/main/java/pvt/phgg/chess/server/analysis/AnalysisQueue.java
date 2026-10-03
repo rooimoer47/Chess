@@ -56,16 +56,7 @@ public class AnalysisQueue {
         Map<String, Object> game = games.getFirst();
         if (game.get("ended_at") == null) return EnqueueResult.NOT_ENDED;
 
-        List<RecordedMove> moves = jdbcTemplate.query("""
-                SELECT from_row, from_col, to_row, to_col, promotion_choice
-                FROM game_moves WHERE game_id = ? ORDER BY move_number
-                """,
-                (rs, rowNum) -> new RecordedMove(
-                        new Position(rs.getInt("from_row"), rs.getInt("from_col")),
-                        new Position(rs.getInt("to_row"), rs.getInt("to_col")),
-                        rs.getString("promotion_choice") == null ? null
-                                : PromotionChoice.valueOf(rs.getString("promotion_choice"))),
-                gameId);
+        List<RecordedMove> moves = recordedMoves(jdbcTemplate, gameId);
         if (moves.size() < MIN_PLIES) return EnqueueResult.TOO_SHORT;
 
         boolean chess960 = "CHESS960".equals(game.get("variant"));
@@ -109,6 +100,19 @@ public class AnalysisQueue {
         });
         wakeUp.release();
         return EnqueueResult.QUEUED;
+    }
+
+    static List<RecordedMove> recordedMoves(JdbcTemplate jdbcTemplate, long gameId) {
+        return jdbcTemplate.query("""
+                SELECT from_row, from_col, to_row, to_col, promotion_choice
+                FROM game_moves WHERE game_id = ? ORDER BY move_number
+                """,
+                (rs, rowNum) -> new RecordedMove(
+                        new Position(rs.getInt("from_row"), rs.getInt("from_col")),
+                        new Position(rs.getInt("to_row"), rs.getInt("to_col")),
+                        rs.getString("promotion_choice") == null ? null
+                                : PromotionChoice.valueOf(rs.getString("promotion_choice"))),
+                gameId);
     }
 
     // Queues every game requested since the last call. Runs on the worker thread.
