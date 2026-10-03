@@ -17,6 +17,10 @@ public class GameEngine {
     private final Map<String, Integer> positionHistory = new HashMap<>();
     private boolean whiteTurn = true;
     private int halfMoveClock = 0;
+    // The target of the last applied move as the engine resolved it, carrying the castle/en passant
+    // flag. Callers' targets don't say whether a move was a castle: a king-onto-rook gesture and a
+    // c/g-file target can both mean one, and a c/g-file target can also be a plain king step.
+    private Position lastMoveTarget;
 
     public GameEngine() {
         this(STANDARD_BACK_RANK);
@@ -72,6 +76,7 @@ public class GameEngine {
             // legal move satisfies it — otherwise the normal step (listed first) would win.
             if (legalPos.equals(to) && (!to.isCastle() || legalPos.isCastle())) {
                 boolean captureOccurred = boardState.isOccupied(board, legalPos);
+                lastMoveTarget = legalPos;
                 executeMove(piece, from, legalPos);
 
                 if (piece.isPawn() && (legalPos.getRow() == 7 || legalPos.getRow() == 0)) {
@@ -111,6 +116,14 @@ public class GameEngine {
         APiece[][] copy = boardState.deepCopy(board);
         GameEngine temp = new GameEngine(copy, whiteTurn, halfMoveClock);
         return temp.applyMove(from, to).type();
+    }
+
+    int getHalfMoveClock() {
+        return halfMoveClock;
+    }
+
+    Position getLastMoveTarget() {
+        return lastMoveTarget;
     }
 
     // --- Internal ---
