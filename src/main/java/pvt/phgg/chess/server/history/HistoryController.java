@@ -9,12 +9,13 @@ import pvt.phgg.chess.GameEngine;
 import pvt.phgg.chess.MoveResult;
 import pvt.phgg.chess.Position;
 import pvt.phgg.chess.PromotionChoice;
-import pvt.phgg.chess.server.auth.JwtUtil;
 import pvt.phgg.chess.server.dto.LastMoveDto;
 import pvt.phgg.chess.server.dto.PieceDto;
+import pvt.phgg.chess.server.game.GameAccess;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
@@ -51,19 +52,19 @@ public class HistoryController {
     private static final String UNAUTHORIZED = "Unauthorized";
 
     private final JdbcTemplate jdbcTemplate;
-    private final JwtUtil jwtUtil;
+    private final GameAccess gameAccess;
 
-    public HistoryController(JdbcTemplate jdbcTemplate, JwtUtil jwtUtil) {
+    public HistoryController(JdbcTemplate jdbcTemplate, GameAccess gameAccess) {
         this.jdbcTemplate = jdbcTemplate;
-        this.jwtUtil = jwtUtil;
+        this.gameAccess = gameAccess;
     }
 
     @GetMapping("/users/{username:.+}/games")
     public ResponseEntity<Object> getUserGames(@PathVariable String username,
                                                @RequestParam(required = false) String variant,
                                                HttpServletRequest request) {
-        String tokenUsername = extractUsername(request);
-        if (tokenUsername == null || !tokenUsername.equals(username)) {
+        Optional<String> tokenUsername = gameAccess.username(request);
+        if (tokenUsername.isEmpty() || !tokenUsername.get().equals(username)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(UNAUTHORIZED);
         }
 
@@ -88,9 +89,8 @@ public class HistoryController {
 
     @GetMapping("/games/{gameId}/moves")
     public ResponseEntity<Object> getGameMoves(@PathVariable long gameId, HttpServletRequest request) {
-        if (extractUsername(request) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(UNAUTHORIZED);
-        }
+        ResponseEntity<Object> denied = denyUnlessPlayer(gameId, request);
+        if (denied != null) return denied;
 
         List<GameMoveDto> moves = jdbcTemplate.query(GAME_MOVES_SQL,
                 (rs, rowNum) -> new GameMoveDto(
@@ -107,9 +107,8 @@ public class HistoryController {
 
     @GetMapping("/games/{gameId}/boards")
     public ResponseEntity<Object> getGameBoards(@PathVariable long gameId, HttpServletRequest request) {
-        if (extractUsername(request) == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(UNAUTHORIZED);
-        }
+        ResponseEntity<Object> denied = denyUnlessPlayer(gameId, request);
+        if (denied != null) return denied;
 
         List<GameMoveDto> moves = jdbcTemplate.query(GAME_MOVES_SQL,
                 (rs, rowNum) -> new GameMoveDto(
@@ -158,8 +157,15 @@ public class HistoryController {
         return new BoardSnapshotDto(moveNumber, board, lastMove);
     }
 
-    private String extractUsername(HttpServletRequest request) {
-        String token = jwtUtil.extractFromCookies(request.getCookies());
-        return (token != null && jwtUtil.isValid(token)) ? jwtUtil.extractUsername(token) : null;
+    // Only the game's two players may replay it. Anyone else gets 404, so game ids can't be probed.
+    private ResponseEntity<Object> denyUnlessPlayer(long gameId, HttpServletRequest request) {
+        Optional<String> username = gameAccess.username(request);
+        if (username.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(UNAUTHORIZED);
+        }
+        if (!gameAccess.isPlayer(username.get(), gameId)) {
+            return ResponseEntity.notFound().build();
+        }
+        return null;
     }
 }
