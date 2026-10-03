@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.7</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -19,6 +19,9 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>21</java.version>
+        <!-- A property rather than inline so `mvn versions:update-properties` can
+             update it: the versions plugin rewrites plugin versions only through properties. -->
+        <sonar-maven-plugin.version>4.0.1.6619</sonar-maven-plugin.version>
         <sonar.host.url>http://localhost:9000</sonar.host.url>
         <!-- sonar.token must be passed on the command line: -Dsonar.token=<token>.
              Run ./sonar-scan.sh rather than invoking the goal directly. -->
@@ -119,7 +122,7 @@
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
-                <version>4.0.0.4121</version>
+                <version>${sonar-maven-plugin.version}</version>
             </plugin>
         </plugins>
     </build>
