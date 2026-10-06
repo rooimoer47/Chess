@@ -118,6 +118,11 @@ public class GameEngine {
         return temp.applyMove(from, to).type();
     }
 
+    // A copy of the board, for read-only analysis (BoardFacts) that needs to try things on it.
+    APiece[][] boardCopy() {
+        return boardState.deepCopy(board);
+    }
+
     int getHalfMoveClock() {
         return halfMoveClock;
     }
