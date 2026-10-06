@@ -30,6 +30,8 @@ class AnalysisQueueIntegrationTest {
     @Autowired AnalysisQueue queue;
     @Autowired AnalysisWorker worker;
     @Autowired StubAnalyzerConfig.StubAnalyzer analyzer;
+    @Autowired CommentaryProperties commentaryProperties;
+    @Autowired CommentaryWorker commentaryWorker;
 
     @BeforeEach
     void reset() {
@@ -337,7 +339,8 @@ class AnalysisQueueIntegrationTest {
         // A long poll interval: the game only gets analysed in time if the request wakes the worker.
         AnalysisProperties properties = new AnalysisProperties(true, "unused", 16, 1, 32, 0, 6, 3,
                 Duration.ofSeconds(30), Duration.ofSeconds(5));
-        AnalysisWorker running = new AnalysisWorker(jdbc, queue, analyzer, properties);
+        AnalysisWorker running = new AnalysisWorker(jdbc, queue, analyzer, properties,
+                commentaryProperties, commentaryWorker);
         queue.awaitWork(Duration.ZERO);  // clear wake-ups left over from earlier tests
         running.start();
         try {
