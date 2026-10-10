@@ -167,6 +167,17 @@ class CommentaryUnitTest {
     }
 
     @Test
+    void theOpeningIsNamedOnlyWhileTheGameIsStillInIt() {
+        // 1.e4 e5 2.Bc4 is the last named position; after it come rook-pawn and knight-pawn moves.
+        LoadedGame game = game("e2e4 e7e5 f1c4 h7h6 a2a3 a7a6 h2h3 b7b6 b2b3 g7g6 g2g3 d7d6 d2d3", Map.of(), true, true);
+        assertEquals("Bishop's Opening (C23)", MoveFacts.describe(game, 3, MoveClassification.GOOD, false).opening());
+        assertEquals("Bishop's Opening (C23)", MoveFacts.describe(game, 8, MoveClassification.GOOD, false).opening());
+        assertNull(MoveFacts.describe(game, 9, MoveClassification.GOOD, false).opening());
+        // The move that reaches a named position is already in that opening.
+        assertEquals("King's Pawn Game (C20)", MoveFacts.describe(game, 1, MoveClassification.GOOD, false).opening());
+    }
+
+    @Test
     void numberedLines() {
         assertEquals("1.e4 e5 2.Nf3", MoveFacts.numbered(List.of("e4", "e5", "Nf3"), 0));
         assertEquals("3...Nf6 4.Qxf7#", MoveFacts.numbered(List.of("Nf6", "Qxf7#"), 5));
@@ -178,16 +189,17 @@ class CommentaryUnitTest {
     void promptListsTheFactsAndAsksForTheVerdict() {
         MoveContext context = MoveFacts.describe(scholarsMate(true, true), 5, MoveClassification.BLUNDER, false);
         String prompt = CommentaryPrompt.user(context);
-        assertTrue(prompt.startsWith("Move: 3...Nf6, played by Black.\nEngine verdict: blunder.\n"), prompt);
+        assertTrue(prompt.startsWith("Move: 3...Nf6, played by Black.\nOpening: Bishop's Opening (C23).\nEngine verdict: blunder.\n"), prompt);
         assertTrue(prompt.contains("- White's best reply is 4.Qxf7#.\n"), prompt);
         assertTrue(prompt.endsWith("Explain why 3...Nf6 was a blunder."), prompt);
         assertFalse(prompt.contains("/"), "no FEN in the prompt");
 
         String decisive = CommentaryPrompt.user(new MoveContext(6, "3...Nf6", "Black", MoveClassification.BLUNDER,
-                true, "+0.4", "mate", List.of()));
+                true, null, "+0.4", "mate", List.of()));
         assertTrue(decisive.endsWith("Explain why 3...Nf6 decided the game."), decisive);
+        assertFalse(decisive.contains("Opening:"), "no opening line without an opening");
         String inaccuracy = CommentaryPrompt.user(new MoveContext(6, "3...Nf6", "Black", MoveClassification.INACCURACY,
-                false, "+0.4", "+0.9", List.of()));
+                false, null, "+0.4", "+0.9", List.of()));
         assertTrue(inaccuracy.endsWith("was an inaccuracy."), inaccuracy);
     }
 

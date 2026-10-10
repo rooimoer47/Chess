@@ -40,8 +40,11 @@ final class CommentaryPrompt {
     static String user(MoveContext move) {
         String verdict = move.classification().name().toLowerCase(Locale.ROOT);
         StringBuilder prompt = new StringBuilder()
-                .append("Move: ").append(move.move()).append(", played by ").append(move.mover()).append(".\n")
-                .append("Engine verdict: ").append(verdict).append(".\n")
+                .append("Move: ").append(move.move()).append(", played by ").append(move.mover()).append(".\n");
+        if (move.opening() != null) {
+            prompt.append("Opening: ").append(move.opening()).append(".\n");
+        }
+        prompt.append("Engine verdict: ").append(verdict).append(".\n")
                 .append("Evaluation in pawns, from White's side: before the move ").append(move.evalBefore())
                 .append("; after it ").append(move.evalAfter()).append(".\n")
                 .append("Facts:\n");

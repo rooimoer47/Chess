@@ -6,6 +6,7 @@ import pvt.phgg.chess.GameEngine;
 import pvt.phgg.chess.GameReplay.MoveDisplay;
 import pvt.phgg.chess.GameReplay.ReplayedGame;
 import pvt.phgg.chess.GameReplay.ReplayedPosition;
+import pvt.phgg.chess.OpeningBook;
 import pvt.phgg.chess.piece.PieceType;
 import pvt.phgg.chess.server.analysis.GameAnalysisService.LoadedGame;
 
@@ -22,6 +23,8 @@ final class MoveFacts {
 
     // Two threatened pieces is plenty; more is noise for a two-sentence comment.
     private static final int MAX_THREATS = 2;
+    // A game still counts as in its opening for this many plies after its last named position.
+    private static final int OPENING_PLIES_AFTER_BOOK = 6;
 
     private MoveFacts() {
     }
@@ -126,8 +129,17 @@ final class MoveFacts {
             }
         }
 
-        return new MoveContext(index + 1, move, mover, classification, decisive,
+        return new MoveContext(index + 1, move, mover, classification, decisive, opening(replay, index),
                 evaluation(evalBefore, white), evaluation(evalAfter, !white), facts);
+    }
+
+    // The opening the move was played in, counting the position the move itself reaches. Null when
+    // the game has no named opening or left it more than a few moves ago.
+    private static String opening(ReplayedGame replay, int index) {
+        List<String> epds = replay.positions().stream().map(ReplayedPosition::epd).toList();
+        OpeningBook book = OpeningBook.standard();
+        if (index >= book.lastNamedPly(epds) + OPENING_PLIES_AFTER_BOOK) return null;
+        return book.at(epds, index + 1).map(o -> o.name() + " (" + o.eco() + ")").orElse(null);
     }
 
     // "12...Nf6 Nxe5 13.Bc4", numbered from the position at `ply`.
