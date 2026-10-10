@@ -14,6 +14,7 @@ import pvt.phgg.chess.server.analysis.llm.LlmException;
 import pvt.phgg.chess.server.analysis.llm.LlmReply;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +42,7 @@ public class CommentaryWorker {
     private final JdbcTemplate jdbcTemplate;
     private final GameAnalysisService analysisService;
     private final LlmClient llm;
+    private final OpeningNotes openingNotes;
     private final CommentaryProperties properties;
     private final AnalysisProperties analysisProperties;
     private final Semaphore wakeUp = new Semaphore(0);
@@ -49,10 +51,12 @@ public class CommentaryWorker {
     private boolean warnedUnavailable;
 
     public CommentaryWorker(JdbcTemplate jdbcTemplate, GameAnalysisService analysisService, LlmClient llm,
-                            CommentaryProperties properties, AnalysisProperties analysisProperties) {
+                            OpeningNotes openingNotes, CommentaryProperties properties,
+                            AnalysisProperties analysisProperties) {
         this.jdbcTemplate = jdbcTemplate;
         this.analysisService = analysisService;
         this.llm = llm;
+        this.openingNotes = openingNotes;
         this.properties = properties;
         this.analysisProperties = analysisProperties;
     }
@@ -159,16 +163,23 @@ public class CommentaryWorker {
         int dropped = 0;
         int tokens = 0;
         Duration llmTime = Duration.ZERO;
+        List<MoveContext> contexts = new ArrayList<>();
         for (KeyMove move : moves) {
             if (written.contains(move.index() + 1)) continue;
-            String prompt;
             try {
-                prompt = CommentaryPrompt.user(MoveFacts.describe(game, move.index(), move.classification(), move.decisive()));
+                contexts.add(MoveFacts.describe(game, move.index(), move.classification(), move.decisive()));
             } catch (RuntimeException e) {
                 log.warn("Can't describe game {} ply {}; no comment", gameId, move.index() + 1, e);
                 dropped++;
-                continue;
             }
+        }
+        // Looked up for every move before the first comment is written. Ollama holds one model at a
+        // time, so taking turns per move would reload the chat model for each comment.
+        contexts = openingNotes.annotate(contexts);
+        long withNote = contexts.stream().filter(context -> context.openingNote() != null).count();
+
+        for (MoveContext context : contexts) {
+            String prompt = CommentaryPrompt.user(context);
             Optional<String> comment = Optional.empty();
             for (int attempt = 1; attempt <= ATTEMPTS && comment.isEmpty(); attempt++) {
                 LlmReply reply = llm.generate(CommentaryPrompt.SYSTEM, prompt);
@@ -177,14 +188,14 @@ public class CommentaryWorker {
                 comment = CommentaryPrompt.check(reply.text(), prompt);
                 if (comment.isEmpty()) {
                     log.info("Rejected comment for game {} ply {} (attempt {}): {}",
-                            gameId, move.index() + 1, attempt, reply.text());
+                            gameId, context.ply(), attempt, reply.text());
                 }
             }
             if (comment.isPresent()) {
                 jdbcTemplate.update("""
                         INSERT INTO move_comments (game_id, ply, comment) VALUES (?, ?, ?)
                         ON CONFLICT (game_id, ply) DO UPDATE SET comment = EXCLUDED.comment
-                        """, gameId, move.index() + 1, comment.get());
+                        """, gameId, context.ply(), comment.get());
                 added++;
             } else {
                 dropped++;
@@ -193,8 +204,9 @@ public class CommentaryWorker {
         finish(gameId, llm.modelName());
 
         double seconds = llmTime.toMillis() / 1000.0;
-        log.info("Commented game {} with {}: {} comment(s) written, {} dropped, {} s total, {} s in the LLM, {} tokens/s",
-                gameId, llm.modelName(), added, dropped,
+        log.info("Commented game {} with {}: {} comment(s) written, {} dropped, {} with an opening note, "
+                        + "{} s total, {} s in the LLM, {} tokens/s",
+                gameId, llm.modelName(), added, dropped, withNote,
                 String.format("%.1f", (System.nanoTime() - start) / 1e9), String.format("%.1f", seconds),
                 seconds > 0 ? String.format("%.1f", tokens / seconds) : "-");
     }

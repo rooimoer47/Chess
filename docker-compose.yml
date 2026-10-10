@@ -27,7 +27,8 @@ services:
   # Local LLM for game-review comments. Not published to the host: only the
   # chess service talks to it. One request and one model at a time, unloaded
   # after 5 idle minutes, and capped so a runaway model can't starve Postgres.
-  # The app pulls the model itself on first use (CommentaryWorker).
+  # The app pulls its models itself on first use: the chat model and a small
+  # embedding model, which take turns in memory.
   ollama:
     image: ollama/ollama:0.35.1
     restart: unless-stopped

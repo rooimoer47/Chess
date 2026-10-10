@@ -23,8 +23,9 @@ final class MoveFacts {
 
     // Two threatened pieces is plenty; more is noise for a two-sentence comment.
     private static final int MAX_THREATS = 2;
-    // A game still counts as in its opening for this many plies after its last named position.
-    private static final int OPENING_PLIES_AFTER_BOOK = 6;
+    // A game still counts as in its opening for this many plies after its last named position. Long
+    // enough for an opening trap to play out: they are sprung a few moves past the last name.
+    private static final int OPENING_PLIES_AFTER_BOOK = 8;
 
     private MoveFacts() {
     }
@@ -43,6 +44,7 @@ final class MoveFacts {
         PositionEval evalBefore = game.eval(index);
         PositionEval evalAfter = game.eval(index + 1);
         List<String> facts = new ArrayList<>();
+        List<String> lineMoves = new ArrayList<>();
 
         MoveDisplay played = replay.describe(index, from.playedUci());
         String bestUci = evalBefore == null ? null : evalBefore.bestUci();
@@ -82,6 +84,7 @@ final class MoveFacts {
         if (evalAfter != null && evalAfter.pvUci() != null && !san.endsWith("#")) {
             List<String> reply = Arrays.asList(evalAfter.pvUci().split(" "));
             List<String> replySans = replay.sanLine(index + 1, reply);
+            lineMoves.addAll(replySans);
             if (!replySans.isEmpty()) {
                 facts.add(opponent + "'s best reply is " + numbered(replySans, index + 1) + ".");
                 if (aboutMaterial) {
@@ -117,6 +120,7 @@ final class MoveFacts {
                 List<String> ucis = evalBefore.pvUci() == null ? List.of(bestUci)
                         : Arrays.asList(evalBefore.pvUci().split(" "));
                 List<String> sans = replay.sanLine(index, ucis);
+                lineMoves.addAll(sans);
                 facts.add("The engine's best move was " + best.san()
                         + (sans.size() > 1 ? ", with the line " + numbered(sans, index) : "") + ".");
                 if (aboutMaterial) {
@@ -129,8 +133,8 @@ final class MoveFacts {
             }
         }
 
-        return new MoveContext(index + 1, move, mover, classification, decisive, opening(replay, index),
-                evaluation(evalBefore, white), evaluation(evalAfter, !white), facts);
+        return new MoveContext(index + 1, move, san, mover, classification, decisive, opening(replay, index), null,
+                evaluation(evalBefore, white), evaluation(evalAfter, !white), facts, lineMoves);
     }
 
     // The opening the move was played in, counting the position the move itself reaches. Null when

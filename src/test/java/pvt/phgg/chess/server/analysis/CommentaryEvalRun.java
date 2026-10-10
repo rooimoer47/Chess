@@ -1,22 +1,31 @@
 package pvt.phgg.chess.server.analysis;
 
 import com.anthropic.models.messages.Model;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
+import org.springframework.ai.ollama.OllamaEmbeddingModel;
 import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
+import org.springframework.ai.ollama.api.OllamaEmbeddingOptions;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 import pvt.phgg.chess.GameEngine;
 import pvt.phgg.chess.GameReplay;
 import pvt.phgg.chess.GameReplay.ReplayedGame;
 import pvt.phgg.chess.GameReplay.ReplayedPosition;
 import pvt.phgg.chess.server.analysis.GameAnalysisService.LoadedGame;
+import pvt.phgg.chess.server.analysis.llm.Embedder;
 import pvt.phgg.chess.server.analysis.llm.LlmClient;
 import pvt.phgg.chess.server.analysis.llm.LlmException;
 import pvt.phgg.chess.server.analysis.llm.LlmReply;
+import pvt.phgg.chess.server.analysis.llm.SpringAiEmbedder;
 import pvt.phgg.chess.server.analysis.llm.SpringAiLlmClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -50,6 +59,9 @@ import java.util.Set;
  * Model names starting with "claude-" go to the Anthropic API (needs ANTHROPIC_API_KEY); the rest to
  * Ollama at OLLAMA_BASE_URL (default http://localhost:11434). The key-point score is a rough guide
  * (a keyword from each group appears); read the comments themselves.
+ *
+ * Opening notes are looked up as in production, with the embedding model in Ollama and a throwaway
+ * Postgres container (needs Docker). CHESS_EVAL_NOTES=off leaves them out, to compare.
  */
 @EnabledIfEnvironmentVariable(named = "CHESS_LLM_EVAL", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "STOCKFISH_PATH", matches = ".+")
@@ -148,12 +160,14 @@ class CommentaryEvalRun {
         }
     }
 
-    // Analyses the positions before and after each case's last move, as the worker would.
+    // Analyses the positions before and after each case's last move, as the worker would, then looks
+    // up the opening notes, before the chat model is first used.
     private static List<Prepared> prepare(List<Case> cases) throws AnalysisException {
+        List<MoveClassification> labels = new ArrayList<>();
+        List<MoveContext> contexts = new ArrayList<>();
         StockfishAnalyzer stockfish = new StockfishAnalyzer(new AnalysisProperties(false, System.getenv("STOCKFISH_PATH"),
                 16, 1, 32, 0, 6, 1, Duration.ofSeconds(5), Duration.ofSeconds(60)));
         try {
-            List<Prepared> prepared = new ArrayList<>();
             for (Case c : cases) {
                 ReplayedGame replay = GameReplay.replayGame(GameEngine.STANDARD_BACK_RANK, false, TestGames.moves(c.moves()));
                 int index = replay.positions().size() - 2;
@@ -164,13 +178,44 @@ class CommentaryEvalRun {
                 LoadedGame game = new LoadedGame(replay,
                         Map.of(before.epd(), evalBefore, after.epd(), evalAfter), true, true);
                 MoveClassification label = MoveClassifier.classify(evalBefore, evalAfter, index % 2 == 0, before.playedUci());
-                String prompt = COMMENTED.contains(label)
-                        ? CommentaryPrompt.user(MoveFacts.describe(game, index, label, false)) : null;
-                prepared.add(new Prepared(c, label, prompt));
+                labels.add(label);
+                contexts.add(COMMENTED.contains(label) ? MoveFacts.describe(game, index, label, false) : null);
             }
-            return prepared;
         } finally {
             stockfish.destroy();
+        }
+
+        List<MoveContext> commented = contexts.stream().filter(context -> context != null).toList();
+        List<MoveContext> annotated = "off".equals(System.getenv("CHESS_EVAL_NOTES")) ? commented : withNotes(commented);
+        List<Prepared> prepared = new ArrayList<>();
+        int next = 0;
+        for (int i = 0; i < cases.size(); i++) {
+            String prompt = contexts.get(i) == null ? null : CommentaryPrompt.user(annotated.get(next++));
+            prepared.add(new Prepared(cases.get(i), labels.get(i), prompt));
+        }
+        return prepared;
+    }
+
+    private static List<MoveContext> withNotes(List<MoveContext> moves) {
+        String baseUrl = Optional.ofNullable(System.getenv("OLLAMA_BASE_URL")).orElse("http://localhost:11434");
+        String model = Optional.ofNullable(System.getenv("CHESS_EMBEDDING_MODEL")).orElse("nomic-embed-text");
+        OllamaApi ollamaApi = OllamaApi.builder().baseUrl(baseUrl).build();
+        Embedder embedder = new SpringAiEmbedder(OllamaEmbeddingModel.builder().ollamaApi(ollamaApi)
+                .options(OllamaEmbeddingOptions.builder().model(model).build()).build(),
+                ollamaApi, model, Duration.ofMinutes(30));
+        try (PostgreSQLContainer postgres = new PostgreSQLContainer(
+                DockerImageName.parse("pgvector/pgvector:pg17").asCompatibleSubstituteFor("postgres"))) {
+            postgres.start();
+            DriverManagerDataSource dataSource = new DriverManagerDataSource(
+                    postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+            Flyway.configure().dataSource(dataSource).load().migrate();
+            OpeningNotes notes = new OpeningNotes(new JdbcTemplate(dataSource), embedder);
+            // One at a time: each case is its own game, and within a game notes go by ply.
+            List<MoveContext> annotated = new ArrayList<>();
+            for (MoveContext move : moves) {
+                annotated.addAll(notes.annotate(List.of(move)));
+            }
+            return annotated;
         }
     }
 

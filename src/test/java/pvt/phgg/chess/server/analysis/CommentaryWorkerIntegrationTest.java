@@ -17,6 +17,7 @@ import pvt.phgg.chess.server.analysis.llm.LlmReply;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -36,8 +37,10 @@ class CommentaryWorkerIntegrationTest {
     @Autowired StubAnalyzerConfig.StubAnalyzer analyzer;
 
     private final StubLlm llm = new StubLlm();
+    private final StubEmbedder embedder = new StubEmbedder();
     private final CommentaryProperties properties =
             new CommentaryProperties(true, 12, Duration.ofSeconds(30), Duration.ofSeconds(60), Duration.ofMinutes(1));
+    private OpeningNotes notes;
     private CommentaryWorker worker;
 
     static class StubLlm implements LlmClient {
@@ -69,7 +72,9 @@ class CommentaryWorkerIntegrationTest {
     void reset() {
         TestGames.clear(jdbc);
         analyzer.reset();
-        worker = new CommentaryWorker(jdbc, analysisService, llm, properties, analysisProperties);
+        jdbc.update("DELETE FROM opening_notes");
+        notes = new OpeningNotes(jdbc, embedder);
+        worker = new CommentaryWorker(jdbc, analysisService, llm, notes, properties, analysisProperties);
     }
 
     // Scholar's mate, already analysed, waiting for comments.
@@ -189,5 +194,114 @@ class CommentaryWorkerIntegrationTest {
 
         worker.runOnce();
         assertEquals("DONE", status(game));
+    }
+
+    // --- Opening notes ---
+
+    private int storedNotes() {
+        return jdbc.queryForObject("SELECT count(*) FROM opening_notes", Integer.class);
+    }
+
+    @Test
+    void aMoveThatFallsForAKnownTrapGetsItsNote() {
+        analysedScholarsMate();
+
+        worker.runOnce();
+
+        String prompt = llm.prompts.getFirst();
+        assertTrue(prompt.contains("The facts above match a well-known pattern: Scholar's Mate: "), prompt);
+        assertEquals(OpeningNotes.load().size(), storedNotes());
+        assertEquals(2, embedder.calls.size(), "the notes, then this game's one move");
+        assertTrue(embedder.calls.get(1).getFirst().startsWith("3...Nf6. 3...Nf6 allows White to force checkmate in 1."),
+                embedder.calls.get(1).getFirst());
+    }
+
+    @Test
+    void withoutTheEmbeddingModelCommentsAreWrittenWithoutNotes() {
+        long game = analysedScholarsMate();
+        embedder.available = false;
+
+        assertEquals(Step.COMMENTED, worker.runOnce());
+
+        assertEquals(List.of("6: " + GOOD_COMMENT), comments(game));
+        assertFalse(llm.prompts.getFirst().contains("well-known pattern"));
+        assertEquals("DONE", status(game));
+    }
+
+    @Test
+    void aFailingEmbeddingModelDoesNotHoldUpTheComments() {
+        long game = analysedScholarsMate();
+        embedder.failing = true;
+
+        assertEquals(Step.COMMENTED, worker.runOnce());
+
+        assertEquals(List.of("6: " + GOOD_COMMENT), comments(game));
+        assertFalse(llm.prompts.getFirst().contains("well-known pattern"));
+    }
+
+    @Test
+    void aMovePastTheOpeningIsNotEmbedded() {
+        MoveContext middlegame = new MoveContext(40, "20...Nf6", "Nf6", "Black", MoveClassification.BLUNDER, false,
+                null, null, "+0.4", "+5.0", List.of("20...Nf6 loses a rook."), List.of("Qxf7+"));
+
+        assertEquals(List.of(middlegame), notes.annotate(List.of(middlegame)));
+        assertTrue(embedder.calls.isEmpty(), "no embedding, so the chat model stays loaded");
+    }
+
+    @Test
+    void notesAreEmbeddedOnceAndFollowTheFile() throws Exception {
+        notes.sync();
+        notes.sync();
+        assertEquals(1, embedder.calls.size());
+        assertEquals(OpeningNotes.load().size(), embedder.calls.getFirst().size());
+        assertTrue(embedder.calls.getFirst().getFirst().endsWith(" Key moves: f3 g4 Qh4#."), embedder.calls.getFirst().getFirst());
+
+        // After a restart with nothing changed, nothing is embedded again.
+        new OpeningNotes(jdbc, embedder).sync();
+        assertEquals(1, embedder.calls.size());
+
+        // A note that left the file goes; one whose text changed is embedded again.
+        jdbc.update("UPDATE opening_notes SET note = 'An older wording.' WHERE id = (SELECT min(id) FROM opening_notes)");
+        new OpeningNotes(jdbc, embedder).sync();
+        assertEquals(OpeningNotes.load().size(), storedNotes());
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM opening_notes WHERE note = 'An older wording.'", Integer.class));
+        assertEquals(1, embedder.calls.get(1).size());
+
+        // Vectors from another model can't be compared, so a new model embeds everything again.
+        embedder.model = "another-embedder";
+        new OpeningNotes(jdbc, embedder).sync();
+        assertEquals(OpeningNotes.load().size(), embedder.calls.get(2).size());
+        assertEquals(OpeningNotes.load().size(),
+                jdbc.queryForObject("SELECT count(*) FROM opening_notes WHERE model = 'another-embedder'", Integer.class));
+    }
+
+    @Test
+    void theNearestConfirmedNoteWins() throws Exception {
+        notes.sync();
+        // 1.g4 e5 2.f3 Qh4#: both the Fool's Mate note and the general one on the f-pawn apply.
+        MoveContext move = new MoveContext(3, "2.f3", "f3", "White", MoveClassification.BLUNDER, false,
+                "Grob Opening (A00)", null, "-0.5", "mate", List.of(), List.of("Qh4#"));
+        List<OpeningNotes.Note> both = OpeningNotes.load().stream()
+                .filter(note -> OpeningNotes.confirmedBy(note, move)).toList();
+        assertEquals(2, both.size());
+
+        for (OpeningNotes.Note note : both) {
+            assertEquals(Optional.of(note.text()), notes.find(move, StubEmbedder.vector(note.text())));
+        }
+    }
+
+    @Test
+    void aNoteForAnotherOpeningIsNotConsidered() throws Exception {
+        notes.sync();
+        // The Elephant Trap's moves, but in a game that isn't a Queen's Gambit Declined.
+        OpeningNotes.Note elephant = OpeningNotes.load().stream()
+                .filter(note -> note.text().startsWith("Elephant Trap")).findFirst().orElseThrow();
+        MoveContext elsewhere = new MoveContext(11, "6.Nxd5", "Nxd5", "White", MoveClassification.BLUNDER, false,
+                "Slav Defense (D10)", null, "+0.3", "-3.0", List.of(), List.of("Nxd5", "Bxd8", "Bb4+"));
+        MoveContext inIt = new MoveContext(11, "6.Nxd5", "Nxd5", "White", MoveClassification.BLUNDER, false,
+                "Queen's Gambit Declined: Modern Variation (D51)", null, "+0.3", "-3.0", List.of(), List.of("Nxd5", "Bxd8", "Bb4+"));
+
+        assertEquals(Optional.empty(), notes.find(elsewhere, StubEmbedder.vector(elephant.text())));
+        assertEquals(Optional.of(elephant.text()), notes.find(inIt, StubEmbedder.vector(elephant.text())));
     }
 }

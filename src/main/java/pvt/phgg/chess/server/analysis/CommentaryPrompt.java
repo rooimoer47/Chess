@@ -11,7 +11,11 @@ import java.util.regex.Pattern;
 //
 // The model gets facts only, never a board (not even a FEN), so it has nothing to work out for
 // itself: small models misread positions and invent tactics. The check holds it to that: any square
-// in the answer must appear in the facts.
+// in the answer must appear in the prompt.
+//
+// An opening note is the one thing in the prompt that isn't worked out from this game. It only gets
+// here once the game's moves have confirmed it (OpeningNotes), so its squares are allowed too:
+// the model can't describe a trap without them.
 final class CommentaryPrompt {
 
     static final String SYSTEM = """
@@ -29,6 +33,8 @@ final class CommentaryPrompt {
 
     // Longer than this isn't two short sentences.
     static final int MAX_LENGTH = 400;
+
+    private static final String NOTE_LABEL = "The facts above match a well-known pattern: ";
 
     private static final Pattern SQUARE = Pattern.compile("[a-h][1-8]");
     private static final Pattern THINKING = Pattern.compile("(?s)<think>.*?</think>");
@@ -50,6 +56,11 @@ final class CommentaryPrompt {
                 .append("Facts:\n");
         move.facts().forEach(fact -> prompt.append("- ").append(fact).append('\n'));
         prompt.append('\n');
+        if (move.openingNote() != null) {
+            prompt.append(NOTE_LABEL).append(move.openingNote())
+                    .append("\nExplain the move with this pattern, giving its name if it has one, and still say"
+                            + " what concretely happens.\n\n");
+        }
         if (move.decisive()) {
             prompt.append("This is the move after which the game was decided. Explain why ")
                     .append(move.move()).append(" decided the game.");

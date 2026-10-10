@@ -171,8 +171,8 @@ class CommentaryUnitTest {
         // 1.e4 e5 2.Bc4 is the last named position; after it come rook-pawn and knight-pawn moves.
         LoadedGame game = game("e2e4 e7e5 f1c4 h7h6 a2a3 a7a6 h2h3 b7b6 b2b3 g7g6 g2g3 d7d6 d2d3", Map.of(), true, true);
         assertEquals("Bishop's Opening (C23)", MoveFacts.describe(game, 3, MoveClassification.GOOD, false).opening());
-        assertEquals("Bishop's Opening (C23)", MoveFacts.describe(game, 8, MoveClassification.GOOD, false).opening());
-        assertNull(MoveFacts.describe(game, 9, MoveClassification.GOOD, false).opening());
+        assertEquals("Bishop's Opening (C23)", MoveFacts.describe(game, 10, MoveClassification.GOOD, false).opening());
+        assertNull(MoveFacts.describe(game, 11, MoveClassification.GOOD, false).opening());
         // The move that reaches a named position is already in that opening.
         assertEquals("King's Pawn Game (C20)", MoveFacts.describe(game, 1, MoveClassification.GOOD, false).opening());
     }
@@ -194,13 +194,73 @@ class CommentaryUnitTest {
         assertTrue(prompt.endsWith("Explain why 3...Nf6 was a blunder."), prompt);
         assertFalse(prompt.contains("/"), "no FEN in the prompt");
 
-        String decisive = CommentaryPrompt.user(new MoveContext(6, "3...Nf6", "Black", MoveClassification.BLUNDER,
-                true, null, "+0.4", "mate", List.of()));
+        String decisive = CommentaryPrompt.user(new MoveContext(6, "3...Nf6", "Nf6", "Black", MoveClassification.BLUNDER,
+                true, null, null, "+0.4", "mate", List.of(), List.of()));
         assertTrue(decisive.endsWith("Explain why 3...Nf6 decided the game."), decisive);
         assertFalse(decisive.contains("Opening:"), "no opening line without an opening");
-        String inaccuracy = CommentaryPrompt.user(new MoveContext(6, "3...Nf6", "Black", MoveClassification.INACCURACY,
-                false, null, "+0.4", "+0.9", List.of()));
+        String inaccuracy = CommentaryPrompt.user(new MoveContext(6, "3...Nf6", "Nf6", "Black", MoveClassification.INACCURACY,
+                false, null, null, "+0.4", "+0.9", List.of(), List.of()));
         assertTrue(inaccuracy.endsWith("was an inaccuracy."), inaccuracy);
+    }
+
+    @Test
+    void promptGivesAMatchingNoteAfterTheFacts() {
+        MoveContext context = MoveFacts.describe(scholarsMate(true, true), 5, MoveClassification.BLUNDER, false);
+        assertFalse(CommentaryPrompt.user(context).contains("well-known pattern"), "no note unless one was found");
+
+        String prompt = CommentaryPrompt.user(context.withOpeningNote("Scholar's Mate: the queen takes on f7."));
+        assertTrue(prompt.contains("""
+                - The engine's best move was g6, with the line 3...g6 4.Qf3 Nf6.
+
+                The facts above match a well-known pattern: Scholar's Mate: the queen takes on f7.
+                Explain the move with this pattern, giving its name if it has one, and still say what concretely happens.
+
+                Explain why 3...Nf6 was a blunder."""), prompt);
+    }
+
+    @Test
+    void theMovesOfTheEngineLinesAreKeptForMatchingNotes() {
+        MoveContext context = MoveFacts.describe(scholarsMate(true, true), 5, MoveClassification.BLUNDER, false);
+        assertEquals("Nf6", context.san());
+        assertEquals(List.of("Qxf7#", "g6", "Qf3", "Nf6"), context.lineMoves());
+    }
+
+    // --- OpeningNotes ---
+
+    private static MoveContext played(String san, String... lineMoves) {
+        return new MoveContext(6, "3..." + san, san, "Black", MoveClassification.BLUNDER, false, "Bishop's Opening (C23)",
+                null, "+0.4", "mate", List.of(), List.of(lineMoves));
+    }
+
+    @Test
+    void aNoteAppliesWhenTheMoveAndTheLinesShowItsKeyMoves() {
+        OpeningNotes.Note scholars = new OpeningNotes.Note("Bishop's Opening", "Qh5 Qf3 Nf6 Qxf7#", "Scholar's Mate");
+        assertTrue(OpeningNotes.confirmedBy(scholars, played("Nf6", "Qxf7#", "g6")));
+        assertTrue(OpeningNotes.confirmedBy(scholars, played("Nf6", "d3", "Qxf7+")), "check marks don't count");
+        assertFalse(OpeningNotes.confirmedBy(scholars, played("Nf6", "d3", "Nc3")), "the lines show none of it");
+        assertFalse(OpeningNotes.confirmedBy(scholars, played("d6", "Qxf7#")), "the move played isn't part of it");
+        assertFalse(OpeningNotes.confirmedBy(scholars, played("Nf6", "Nf6", "d3")),
+                "the played move turning up again in a line confirms nothing");
+    }
+
+    @Test
+    void everyNoteHasAKnownOpeningAndKeyMovesInSan() throws Exception {
+        List<OpeningNotes.Note> notes = OpeningNotes.load();
+        assertTrue(notes.size() >= 20, "notes: " + notes.size());
+        List<String> names;
+        try (var in = getClass().getResourceAsStream("/openings/openings.tsv")) {
+            names = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).lines()
+                    .map(line -> line.split("\t")[1]).toList();
+        }
+        for (OpeningNotes.Note note : notes) {
+            assertTrue(note.opening().equals("*") || names.stream().anyMatch(name -> name.contains(note.opening())),
+                    "no opening is called " + note.opening());
+            for (String move : note.moves().split(" ")) {
+                assertTrue(move.matches("([KQRBN][a-h1-8]?x?[a-h][1-8]|[a-h](x[a-h])?[1-8](=[QRBN])?|O-O(-O)?)[+#]?"),
+                        "not a move in SAN: " + move + " (" + note.opening() + ")");
+            }
+            assertTrue(note.text().length() <= 300, "too long for a prompt: " + note.text());
+        }
     }
 
     @Test
@@ -214,6 +274,15 @@ class CommentaryUnitTest {
     void checkRejectsSquaresNotInTheFacts() {
         String prompt = "Facts:\n- White's best reply is 4.Qxf7#.";
         assertEquals(Optional.empty(), CommentaryPrompt.check("The bishop on c4 supports Qxf7#.", prompt));
+    }
+
+    @Test
+    void checkAllowsTheSquaresOfAConfirmedNote() {
+        MoveContext context = MoveFacts.describe(scholarsMate(true, true), 5, MoveClassification.BLUNDER, false);
+        String answer = "This is Scholar's Mate; Black had to put the queen on e7.";
+        assertEquals(Optional.empty(), CommentaryPrompt.check(answer, CommentaryPrompt.user(context)));
+        assertTrue(CommentaryPrompt.check(answer, CommentaryPrompt.user(context.withOpeningNote(
+                "Scholar's Mate: the queen takes on f7. Black stops it with the queen on e7."))).isPresent());
     }
 
     @Test
