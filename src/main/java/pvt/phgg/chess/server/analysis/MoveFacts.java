@@ -17,8 +17,9 @@ import java.util.Locale;
 import java.util.Optional;
 
 // Turns the board and the engine's verdict on one move into short sentences that a small LLM only has
-// to rephrase: what the move took, what it left hanging, how the opponent can punish it, and what the
-// engine wanted instead. Every move, square and piece the comment may mention comes from here.
+// to rephrase: what the move took, what it left hanging, how the opponent can punish it, what the
+// engine wanted instead, and the tactic behind a mistake when it is one of the common motifs (Motifs).
+// Every move, square and piece the comment may mention comes from here.
 final class MoveFacts {
 
     // Two threatened pieces is plenty; more is noise for a two-sentence comment.
@@ -45,6 +46,9 @@ final class MoveFacts {
         PositionEval evalAfter = game.eval(index + 1);
         List<String> facts = new ArrayList<>();
         List<String> lineMoves = new ArrayList<>();
+        List<Motifs.Tag> motifs = new ArrayList<>();
+        // A motif explains a mistake. In the lines around a good move it would only mislead.
+        boolean error = classification.isError();
 
         MoveDisplay played = replay.describe(index, from.playedUci());
         String bestUci = evalBefore == null ? null : evalBefore.bestUci();
@@ -87,12 +91,12 @@ final class MoveFacts {
             lineMoves.addAll(replySans);
             if (!replySans.isEmpty()) {
                 facts.add(opponent + "'s best reply is " + numbered(replySans, index + 1) + ".");
+                // From before the move, so what the move itself took counts too.
+                List<String> ucis = new ArrayList<>(List.of(from.playedUci()));
+                ucis.addAll(reply.subList(0, replySans.size()));
+                List<String> sans = new ArrayList<>(List.of(san));
+                sans.addAll(replySans);
                 if (aboutMaterial) {
-                    // From before the move, so what the move itself took counts too.
-                    List<String> ucis = new ArrayList<>(List.of(from.playedUci()));
-                    ucis.addAll(reply.subList(0, replySans.size()));
-                    List<String> sans = new ArrayList<>(List.of(san));
-                    sans.addAll(replySans);
                     Outcome outcome = outcome(board, ucis, sans, index);
                     outcome.describe("Along " + move + " and that line", white).ifPresent(facts::add);
                     int net = outcome.net(white);
@@ -104,6 +108,12 @@ final class MoveFacts {
                         // for something else, typically an attack. Say so rather than let it read as a gain.
                         facts.add("Once the captures are over, " + mover + " ends up " + points(net)
                                 + " of material ahead, so what makes " + move + " bad is not material but the position that follows.");
+                    }
+                }
+                if (error) {
+                    for (Motifs.Found found : Motifs.allowed(board, ucis, sans, index, aboutMaterial)) {
+                        facts.add(found.fact());
+                        motifs.add(found.tag());
                     }
                 }
             }
@@ -130,11 +140,17 @@ final class MoveFacts {
                         facts.add("That line wins " + points(outcome.net(white)) + " of material for " + mover + ".");
                     }
                 }
+                if (error) {
+                    for (Motifs.Found found : Motifs.missed(board, ucis.subList(0, sans.size()), sans, index, aboutMaterial)) {
+                        facts.add(found.fact());
+                        motifs.add(found.tag());
+                    }
+                }
             }
         }
 
         return new MoveContext(index + 1, move, san, mover, classification, decisive, opening(replay, index), null,
-                evaluation(evalBefore, white), evaluation(evalAfter, !white), facts, lineMoves);
+                evaluation(evalBefore, white), evaluation(evalAfter, !white), facts, lineMoves, motifs);
     }
 
     // The opening the move was played in, counting the position the move itself reaches. Null when
@@ -219,7 +235,7 @@ final class MoveFacts {
         return new Outcome(whiteTakes, blackTakes, balance(end, true) - balance(start, true));
     }
 
-    private static String and(List<String> items) {
+    static String and(List<String> items) {
         if (items.size() == 1) return items.getFirst();
         return String.join(", ", items.subList(0, items.size() - 1)) + " and " + items.getLast();
     }
@@ -242,7 +258,7 @@ final class MoveFacts {
         }
     }
 
-    private static String side(boolean white) {
+    static String side(boolean white) {
         return white ? "White" : "Black";
     }
 
@@ -251,7 +267,7 @@ final class MoveFacts {
         return pawns == 1 ? "a pawn's worth" : pawns + " pawns' worth";
     }
 
-    private static String name(PieceType type) {
+    static String name(PieceType type) {
         return type.name().toLowerCase(Locale.ROOT);
     }
 }

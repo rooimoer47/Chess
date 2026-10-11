@@ -4,9 +4,7 @@ import pvt.phgg.chess.server.analysis.GameAnalysisService.LoadedGame;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 
 // Picks the moves worth a written comment. A small model on a shared CPU writes a few tokens a second,
 // so commenting on every move of a long game would take many minutes. Comments go to the human
@@ -23,9 +21,6 @@ final class KeyMoves {
 
     // From then on the eventual winner's win chance (-1..1) stays at least this high: about +3.
     static final double DECIDED = 0.5;
-
-    private static final Set<MoveClassification> ERRORS =
-            EnumSet.of(MoveClassification.INACCURACY, MoveClassification.MISTAKE, MoveClassification.BLUNDER);
 
     private KeyMoves() {
     }
@@ -51,7 +46,7 @@ final class KeyMoves {
             String played = game.replay().positions().get(i).playedUci();
             MoveClassification label = MoveClassifier.classify(before, after, white, played);
             boolean human = !anyHuman || (white ? game.whiteIsHuman() : game.blackIsHuman());
-            if (i == decisive || (human && ERRORS.contains(label))) {
+            if (i == decisive || (human && label.isError())) {
                 double drop = before == null || after == null ? 0 : MoveClassifier.drop(before, after, white);
                 candidates.add(new Candidate(new KeyMove(i, label, i == decisive), drop));
             }

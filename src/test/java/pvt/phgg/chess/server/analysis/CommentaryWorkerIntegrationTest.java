@@ -242,7 +242,7 @@ class CommentaryWorkerIntegrationTest {
     @Test
     void aMovePastTheOpeningIsNotEmbedded() {
         MoveContext middlegame = new MoveContext(40, "20...Nf6", "Nf6", "Black", MoveClassification.BLUNDER, false,
-                null, null, "+0.4", "+5.0", List.of("20...Nf6 loses a rook."), List.of("Qxf7+"));
+                null, null, "+0.4", "+5.0", List.of("20...Nf6 loses a rook."), List.of("Qxf7+"), List.of());
 
         assertEquals(List.of(middlegame), notes.annotate(List.of(middlegame)));
         assertTrue(embedder.calls.isEmpty(), "no embedding, so the chat model stays loaded");
@@ -280,7 +280,7 @@ class CommentaryWorkerIntegrationTest {
         notes.sync();
         // 1.g4 e5 2.f3 Qh4#: both the Fool's Mate note and the general one on the f-pawn apply.
         MoveContext move = new MoveContext(3, "2.f3", "f3", "White", MoveClassification.BLUNDER, false,
-                "Grob Opening (A00)", null, "-0.5", "mate", List.of(), List.of("Qh4#"));
+                "Grob Opening (A00)", null, "-0.5", "mate", List.of(), List.of("Qh4#"), List.of());
         List<OpeningNotes.Note> both = OpeningNotes.load().stream()
                 .filter(note -> OpeningNotes.confirmedBy(note, move)).toList();
         assertEquals(2, both.size());
@@ -297,9 +297,9 @@ class CommentaryWorkerIntegrationTest {
         OpeningNotes.Note elephant = OpeningNotes.load().stream()
                 .filter(note -> note.text().startsWith("Elephant Trap")).findFirst().orElseThrow();
         MoveContext elsewhere = new MoveContext(11, "6.Nxd5", "Nxd5", "White", MoveClassification.BLUNDER, false,
-                "Slav Defense (D10)", null, "+0.3", "-3.0", List.of(), List.of("Nxd5", "Bxd8", "Bb4+"));
+                "Slav Defense (D10)", null, "+0.3", "-3.0", List.of(), List.of("Nxd5", "Bxd8", "Bb4+"), List.of());
         MoveContext inIt = new MoveContext(11, "6.Nxd5", "Nxd5", "White", MoveClassification.BLUNDER, false,
-                "Queen's Gambit Declined: Modern Variation (D51)", null, "+0.3", "-3.0", List.of(), List.of("Nxd5", "Bxd8", "Bb4+"));
+                "Queen's Gambit Declined: Modern Variation (D51)", null, "+0.3", "-3.0", List.of(), List.of("Nxd5", "Bxd8", "Bb4+"), List.of());
 
         assertEquals(Optional.empty(), notes.find(elsewhere, StubEmbedder.vector(elephant.text())));
         assertEquals(Optional.of(elephant.text()), notes.find(inIt, StubEmbedder.vector(elephant.text())));

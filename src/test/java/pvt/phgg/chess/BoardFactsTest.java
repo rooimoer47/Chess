@@ -2,11 +2,13 @@ package pvt.phgg.chess;
 
 import org.junit.jupiter.api.Test;
 import pvt.phgg.chess.BoardFacts.PieceOn;
+import pvt.phgg.chess.BoardFacts.Pin;
 import pvt.phgg.chess.BoardFacts.Threat;
 import pvt.phgg.chess.piece.PieceType;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static pvt.phgg.chess.FenSerializerTest.moves;
@@ -58,6 +60,29 @@ class BoardFactsTest {
         // ...Nd4 without c3: the f3 knight can take, but the e5 pawn takes back.
         assertTrue(BoardFacts.threats(after("e2e4 e7e5 g1f3 b8c6 b1c3 c6d4")).stream()
                 .noneMatch(t -> t.piece().square().equals("d4")));
+    }
+
+    @Test
+    void aPieceInFrontOfAMoreValuableOneIsPinned() {
+        // 1.e4 e5 2.Nf3 d6 3.Nc3 Bg4: the knight on f3 shields the queen.
+        GameEngine position = after("e2e4 e7e5 g1f3 d7d6 b1c3 c8g4");
+        assertEquals(List.of(new Pin(new PieceOn(PieceType.KNIGHT, true, "f3"), new PieceOn(PieceType.BISHOP, false, "g4"),
+                new PieceOn(PieceType.QUEEN, true, "d1"))), BoardFacts.pins(position, true));
+        assertEquals(List.of(), BoardFacts.pins(position, false));
+        // 4.Be2: now a bishop stands right behind the knight, and it is worth no more.
+        assertEquals(List.of(), BoardFacts.pins(after("e2e4 e7e5 g1f3 d7d6 b1c3 c8g4 f1e2"), true));
+    }
+
+    @Test
+    void whatAPieceAttacksAndWhetherItIsDefended() {
+        // 4.Ng5 Be7 5.Nxf7: the knight hits the queen, the rook and the e5 pawn, and the bishop covers it.
+        GameEngine position = after("e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 f3g5 f8e7 g5f7");
+        assertEquals(Set.of(new PieceOn(PieceType.QUEEN, false, "d8"), new PieceOn(PieceType.ROOK, false, "h8"),
+                new PieceOn(PieceType.PAWN, false, "e5")), Set.copyOf(BoardFacts.attackedFrom(position, "f7")));
+        assertTrue(BoardFacts.isDefended(position, "f7"));
+        assertFalse(BoardFacts.isDefended(position, "e4"));
+        assertFalse(BoardFacts.canTake(position, "e8", "f7"), "the king can't take a defended piece");
+        assertTrue(BoardFacts.canTake(position, "f6", "e4"));
     }
 
     @Test

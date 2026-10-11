@@ -24,6 +24,14 @@ public final class BoardFacts {
     public record Threat(PieceOn piece, PieceOn attacker, boolean defended) {
     }
 
+    // A piece standing between an enemy bishop, rook or queen and one of its own side's pieces that
+    // is worth more, or its king: moving it off the line gives up the piece behind it.
+    public record Pin(PieceOn pinned, PieceOn pinner, PieceOn behind) {
+    }
+
+    private static final int[][] DIAGONALS = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+    private static final int[][] STRAIGHTS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
     private BoardFacts() {
     }
 
@@ -50,6 +58,19 @@ public final class BoardFacts {
             }
         }
         return total;
+    }
+
+    public static List<PieceOn> pieces(GameEngine position, boolean white) {
+        List<PieceOn> pieces = new ArrayList<>();
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                APiece piece = position.getPiece(row, col);
+                if (piece.isPositionOccupied() && piece.isWhite() == white) {
+                    pieces.add(on(piece, new Position(row, col)));
+                }
+            }
+        }
+        return pieces;
     }
 
     public static Optional<PieceOn> pieceAt(GameEngine position, String square) {
@@ -137,6 +158,77 @@ public final class BoardFacts {
             }
         }
         return Optional.ofNullable(cheapest);
+    }
+
+    // The enemy pieces that the piece on `square` attacks, whoever is to move. Pins are ignored, as
+    // for isDefended.
+    public static List<PieceOn> attackedFrom(GameEngine position, String square) {
+        Position at = UciMoveCodec.parseSquare(square);
+        APiece[][] board = position.boardCopy();
+        APiece piece = board[at.getRow()][at.getCol()];
+        if (!piece.isPositionOccupied()) return List.of();
+        BoardState state = new BoardState();
+        List<Position> reach = piece.isKing()
+                ? ((King) piece).getKingMovements(board, state)
+                : piece.getValidPositions(board, state);
+        List<PieceOn> attacked = new ArrayList<>();
+        for (Position to : reach) {
+            APiece target = board[to.getRow()][to.getCol()];
+            if (target.isPositionOccupied() && target.isWhite() != piece.isWhite()) {
+                attacked.add(on(target, to));
+            }
+        }
+        return attacked;
+    }
+
+    // Whether the side to move can legally take on `to` with its piece on `from`.
+    public static boolean canTake(GameEngine position, String from, String to) {
+        Position target = UciMoveCodec.parseSquare(to);
+        return position.getLegalMoves(UciMoveCodec.parseSquare(from)).stream()
+                .anyMatch(move -> move.equals(target) && !move.isCastle());
+    }
+
+    // The pins against `white`'s pieces, whoever is to move.
+    public static List<Pin> pins(GameEngine position, boolean white) {
+        List<Pin> pins = new ArrayList<>();
+        for (PieceOn pinner : pieces(position, !white)) {
+            PieceType type = pinner.type();
+            if (type == PieceType.BISHOP || type == PieceType.QUEEN) {
+                for (int[] direction : DIAGONALS) pinAlong(position, pinner, direction).ifPresent(pins::add);
+            }
+            if (type == PieceType.ROOK || type == PieceType.QUEEN) {
+                for (int[] direction : STRAIGHTS) pinAlong(position, pinner, direction).ifPresent(pins::add);
+            }
+        }
+        return pins;
+    }
+
+    // Walks from `pinner` in one direction: a pin if the first two pieces met are both the other
+    // side's and the second is the king or worth more than the first.
+    private static Optional<Pin> pinAlong(GameEngine position, PieceOn pinner, int[] direction) {
+        Position from = UciMoveCodec.parseSquare(pinner.square());
+        PieceOn pinned = null;
+        int row = from.getRow() + direction[0];
+        int col = from.getCol() + direction[1];
+        for (; row >= 0 && row < 8 && col >= 0 && col < 8; row += direction[0], col += direction[1]) {
+            APiece piece = position.getPiece(row, col);
+            if (!piece.isPositionOccupied()) continue;
+            if (piece.isWhite() == pinner.white()) return Optional.empty();
+            if (pinned == null) {
+                if (piece.isKing()) return Optional.empty();
+                pinned = on(piece, new Position(row, col));
+                continue;
+            }
+            boolean worthMore = piece.isKing() || value(piece.getPieceType()) > value(pinned.type());
+            return worthMore ? Optional.of(new Pin(pinned, pinner, on(piece, new Position(row, col)))) : Optional.empty();
+        }
+        return Optional.empty();
+    }
+
+    // Whether the piece on `square` has one of its own side's pieces defending it.
+    public static boolean isDefended(GameEngine position, String square) {
+        Position at = UciMoveCodec.parseSquare(square);
+        return isDefended(position, at, position.getPiece(at.getRow(), at.getCol()).isWhite());
     }
 
     // Whether a piece of `white`'s side could recapture on `square`. Pieces only "attack" squares

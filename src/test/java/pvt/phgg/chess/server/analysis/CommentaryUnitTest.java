@@ -151,6 +151,35 @@ class CommentaryUnitTest {
     }
 
     @Test
+    void aMistakeIsTaggedWithItsMotifAndGetsAFactForIt() {
+        Map<Integer, PositionEval> evals = new HashMap<>();
+        evals.put(2, cp(70, "e4d5 g8f6"));
+        evals.put(3, cp(-960, "c8g4 e4e5"));
+        LoadedGame game = game("e2e4 d7d5 d1g4", evals, true, true);
+        MoveContext context = MoveFacts.describe(game, 2, MoveClassification.BLUNDER, false);
+        assertEquals(List.of(new Motifs.Tag(Motifs.Motif.HANGING_PIECE, false)), context.motifs());
+        assertTrue(context.facts().contains("Hanging piece: 2.Qg4 leaves White's queen on g4 to be taken for nothing by Black's bishop on c8."),
+                context.facts().toString());
+        // Only mistakes are tagged: around a move the engine is happy with, a motif would mislead.
+        MoveContext good = MoveFacts.describe(game, 2, MoveClassification.GOOD, true);
+        assertEquals(List.of(), good.motifs());
+        assertTrue(good.facts().stream().noneMatch(fact -> fact.startsWith("Hanging piece")), good.facts().toString());
+    }
+
+    @Test
+    void aMotifInTheEnginesBestLineIsTaggedAsMissed() {
+        // 4.Ng5 Be7? and now 5.a3?, where 5.Nxf7 wins the queen.
+        Map<Integer, PositionEval> evals = new HashMap<>();
+        evals.put(8, cp(550, "g5f7 d7d5 f7d8"));
+        evals.put(9, cp(20, "e8g8 d2d3"));
+        LoadedGame game = game("e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 f3g5 f8e7 a2a3", evals, true, true);
+        MoveContext context = MoveFacts.describe(game, 8, MoveClassification.BLUNDER, false);
+        assertEquals(List.of(new Motifs.Tag(Motifs.Motif.FORK, true)), context.motifs());
+        assertEquals("Missed fork: with 5.Nxf7 White's knight on f7 would attack Black's queen on d8 and rook on h8 at once.",
+                context.facts().getLast());
+    }
+
+    @Test
     void anExchangeCutOffByTheLineIsFinished() {
         // 1.e4 e5 2.Nf3 Nc6 3.Bc4 Nd4 4.Nxe5? with a line that stops at 4...Qg5 5.Nxf7, where White
         // has taken two pawns. But the g2 pawn hangs to the queen, so settling the position takes it:
@@ -195,11 +224,11 @@ class CommentaryUnitTest {
         assertFalse(prompt.contains("/"), "no FEN in the prompt");
 
         String decisive = CommentaryPrompt.user(new MoveContext(6, "3...Nf6", "Nf6", "Black", MoveClassification.BLUNDER,
-                true, null, null, "+0.4", "mate", List.of(), List.of()));
+                true, null, null, "+0.4", "mate", List.of(), List.of(), List.of()));
         assertTrue(decisive.endsWith("Explain why 3...Nf6 decided the game."), decisive);
         assertFalse(decisive.contains("Opening:"), "no opening line without an opening");
         String inaccuracy = CommentaryPrompt.user(new MoveContext(6, "3...Nf6", "Nf6", "Black", MoveClassification.INACCURACY,
-                false, null, null, "+0.4", "+0.9", List.of(), List.of()));
+                false, null, null, "+0.4", "+0.9", List.of(), List.of(), List.of()));
         assertTrue(inaccuracy.endsWith("was an inaccuracy."), inaccuracy);
     }
 
@@ -229,7 +258,7 @@ class CommentaryUnitTest {
 
     private static MoveContext played(String san, String... lineMoves) {
         return new MoveContext(6, "3..." + san, san, "Black", MoveClassification.BLUNDER, false, "Bishop's Opening (C23)",
-                null, "+0.4", "mate", List.of(), List.of(lineMoves));
+                null, "+0.4", "mate", List.of(), List.of(lineMoves), List.of());
     }
 
     @Test

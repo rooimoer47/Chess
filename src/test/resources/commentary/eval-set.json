@@ -58,5 +58,14 @@
    "expect": [["a4"], ["pawn", "b5", "c4"]]},
   {"name": "Opera game: 9...b5?",
    "moves": "e2e4 e7e5 g1f3 d7d6 d2d4 c8g4 d4e5 g4f3 d1f3 d6e5 f1c4 g8f6 f3b3 d8e7 b1c3 c7c6 c1g5 b7b5",
-   "expect": [["Nxb5"], ["pin", "attack", "knight", "pawn"]]}
+   "expect": [["Nxb5"], ["pin", "attack", "knight", "pawn"]]},
+  {"name": "Back rank: 12...Qg4??",
+   "moves": "e2e4 e7e5 g1f3 g8f6 f3e5 d7d6 e5f3 f6e4 d2d3 e4f6 c1g5 f8e7 g5f6 e7f6 f1e2 e8g8 e1g1 f8e8 f1e1 e8e2 e1e2 d8d7 d1e1 d7g4",
+   "expect": [["Re8"], ["back rank", "back-rank"]]},
+  {"name": "Missed fork: 5.a3?",
+   "moves": "e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 f3g5 f8e7 a2a3",
+   "expect": [["Nxf7"], ["fork", "queen"]]},
+  {"name": "Pinned knight moves: 4.Nxe5??",
+   "moves": "e2e4 e7e5 g1f3 d7d6 d2d4 c8g4 f3e5",
+   "expect": [["Bxd1"], ["pin"]]}
 ]

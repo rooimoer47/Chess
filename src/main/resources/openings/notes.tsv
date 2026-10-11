@@ -1,7 +1,7 @@
 opening	moves	note
 *	f3 g4 Qh4#	Fool's Mate: pushing the f-pawn and the g-pawn opens the diagonal to White's king, and Black's queen gives checkmate on h4 as early as move two.
 *	f3 f6 Qh4+ Qh5+	Moving the f-pawn early opens the diagonal to the king. A queen check on the h-file can then be checkmate or win the rook in the corner.
-*	Bg4 Nxe5 Bxd1 Bxf7+ Ke7 Nd5#	Légal's Mate: the knight moves out of the pin and leaves the queen to be taken. If the queen is taken, the bishop checks on f7 and the knights give checkmate.
+*	Bg4 Bxd1 Bxf7+ Ke7 Nd5#	Légal's Mate: the knight moves out of the pin and leaves the queen to be taken. If the queen is taken, the bishop checks on f7 and the knights give checkmate.
 *	Bxf7+ Kxf7 Bxf2+ Kxf2	Giving up a bishop for the pawn on f7 or f2 just to stop the king castling rarely works: the king steps away to safety and the attacker is left a piece down for a pawn.
 Bishop's Opening	Qh5 Qf3 Nf6 Qxf7#	Scholar's Mate: White's queen and bishop both attack the pawn on f7, and if Black develops without defending it the queen takes it with checkmate. Black stops it with a pawn to g6 or the queen to e7.
 Wayward Queen Attack	Qh5 Qf3 Nf6 Qxf7#	Scholar's Mate: White's queen and bishop both attack the pawn on f7, and if Black develops without defending it the queen takes it with checkmate. Black stops it with a pawn to g6 or the queen to e7.

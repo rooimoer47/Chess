@@ -9,12 +9,13 @@ import java.util.List;
 //
 // `san` and `lineMoves` are not shown to the LLM as such: the move as plain SAN, and the moves of the
 // engine's lines (the opponent's best reply and the best alternative), for matching against notes.
+// `motifs` are the tactics found behind a mistake; each one is also spelled out in `facts`.
 public record MoveContext(int ply, String move, String san, String mover, MoveClassification classification,
                           boolean decisive, String opening, String openingNote, String evalBefore,
-                          String evalAfter, List<String> facts, List<String> lineMoves) {
+                          String evalAfter, List<String> facts, List<String> lineMoves, List<Motifs.Tag> motifs) {
 
     MoveContext withOpeningNote(String note) {
         return new MoveContext(ply, move, san, mover, classification, decisive, opening, note, evalBefore,
-                evalAfter, facts, lineMoves);
+                evalAfter, facts, lineMoves, motifs);
     }
 }
