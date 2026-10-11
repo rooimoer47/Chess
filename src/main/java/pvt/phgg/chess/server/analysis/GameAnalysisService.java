@@ -37,6 +37,29 @@ public class GameAnalysisService {
                                List<Eval> evals, List<MoveReview> moves) {
     }
 
+    // An ended game replayed, with the evaluations its positions have so far. A side whose player id
+    // is null was played by a bot.
+    record LoadedGame(ReplayedGame replay, Map<String, PositionEval> evals,
+                      Long whitePlayerId, Long blackPlayerId) {
+
+        boolean whiteIsHuman() {
+            return whitePlayerId != null;
+        }
+
+        boolean blackIsHuman() {
+            return blackPlayerId != null;
+        }
+
+        Long playerId(boolean white) {
+            return white ? whitePlayerId : blackPlayerId;
+        }
+
+        // The evaluation of the position at `ply`, or null if it has none.
+        PositionEval eval(int ply) {
+            return evals.get(replay.positions().get(ply).epd());
+        }
+    }
+
     private final JdbcTemplate jdbcTemplate;
 
     public GameAnalysisService(JdbcTemplate jdbcTemplate) {
@@ -46,12 +69,10 @@ public class GameAnalysisService {
     // Empty when the game doesn't exist or hasn't ended: reviewing a live game would be an engine
     // assistant.
     public Optional<GameAnalysis> analysis(long gameId) {
-        List<Map<String, Object>> games = jdbcTemplate.queryForList(
-                "SELECT ended_at, variant, starting_position FROM games WHERE id = ?", gameId);
-        if (games.isEmpty() || games.getFirst().get("ended_at") == null) {
+        Optional<Map<String, Object>> game = endedGame(gameId);
+        if (game.isEmpty()) {
             return Optional.empty();
         }
-        Map<String, Object> game = games.getFirst();
 
         List<String> statuses = jdbcTemplate.queryForList(
                 "SELECT status FROM game_reviews WHERE game_id = ?", String.class, gameId);
@@ -66,11 +87,10 @@ public class GameAnalysisService {
             return Optional.of(new GameAnalysis(status, total, done, List.of(), List.of()));
         }
 
-        boolean chess960 = "CHESS960".equals(game.get("variant"));
-        ReplayedGame replay = GameReplay.replayGame((String) game.get("starting_position"), chess960,
-                AnalysisQueue.recordedMoves(jdbcTemplate, gameId));
+        LoadedGame loaded = load(gameId, game.get());
+        ReplayedGame replay = loaded.replay();
         List<ReplayedPosition> positions = replay.positions();
-        Map<String, PositionEval> cache = cachedEvals(positions, chess960);
+        Map<String, PositionEval> cache = loaded.evals();
         Map<Integer, String> comments = new HashMap<>();
         jdbcTemplate.query("SELECT ply, comment FROM move_comments WHERE game_id = ?",
                 rs -> { comments.put(rs.getInt("ply"), rs.getString("comment")); }, gameId);
@@ -109,6 +129,33 @@ public class GameAnalysisService {
                     line, comments.get(i + 1)));
         }
         return Optional.of(new GameAnalysis(status, total, done, evals, moves));
+    }
+
+    // Empty when the game doesn't exist or hasn't ended.
+    Optional<LoadedGame> load(long gameId) {
+        return endedGame(gameId).map(game -> load(gameId, game));
+    }
+
+    private Optional<Map<String, Object>> endedGame(long gameId) {
+        List<Map<String, Object>> games = jdbcTemplate.queryForList(
+                "SELECT ended_at, variant, starting_position, white_player_id, black_player_id FROM games WHERE id = ?",
+                gameId);
+        if (games.isEmpty() || games.getFirst().get("ended_at") == null) {
+            return Optional.empty();
+        }
+        return Optional.of(games.getFirst());
+    }
+
+    private LoadedGame load(long gameId, Map<String, Object> game) {
+        boolean chess960 = "CHESS960".equals(game.get("variant"));
+        ReplayedGame replay = GameReplay.replayGame((String) game.get("starting_position"), chess960,
+                AnalysisQueue.recordedMoves(jdbcTemplate, gameId));
+        return new LoadedGame(replay, cachedEvals(replay.positions(), chess960),
+                id(game.get("white_player_id")), id(game.get("black_player_id")));
+    }
+
+    private static Long id(Object column) {
+        return column == null ? null : ((Number) column).longValue();
     }
 
     private Map<String, PositionEval> cachedEvals(List<ReplayedPosition> positions, boolean chess960) {

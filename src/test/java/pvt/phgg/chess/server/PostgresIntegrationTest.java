@@ -17,7 +17,9 @@ import java.lang.annotation.Target;
 @SpringBootTest(properties = {
         "chess.jwt.secret=aW50ZWdyYXRpb24tdGVzdHMtb25seS1ub3QtYS1yZWFsLWp3dC1zZWNyZXQ=",
         // Tests drive the analysis worker step by step instead of racing a background thread.
-        "chess.analysis.worker-enabled=false"
+        "chess.analysis.worker-enabled=false",
+        // Reviews end at DONE without an LLM step; CommentaryWorkerIntegrationTest turns it on itself.
+        "chess.commentary.enabled=false"
 })
 @Import(PostgresTestConfig.class)
 @Testcontainers(disabledWithoutDocker = true)

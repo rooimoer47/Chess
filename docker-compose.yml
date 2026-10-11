@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:pg17
     restart: unless-stopped
     environment:
       POSTGRES_DB: chess
@@ -18,9 +18,27 @@ services:
     build: .
     restart: unless-stopped
     env_file: .env
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
     depends_on:
       db:
         condition: service_healthy
+
+  # Local LLM for game-review comments. Not published to the host: only the
+  # chess service talks to it. One request and one model at a time, unloaded
+  # after 5 idle minutes, and capped so a runaway model can't starve Postgres.
+  # The app pulls its models itself on first use: the chat model and a small
+  # embedding model, which take turns in memory.
+  ollama:
+    image: ollama/ollama:0.35.1
+    restart: unless-stopped
+    environment:
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_KEEP_ALIVE: 5m
+    volumes:
+      - ollama_models:/root/.ollama
+    mem_limit: 4g
 
   nginx:
     image: nginx:alpine
@@ -44,3 +62,4 @@ services:
 volumes:
   chess_data:
   certbot_data:
+  ollama_models:

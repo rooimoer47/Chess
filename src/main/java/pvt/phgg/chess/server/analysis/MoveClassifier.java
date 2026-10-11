@@ -25,12 +25,18 @@ public final class MoveClassifier {
         if (playedUci.equals(before.bestUci())) {
             return MoveClassification.BEST;
         }
-        double drop = winChance(before, moverIsWhite, moverIsWhite) - winChance(after, !moverIsWhite, moverIsWhite);
+        double drop = drop(before, after, moverIsWhite);
         if (drop >= BLUNDER) return MoveClassification.BLUNDER;
         if (drop >= MISTAKE) return MoveClassification.MISTAKE;
         if (drop >= INACCURACY) return MoveClassification.INACCURACY;
         // Includes "drops" below zero: a move can't beat the engine's best, so a gain is search noise.
         return MoveClassification.GOOD;
+    }
+
+    // How much the move lowered the mover's win chance (0..2). Negative when it rose, which can only be
+    // search noise.
+    static double drop(PositionEval before, PositionEval after, boolean moverIsWhite) {
+        return winChance(before, moverIsWhite, moverIsWhite) - winChance(after, !moverIsWhite, moverIsWhite);
     }
 
     // Win chance in -1..1 for `forWhite`'s side. A mate score counts as a certain result.

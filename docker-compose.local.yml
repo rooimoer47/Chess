@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:pg17
     restart: unless-stopped
     ports:
       - "5432:5432"
@@ -26,6 +26,7 @@ services:
       DB_URL: jdbc:postgresql://db:5432/chess
       DB_USER: chess
       DB_PASSWORD: changeme
+      OLLAMA_BASE_URL: http://ollama:11434
     # ./logs is bind-mounted, so the container writes into a host directory
     # owned by whoever checked the repo out — not by the image's `chess` user.
     # Run as the host user instead, which also stops the container leaving
@@ -37,6 +38,24 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  # Local LLM for game-review comments. Published on localhost so the app can
+  # also be run outside Docker (./run-backend.sh). One request and one model at a time, unloaded
+  # after 5 idle minutes, and capped so a runaway model can't starve Postgres.
+  # The app pulls its models itself on first use: the chat model and a small
+  # embedding model, which take turns in memory.
+  ollama:
+    image: ollama/ollama:0.35.1
+    restart: unless-stopped
+    environment:
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_KEEP_ALIVE: 5m
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    mem_limit: 4g
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -51,3 +70,4 @@ services:
 
 volumes:
   chess_data:
+  ollama_models:

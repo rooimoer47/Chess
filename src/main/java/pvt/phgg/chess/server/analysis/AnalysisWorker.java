@@ -26,16 +26,21 @@ public class AnalysisWorker {
     private final AnalysisQueue queue;
     private final PositionAnalyzer analyzer;
     private final AnalysisProperties properties;
+    private final CommentaryProperties commentaryProperties;
+    private final CommentaryWorker commentaryWorker;
 
     private volatile Thread thread;
     private boolean warnedUnavailable;
 
     public AnalysisWorker(JdbcTemplate jdbcTemplate, AnalysisQueue queue, PositionAnalyzer analyzer,
-                          AnalysisProperties properties) {
+                          AnalysisProperties properties, CommentaryProperties commentaryProperties,
+                          CommentaryWorker commentaryWorker) {
         this.jdbcTemplate = jdbcTemplate;
         this.queue = queue;
         this.analyzer = analyzer;
         this.properties = properties;
+        this.commentaryProperties = commentaryProperties;
+        this.commentaryWorker = commentaryWorker;
     }
 
     // ApplicationReadyEvent: after Flyway has migrated and in-progress games have been restored.
@@ -109,7 +114,7 @@ public class AnalysisWorker {
         List<Long> engineReviews = jdbcTemplate.queryForList(
                 "SELECT game_id FROM game_reviews WHERE status = 'ENGINE'", Long.class);
         engineReviews.forEach(this::finishIfComplete);
-        // Step 5 adds: re-run the LLM step for reviews stuck in COMMENTING.
+        // Reviews left in COMMENTING need nothing here: the commentary worker picks them up.
 
         // Games that ended but never got queued: a stop between the game ending and the worker
         // picking up the request. Only games since this feature was installed (the V7 migration);
@@ -185,19 +190,23 @@ public class AnalysisWorker {
     // Closes the engine stage once none of the game's positions are pending, in one guarded update
     // so two workers can't both do it. Failed positions don't hold the review back; their moves are
     // labelled UNKNOWN. More than a quarter failing points at a broken engine, so the review fails.
-    //
-    // Until the LLM step (step 5) exists this goes straight to DONE; then it becomes COMMENTING.
+    // Otherwise it goes on to the LLM comments (COMMENTING), or straight to DONE when those are off.
     void finishIfComplete(long gameId) {
-        jdbcTemplate.update("""
+        String next = commentaryProperties.enabled() ? "COMMENTING" : "DONE";
+        int closed = jdbcTemplate.update("""
                 UPDATE game_reviews r
-                SET status = CASE
-                        WHEN (SELECT count(*) FROM analysis_jobs WHERE game_id = r.game_id AND status = 'FAILED') * 4
-                             > (SELECT count(*) FROM analysis_jobs WHERE game_id = r.game_id)
-                        THEN 'FAILED' ELSE 'DONE' END,
-                    completed_at = now()
+                SET status = v.status,
+                    completed_at = CASE WHEN v.status = 'COMMENTING' THEN NULL ELSE now() END
+                FROM (SELECT CASE
+                                 WHEN (SELECT count(*) FROM analysis_jobs WHERE game_id = ? AND status = 'FAILED') * 4
+                                      > (SELECT count(*) FROM analysis_jobs WHERE game_id = ?)
+                                 THEN 'FAILED' ELSE ? END AS status) v
                 WHERE r.game_id = ? AND r.status = 'ENGINE'
                   AND NOT EXISTS (SELECT 1 FROM analysis_jobs
                                   WHERE game_id = r.game_id AND status IN ('QUEUED', 'RUNNING'))
-                """, gameId);
+                """, gameId, gameId, next, gameId);
+        if (closed > 0 && commentaryProperties.enabled()) {
+            commentaryWorker.wake();
+        }
     }
 }

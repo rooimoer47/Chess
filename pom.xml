@@ -22,6 +22,7 @@
         <!-- A property rather than inline so `mvn versions:update-properties` can
              update it: the versions plugin rewrites plugin versions only through properties. -->
         <sonar-maven-plugin.version>4.0.1.6619</sonar-maven-plugin.version>
+        <spring-ai.version>2.0.1</spring-ai.version>
         <sonar.host.url>http://localhost:9000</sonar.host.url>
         <!-- sonar.token must be passed on the command line: -Dsonar.token=<token>.
              Run ./sonar-scan.sh rather than invoking the goal directly. -->
@@ -39,6 +40,18 @@
         <sonar.issue.ignore.multicriteria.e1.ruleKey>*:S3776</sonar.issue.ignore.multicriteria.e1.ruleKey>
         <sonar.issue.ignore.multicriteria.e1.resourceKey>**/*</sonar.issue.ignore.multicriteria.e1.resourceKey>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -88,6 +101,17 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- LLM commentary for game reviews. Ollama is the default; the Anthropic
+             model is an optional hosted alternative, chosen by spring.ai.model.chat. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-ollama</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-anthropic</artifactId>
         </dependency>
 
         <dependency>

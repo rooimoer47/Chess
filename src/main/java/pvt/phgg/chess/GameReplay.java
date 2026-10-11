@@ -42,6 +42,11 @@ public final class GameReplay {
                     UciMoveCodec.square(applied.to().getRow(), applied.to().getCol()));
         }
 
+        // A copy of the position at `ply`, to inspect with BoardFacts.
+        public GameEngine position(int ply) {
+            return new GameEngine(snapshots.get(ply));
+        }
+
         // SAN for a line of UCI moves played from the position at `ply`; stops at the first bad move.
         public List<String> sanLine(int ply, List<String> uciMoves) {
             return SanEncoder.line(snapshots.get(ply), uciMoves);
