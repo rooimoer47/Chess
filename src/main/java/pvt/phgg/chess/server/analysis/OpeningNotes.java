@@ -175,7 +175,7 @@ public class OpeningNotes {
     }
 
     // pgvector's text form, e.g. [0.1,-0.2].
-    private static String vector(float[] values) {
+    static String vector(float[] values) {
         StringBuilder text = new StringBuilder("[");
         for (int i = 0; i < values.length; i++) {
             if (i > 0) text.append(',');

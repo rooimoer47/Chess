@@ -29,7 +29,7 @@ class MotifsTest {
         ReplayedGame replay = GameReplay.replayGame(GameEngine.STANDARD_BACK_RANK, false, TestGames.moves(game));
         int ply = replay.positions().size() - 1;
         List<String> ucis = Arrays.asList(line.split(" "));
-        return Motifs.allowed(replay.position(ply), ucis, replay.sanLine(ply, ucis), ply, material);
+        return withoutGists(Motifs.allowed(replay.position(ply), ucis, replay.sanLine(ply, ucis), ply, material));
     }
 
     // The same for the engine's best line from the position after `game`.
@@ -37,11 +37,50 @@ class MotifsTest {
         ReplayedGame replay = GameReplay.replayGame(GameEngine.STANDARD_BACK_RANK, false, TestGames.moves(game));
         int ply = replay.positions().size() - 1;
         List<String> ucis = Arrays.asList(line.split(" "));
-        return Motifs.missed(replay.position(ply), ucis, replay.sanLine(ply, ucis), ply, material);
+        return withoutGists(Motifs.missed(replay.position(ply), ucis, replay.sanLine(ply, ucis), ply, material));
     }
 
     private static List<Found> one(Motif motif, boolean missed, String fact) {
-        return List.of(new Found(new Tag(motif, missed), fact));
+        return List.of(new Found(new Tag(motif, missed), fact, null));
+    }
+
+    // Most tests are about the tag and the fact; the gists have a test of their own.
+    private static List<Found> withoutGists(List<Found> found) {
+        return found.stream().map(f -> new Found(f.tag(), f.fact(), null)).toList();
+    }
+
+    private static String gist(boolean missed, String game, String line, boolean material) {
+        ReplayedGame replay = GameReplay.replayGame(GameEngine.STANDARD_BACK_RANK, false, TestGames.moves(game));
+        int ply = replay.positions().size() - 1;
+        List<String> ucis = Arrays.asList(line.split(" "));
+        List<Found> found = missed
+                ? Motifs.missed(replay.position(ply), ucis, replay.sanLine(ply, ucis), ply, material)
+                : Motifs.allowed(replay.position(ply), ucis, replay.sanLine(ply, ucis), ply, material);
+        return found.getFirst().gist();
+    }
+
+    @Test
+    void everyMotifIsAlsoToldWithoutSquaresOrMoveNumbers() {
+        assertEquals("White left a queen hanging: it was taken for nothing by Black's bishop.",
+                gist(false, "e2e4 d7d5", "d1g4 c8g4", true));
+        assertEquals("Black missed a hanging queen: it could have been taken for nothing by Black's bishop.",
+                gist(true, "e2e4 d7d5 d1g4", "c8g4", true));
+        assertEquals("Black allowed a fork: White's knight attacked Black's queen and rook at once.",
+                gist(false, TWO_KNIGHTS, "f8e7 g5f7 d7d5 f7d8", true));
+        assertEquals("White missed a fork: the knight could have attacked Black's queen and rook at once.",
+                gist(true, TWO_KNIGHTS + " f8e7", "g5f7 d7d5 f7d8", true));
+        assertEquals("White allowed a pin: the knight was pinned to the queen by Black's bishop.",
+                gist(false, "e2e4 e7e5 g1f3 d7d6", "b1c3 c8g4 f1e2", true));
+        assertEquals("White moved a pinned knight, and Black's bishop took the queen behind it.",
+                gist(false, "e2e4 e7e5 g1f3 d7d6 d2d4 c8g4", "f3e5 g4d1", true));
+        assertEquals("Black overlooked a pin: the pawn was pinned to the king by White's queen and could not take back.",
+                gist(false, "e2e4 c7c6 d2d4 d7d5 b1c3 d5e4 c3e4 b8d7 d1e2", "g8f6 e4d6", false));
+        assertEquals("Black allowed a back-rank mate: the king was shut in by its own pieces.",
+                gist(false, BACK_RANK, "d7g4 e2e8", false));
+        assertEquals("White missed a back-rank mate: Black's king was shut in by its own pieces.",
+                gist(true, BACK_RANK + " d7g4", "e2e8", false));
+        assertEquals("MISSED_FORK", new Tag(Motif.FORK, true).code());
+        assertEquals("BACK_RANK", new Tag(Motif.BACK_RANK, false).code());
     }
 
     @Test

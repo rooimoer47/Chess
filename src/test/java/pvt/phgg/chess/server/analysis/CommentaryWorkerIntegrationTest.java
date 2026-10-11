@@ -41,6 +41,7 @@ class CommentaryWorkerIntegrationTest {
     private final CommentaryProperties properties =
             new CommentaryProperties(true, 12, Duration.ofSeconds(30), Duration.ofSeconds(60), Duration.ofMinutes(1));
     private OpeningNotes notes;
+    private MistakeMemory memory;
     private CommentaryWorker worker;
 
     static class StubLlm implements LlmClient {
@@ -74,12 +75,17 @@ class CommentaryWorkerIntegrationTest {
         analyzer.reset();
         jdbc.update("DELETE FROM opening_notes");
         notes = new OpeningNotes(jdbc, embedder);
-        worker = new CommentaryWorker(jdbc, analysisService, llm, notes, properties, analysisProperties);
+        memory = new MistakeMemory(jdbc, embedder);
+        worker = new CommentaryWorker(jdbc, analysisService, llm, notes, memory, properties, analysisProperties);
     }
 
     // Scholar's mate, already analysed, waiting for comments.
     private long analysedScholarsMate() {
-        long game = TestGames.ended(jdbc, SCHOLARS_MATE);
+        return analysedScholarsMate("now()", null);
+    }
+
+    private long analysedScholarsMate(String endedAtSql, Long blackPlayerId) {
+        long game = TestGames.insert(jdbc, SCHOLARS_MATE, endedAtSql, null, blackPlayerId);
         List<ReplayedPosition> positions = GameReplay.replay(GameEngine.STANDARD_BACK_RANK, false,
                 TestGames.moves(SCHOLARS_MATE));
         String[] pvs = {"e2e4 e7e5", "e7e5 g1f3", "g1f3 b8c6", "b8c6 d1h5", "d1h5 g8f6", "g7g6 h5f3", "h5f7", null};
@@ -88,7 +94,7 @@ class CommentaryWorkerIntegrationTest {
         for (int ply = 0; ply < positions.size(); ply++) {
             jdbc.update("""
                     INSERT INTO position_evals (epd, chess960, depth, eval_cp, mate_in, best_uci, pv_uci, engine)
-                    VALUES (?, false, 16, ?, ?, ?, ?, 'stub')
+                    VALUES (?, false, 16, ?, ?, ?, ?, 'stub') ON CONFLICT DO NOTHING
                     """, positions.get(ply).epd(), cps[ply], mates[ply],
                     pvs[ply] == null ? null : pvs[ply].split(" ")[0], pvs[ply]);
         }
@@ -103,6 +109,24 @@ class CommentaryWorkerIntegrationTest {
     private List<String> comments(long game) {
         return jdbc.queryForList("SELECT ply || ': ' || comment FROM move_comments WHERE game_id = ? ORDER BY ply",
                 String.class, game);
+    }
+
+    @Test
+    void aMistakeMadeBeforeIsSaidInTheCommentWithoutAskingTheLlm() {
+        jdbc.update("DELETE FROM users WHERE username = 'memory_worker'");
+        Long player = jdbc.queryForObject(
+                "INSERT INTO users (username, password_hash) VALUES ('memory_worker', 'x') RETURNING id", Long.class);
+        long first = analysedScholarsMate("now() - interval '1 day'", player);
+        long second = analysedScholarsMate("now()", player);
+
+        assertEquals(Step.COMMENTED, worker.runOnce());
+        assertEquals(Step.COMMENTED, worker.runOnce());
+
+        assertEquals(2, jdbc.queryForObject("SELECT count(*) FROM mistakes WHERE user_id = ?", Integer.class, player));
+        assertEquals(List.of("6: " + GOOD_COMMENT), comments(first));
+        assertEquals(List.of("6: " + GOOD_COMMENT
+                + " Black has played this same move in this same position in 1 earlier game."), comments(second));
+        assertEquals(llm.prompts.get(0), llm.prompts.get(1), "the LLM is asked the same thing both times");
     }
 
     @Test
@@ -242,7 +266,7 @@ class CommentaryWorkerIntegrationTest {
     @Test
     void aMovePastTheOpeningIsNotEmbedded() {
         MoveContext middlegame = new MoveContext(40, "20...Nf6", "Nf6", "Black", MoveClassification.BLUNDER, false,
-                null, null, "+0.4", "+5.0", List.of("20...Nf6 loses a rook."), List.of("Qxf7+"), List.of());
+                null, null, "+0.4", "+5.0", List.of("20...Nf6 loses a rook."), List.of("Qxf7+"), List.of(), "", null);
 
         assertEquals(List.of(middlegame), notes.annotate(List.of(middlegame)));
         assertTrue(embedder.calls.isEmpty(), "no embedding, so the chat model stays loaded");
@@ -280,7 +304,7 @@ class CommentaryWorkerIntegrationTest {
         notes.sync();
         // 1.g4 e5 2.f3 Qh4#: both the Fool's Mate note and the general one on the f-pawn apply.
         MoveContext move = new MoveContext(3, "2.f3", "f3", "White", MoveClassification.BLUNDER, false,
-                "Grob Opening (A00)", null, "-0.5", "mate", List.of(), List.of("Qh4#"), List.of());
+                "Grob Opening (A00)", null, "-0.5", "mate", List.of(), List.of("Qh4#"), List.of(), "", null);
         List<OpeningNotes.Note> both = OpeningNotes.load().stream()
                 .filter(note -> OpeningNotes.confirmedBy(note, move)).toList();
         assertEquals(2, both.size());
@@ -297,9 +321,9 @@ class CommentaryWorkerIntegrationTest {
         OpeningNotes.Note elephant = OpeningNotes.load().stream()
                 .filter(note -> note.text().startsWith("Elephant Trap")).findFirst().orElseThrow();
         MoveContext elsewhere = new MoveContext(11, "6.Nxd5", "Nxd5", "White", MoveClassification.BLUNDER, false,
-                "Slav Defense (D10)", null, "+0.3", "-3.0", List.of(), List.of("Nxd5", "Bxd8", "Bb4+"), List.of());
+                "Slav Defense (D10)", null, "+0.3", "-3.0", List.of(), List.of("Nxd5", "Bxd8", "Bb4+"), List.of(), "", null);
         MoveContext inIt = new MoveContext(11, "6.Nxd5", "Nxd5", "White", MoveClassification.BLUNDER, false,
-                "Queen's Gambit Declined: Modern Variation (D51)", null, "+0.3", "-3.0", List.of(), List.of("Nxd5", "Bxd8", "Bb4+"), List.of());
+                "Queen's Gambit Declined: Modern Variation (D51)", null, "+0.3", "-3.0", List.of(), List.of("Nxd5", "Bxd8", "Bb4+"), List.of(), "", null);
 
         assertEquals(Optional.empty(), notes.find(elsewhere, StubEmbedder.vector(elephant.text())));
         assertEquals(Optional.of(elephant.text()), notes.find(inIt, StubEmbedder.vector(elephant.text())));

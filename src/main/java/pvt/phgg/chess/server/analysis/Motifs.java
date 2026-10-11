@@ -15,7 +15,9 @@ import java.util.Optional;
 // Names the tactic behind a mistake when an engine line shows one of a few common motifs: a piece
 // left hanging, a fork, a pin, a back-rank mate. Worked out from the board alone, so the same tactic
 // always gets the same tag and the same wording, which is what lets mistakes be counted and compared
-// across games. Each motif found is also a fact for the comment.
+// across games. Each motif found is also a fact for the comment, and is put a second time without
+// squares or move numbers (the gist): that is the form kept in the mistake memory, where it has to
+// read the same whenever the same thing happens on other squares.
 //
 // A motif is looked for in a line of engine moves, where one side (the attacker) carries it out
 // against the other: in the reply to the move played (the move allowed it), or in the engine's best
@@ -29,9 +31,18 @@ final class Motifs {
 
     // `missed`: the mover could have played it. Otherwise the move let the opponent play it.
     record Tag(Motif motif, boolean missed) {
+
+        // How the tag is stored: FORK, MISSED_FORK.
+        String code() {
+            return (missed ? "MISSED_" : "") + motif.name();
+        }
     }
 
-    record Found(Tag tag, String fact) {
+    record Found(Tag tag, String fact, String gist) {
+    }
+
+    // One motif in words: for the comment, and for the memory.
+    private record Said(String fact, String gist) {
     }
 
     // A fork or pin counts when it comes up within this many of the attacker's moves. Later than
@@ -87,6 +98,14 @@ final class Motifs {
         boolean missed() {
             return first == 0;
         }
+
+        String attacker() {
+            return MoveFacts.side(attackerWhite());
+        }
+
+        String victim() {
+            return MoveFacts.side(!attackerWhite());
+        }
     }
 
     // The motifs the move played let the opponent carry out. The line is the move itself followed by
@@ -111,8 +130,11 @@ final class Motifs {
             for (int k = line.first(); k < soon; k += 2) {
                 add(found, line, Motif.FORK, fork(line, k));
             }
-            add(found, line, Motif.PIN, broken.map(pin -> pinned(pin, "was") + ", so after " + line.move(0) + " the "
-                    + MoveFacts.name(pin.pinner().type()) + " takes the " + MoveFacts.name(pin.behind().type()) + "."));
+            add(found, line, Motif.PIN, broken.map(pin -> new Said(
+                    pinned(pin, "was") + ", so after " + line.move(0) + " the " + name(pin.pinner()) + " takes the "
+                            + name(pin.behind()) + ".",
+                    line.victim() + " moved a pinned " + name(pin.pinned()) + ", and " + line.attacker() + "'s "
+                            + name(pin.pinner()) + " took the " + name(pin.behind()) + " behind it.")));
             for (int k = line.first(); k < soon; k += 2) {
                 add(found, line, Motif.PIN, newPin(line, k));
             }
@@ -127,8 +149,8 @@ final class Motifs {
         return found;
     }
 
-    private static void add(List<Found> found, Line line, Motif motif, Optional<String> fact) {
-        if (fact.isEmpty() || found.stream().anyMatch(f -> f.tag().motif() == motif)) return;
+    private static void add(List<Found> found, Line line, Motif motif, Optional<Said> said) {
+        if (said.isEmpty() || found.stream().anyMatch(f -> f.tag().motif() == motif)) return;
         String label = switch (motif) {
             case HANGING_PIECE -> "hanging piece";
             case FORK -> "fork";
@@ -136,14 +158,14 @@ final class Motifs {
             case BACK_RANK -> "back-rank mate";
         };
         label = line.missed() ? "Missed " + label : label.substring(0, 1).toUpperCase() + label.substring(1);
-        found.add(new Found(new Tag(motif, line.missed()), label + ": " + fact.get()));
+        found.add(new Found(new Tag(motif, line.missed()), label + ": " + said.get().fact(), said.get().gist()));
     }
 
     // The attacker's first move takes a piece that could be won outright. Not a pawn, and not the
     // piece behind a pin that was just broken (that is the pin's fact). Nor when something worth as
     // much is taken right before or right after it: that is an exchange or a combination, as when
     // the Elephant Trap's knight is taken at the price of a queen.
-    private static Optional<String> hangingPiece(Line line, Optional<Pin> broken) {
+    private static Optional<Said> hangingPiece(Line line, Optional<Pin> broken) {
         int k = line.first();
         if (k >= line.size() || !line.san(k).contains("x") || line.castles(k)) return Optional.empty();
         GameEngine position = line.before(k);
@@ -167,15 +189,22 @@ final class Motifs {
         }
         String how = defended ? "by " + owned(taker.get()) + ", which is worth less."
                 : "for nothing by " + owned(taker.get()) + ".";
-        return Optional.of(line.missed()
+        String fact = line.missed()
                 ? owned(piece) + " could be taken " + how
-                : line.move(0) + " leaves " + owned(piece) + " to be taken " + how);
+                : line.move(0) + " leaves " + owned(piece) + " to be taken " + how;
+        String by = line.attacker() + "'s " + name(taker.get()) + (defended ? ", which is worth less" : "");
+        String gist = line.missed()
+                ? line.attacker() + " missed a hanging " + name(piece) + ": it could have been taken"
+                        + (defended ? " by " : " for nothing by ") + by + "."
+                : line.victim() + " left a " + name(piece) + " hanging: it was taken"
+                        + (defended ? " by " : " for nothing by ") + by + ".";
+        return Optional.of(new Said(fact, gist));
     }
 
     // The attacker's move puts a piece where it attacks two or more things that can each be won: the
     // king, a piece worth more than the attacking one, or one that is not defended. The forking piece
     // must not be simply taken, and if the line goes on the attacker has to take one of them.
-    private static Optional<String> fork(Line line, int k) {
+    private static Optional<Said> fork(Line line, int k) {
         if (line.castles(k)) return Optional.empty();
         GameEngine position = line.after(k);
         String square = line.to(k);
@@ -197,8 +226,14 @@ final class Motifs {
         }
         String theirs = MoveFacts.side(targets.getFirst().white()) + "'s "
                 + MoveFacts.and(targets.stream().map(t -> MoveFacts.name(t.type()) + " on " + t.square()).toList());
-        return Optional.of("with " + line.move(k) + " " + owned(forker.get())
-                + (line.missed() ? " would attack " : " attacks ") + theirs + " at once.");
+        String fact = "with " + line.move(k) + " " + owned(forker.get())
+                + (line.missed() ? " would attack " : " attacks ") + theirs + " at once.";
+        String both = line.victim() + "'s " + MoveFacts.and(targets.stream().map(Motifs::name).toList());
+        String gist = line.missed()
+                ? line.attacker() + " missed a fork: the " + name(forker.get()) + " could have attacked " + both + " at once."
+                : line.victim() + " allowed a fork: " + line.attacker() + "'s " + name(forker.get()) + " attacked "
+                        + both + " at once.";
+        return Optional.of(new Said(fact, gist));
     }
 
     // The move played took a piece out of a pin, and the reply takes what stood behind it.
@@ -216,7 +251,7 @@ final class Motifs {
     // pawns, nor a piece that moves along the line of the pin and could take the pinning piece. What
     // stands behind has to be worth winning: the king, a piece worth more than the pinning one, or
     // one that is not defended.
-    private static Optional<String> newPin(Line line, int k) {
+    private static Optional<Said> newPin(Line line, int k) {
         boolean victimWhite = !line.attackerWhite();
         List<Pin> old = BoardFacts.pins(line.before(k), victimWhite);
         for (int at = k; at <= k + 1 && at < line.size(); at++) {
@@ -229,7 +264,13 @@ final class Motifs {
                 if (!isNew || steppedIn || !holds(position, pin)
                         || (at == k && canBeWon(position, pin.pinner().square()))) continue;
                 String moves = at == k ? line.move(k) : MoveFacts.numbered(line.sans().subList(k, at + 1), line.ply() + k);
-                return Optional.of("after " + moves + " " + pinned(pin, line.missed() ? "would be" : "is") + ".");
+                String fact = "after " + moves + " " + pinned(pin, line.missed() ? "would be" : "is") + ".";
+                String gist = line.missed()
+                        ? line.attacker() + " missed a pin: " + line.victim() + "'s " + name(pin.pinned())
+                                + " could have been pinned to the " + name(pin.behind()) + " by the " + name(pin.pinner()) + "."
+                        : line.victim() + " allowed a pin: the " + name(pin.pinned()) + " was pinned to the "
+                                + name(pin.behind()) + " by " + line.attacker() + "'s " + name(pin.pinner()) + ".";
+                return Optional.of(new Said(fact, gist));
             }
         }
         return Optional.empty();
@@ -248,7 +289,7 @@ final class Motifs {
 
     // The attacker's move takes something or gives check on a square that only a pinned piece
     // guards: the piece that would take back is pinned to its king, and nothing else can.
-    private static Optional<String> pinnedDefender(Line line, int k) {
+    private static Optional<Said> pinnedDefender(Line line, int k) {
         String san = line.san(k);
         if (line.castles(k) || !(san.contains("x") || san.endsWith("+") || san.endsWith("#"))) return Optional.empty();
         GameEngine position = line.after(k);
@@ -262,13 +303,19 @@ final class Motifs {
                 .filter(pin -> BoardFacts.attackedFrom(position, pin.pinned().square()).stream()
                         .anyMatch(target -> target.square().equals(square)))
                 .findFirst()
-                .map(pin -> pinned(pin, line.missed() ? "would be" : "is") + ", so it "
-                        + (line.missed() ? "could not" : "cannot") + " take on " + square + " after " + line.move(k) + ".");
+                .map(pin -> new Said(
+                        pinned(pin, line.missed() ? "would be" : "is") + ", so it "
+                                + (line.missed() ? "could not" : "cannot") + " take on " + square + " after " + line.move(k) + ".",
+                        line.missed()
+                                ? line.attacker() + " missed using a pin: " + line.victim() + "'s " + name(pin.pinned())
+                                        + " was pinned to the king by the " + name(pin.pinner()) + " and could not have taken back."
+                                : line.victim() + " overlooked a pin: the " + name(pin.pinned()) + " was pinned to the king by "
+                                        + line.attacker() + "'s " + name(pin.pinner()) + " and could not take back."));
     }
 
     // The attacker's rook or queen mates on the back rank, with the king kept there by its own
     // pieces: every square in front of it holds one.
-    private static Optional<String> backRankMate(Line line, int k) {
+    private static Optional<Said> backRankMate(Line line, int k) {
         if (!line.san(k).endsWith("#") || line.castles(k)) return Optional.empty();
         GameEngine position = line.after(k);
         boolean victimWhite = !line.attackerWhite();
@@ -285,8 +332,12 @@ final class Motifs {
             Optional<PieceOn> blocker = BoardFacts.pieceAt(position, "" + file + inFront);
             if (blocker.isEmpty() || blocker.get().white() != victimWhite) return Optional.empty();
         }
-        return Optional.of(line.move(k) + (line.missed() ? " would be" : " is") + " checkmate because "
-                + owned(king.get()) + " is shut in on the back rank by its own pieces.");
+        String fact = line.move(k) + (line.missed() ? " would be" : " is") + " checkmate because "
+                + owned(king.get()) + " is shut in on the back rank by its own pieces.";
+        String gist = line.missed()
+                ? line.attacker() + " missed a back-rank mate: " + line.victim() + "'s king was shut in by its own pieces."
+                : line.victim() + " allowed a back-rank mate: the king was shut in by its own pieces.";
+        return Optional.of(new Said(fact, gist));
     }
 
     // Whether the side to move can win the piece on `square`, which belongs to the side that just moved.
@@ -298,6 +349,10 @@ final class Motifs {
     private static String pinned(Pin pin, String verb) {
         return owned(pin.pinned()) + " " + verb + " pinned to the " + MoveFacts.name(pin.behind().type()) + " on "
                 + pin.behind().square() + " by " + owned(pin.pinner());
+    }
+
+    private static String name(PieceOn piece) {
+        return MoveFacts.name(piece.type());
     }
 
     // "White's knight on f3"

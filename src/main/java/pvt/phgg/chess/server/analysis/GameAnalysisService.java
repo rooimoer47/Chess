@@ -40,7 +40,19 @@ public class GameAnalysisService {
     // An ended game replayed, with the evaluations its positions have so far. A side whose player id
     // is null was played by a bot.
     record LoadedGame(ReplayedGame replay, Map<String, PositionEval> evals,
-                      boolean whiteIsHuman, boolean blackIsHuman) {
+                      Long whitePlayerId, Long blackPlayerId) {
+
+        boolean whiteIsHuman() {
+            return whitePlayerId != null;
+        }
+
+        boolean blackIsHuman() {
+            return blackPlayerId != null;
+        }
+
+        Long playerId(boolean white) {
+            return white ? whitePlayerId : blackPlayerId;
+        }
 
         // The evaluation of the position at `ply`, or null if it has none.
         PositionEval eval(int ply) {
@@ -139,7 +151,11 @@ public class GameAnalysisService {
         ReplayedGame replay = GameReplay.replayGame((String) game.get("starting_position"), chess960,
                 AnalysisQueue.recordedMoves(jdbcTemplate, gameId));
         return new LoadedGame(replay, cachedEvals(replay.positions(), chess960),
-                game.get("white_player_id") != null, game.get("black_player_id") != null);
+                id(game.get("white_player_id")), id(game.get("black_player_id")));
+    }
+
+    private static Long id(Object column) {
+        return column == null ? null : ((Number) column).longValue();
     }
 
     private Map<String, PositionEval> cachedEvals(List<ReplayedPosition> positions, boolean chess960) {

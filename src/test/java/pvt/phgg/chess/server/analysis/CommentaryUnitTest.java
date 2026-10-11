@@ -35,7 +35,7 @@ class CommentaryUnitTest {
         ReplayedGame replay = GameReplay.replayGame(GameEngine.STANDARD_BACK_RANK, false, TestGames.moves(uciMoves));
         Map<String, PositionEval> byEpd = new HashMap<>();
         evals.forEach((ply, eval) -> byEpd.put(replay.positions().get(ply).epd(), eval));
-        return new LoadedGame(replay, byEpd, whiteHuman, blackHuman);
+        return new LoadedGame(replay, byEpd, whiteHuman ? 1L : null, blackHuman ? 2L : null);
     }
 
     private static LoadedGame scholarsMate(boolean whiteHuman, boolean blackHuman) {
@@ -180,6 +180,34 @@ class CommentaryUnitTest {
     }
 
     @Test
+    void aMistakeIsSummedUpWithoutSquaresOrMoveNumbers() {
+        Map<Integer, PositionEval> evals = new HashMap<>();
+        evals.put(2, cp(70, "e4d5 g8f6"));
+        evals.put(3, cp(-960, "c8g4 e4e5"));
+        MoveContext hung = MoveFacts.describe(game("e2e4 d7d5 d1g4", evals, true, true), 2, MoveClassification.BLUNDER, false);
+        assertEquals("White ended up 9 pawns' worth of material behind. "
+                + "White left a queen hanging: it was taken for nothing by Black's bishop. "
+                + "Opening: Scandinavian Defense (B01).", hung.summary());
+
+        MoveContext mated = MoveFacts.describe(scholarsMate(true, true), 5, MoveClassification.BLUNDER, false);
+        assertEquals("Black allowed a forced checkmate in 1. Opening: Bishop's Opening (C23).", mated.summary());
+
+        // 2.Qh5: worse, but nothing is taken, forked, pinned or mated.
+        Map<Integer, PositionEval> quiet = new HashMap<>();
+        quiet.put(2, cp(30, "g1f3 b8c6"));
+        quiet.put(3, cp(-150, "b8c6 g1f3"));
+        MoveContext plain = MoveFacts.describe(game("e2e4 e7e5 d1h5 b8c6", quiet, true, true), 2, MoveClassification.MISTAKE, false);
+        assertTrue(plain.summary().startsWith("White made a mistake that fits none of the known patterns. Opening: "), plain.summary());
+    }
+
+    @Test
+    void thePlayersHistoryIsKeptOutOfThePrompt() {
+        MoveContext context = MoveFacts.describe(scholarsMate(true, true), 5, MoveClassification.BLUNDER, false);
+        assertEquals(CommentaryPrompt.user(context),
+                CommentaryPrompt.user(context.withHistory("Black has allowed a fork in 2 earlier games.")));
+    }
+
+    @Test
     void anExchangeCutOffByTheLineIsFinished() {
         // 1.e4 e5 2.Nf3 Nc6 3.Bc4 Nd4 4.Nxe5? with a line that stops at 4...Qg5 5.Nxf7, where White
         // has taken two pawns. But the g2 pawn hangs to the queen, so settling the position takes it:
@@ -224,11 +252,11 @@ class CommentaryUnitTest {
         assertFalse(prompt.contains("/"), "no FEN in the prompt");
 
         String decisive = CommentaryPrompt.user(new MoveContext(6, "3...Nf6", "Nf6", "Black", MoveClassification.BLUNDER,
-                true, null, null, "+0.4", "mate", List.of(), List.of(), List.of()));
+                true, null, null, "+0.4", "mate", List.of(), List.of(), List.of(), "", null));
         assertTrue(decisive.endsWith("Explain why 3...Nf6 decided the game."), decisive);
         assertFalse(decisive.contains("Opening:"), "no opening line without an opening");
         String inaccuracy = CommentaryPrompt.user(new MoveContext(6, "3...Nf6", "Nf6", "Black", MoveClassification.INACCURACY,
-                false, null, null, "+0.4", "+0.9", List.of(), List.of(), List.of()));
+                false, null, null, "+0.4", "+0.9", List.of(), List.of(), List.of(), "", null));
         assertTrue(inaccuracy.endsWith("was an inaccuracy."), inaccuracy);
     }
 
@@ -258,7 +286,7 @@ class CommentaryUnitTest {
 
     private static MoveContext played(String san, String... lineMoves) {
         return new MoveContext(6, "3..." + san, san, "Black", MoveClassification.BLUNDER, false, "Bishop's Opening (C23)",
-                null, "+0.4", "mate", List.of(), List.of(lineMoves), List.of());
+                null, "+0.4", "mate", List.of(), List.of(lineMoves), List.of(), "", null);
     }
 
     @Test

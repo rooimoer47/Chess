@@ -16,6 +16,10 @@ import java.util.regex.Pattern;
 // An opening note is the one thing in the prompt that isn't worked out from this game. It only gets
 // here once the game's moves have confirmed it (OpeningNotes), so its squares are allowed too:
 // the model can't describe a trap without them.
+//
+// What is known of the mover's earlier games (MoveContext.history) is not given to the model. It is
+// one exact sentence, and the worker adds it to the comment as it is. When the model was asked to
+// say it, it got the count wrong in 2 of 12 comments and cut the explanation short to make room.
 final class CommentaryPrompt {
 
     static final String SYSTEM = """
@@ -66,7 +70,7 @@ final class CommentaryPrompt {
                     .append(move.move()).append(" decided the game.");
         } else {
             prompt.append("Explain why ").append(move.move()).append(" was ")
-                    .append(verdict.equals("inaccuracy") ? "an inaccuracy" : "a " + verdict).append('.');
+                    .append(MoveFacts.verdict(move.classification())).append('.');
         }
         return prompt.toString();
     }

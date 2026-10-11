@@ -43,6 +43,7 @@ public class CommentaryWorker {
     private final GameAnalysisService analysisService;
     private final LlmClient llm;
     private final OpeningNotes openingNotes;
+    private final MistakeMemory mistakeMemory;
     private final CommentaryProperties properties;
     private final AnalysisProperties analysisProperties;
     private final Semaphore wakeUp = new Semaphore(0);
@@ -51,12 +52,13 @@ public class CommentaryWorker {
     private boolean warnedUnavailable;
 
     public CommentaryWorker(JdbcTemplate jdbcTemplate, GameAnalysisService analysisService, LlmClient llm,
-                            OpeningNotes openingNotes, CommentaryProperties properties,
-                            AnalysisProperties analysisProperties) {
+                            OpeningNotes openingNotes, MistakeMemory mistakeMemory,
+                            CommentaryProperties properties, AnalysisProperties analysisProperties) {
         this.jdbcTemplate = jdbcTemplate;
         this.analysisService = analysisService;
         this.llm = llm;
         this.openingNotes = openingNotes;
+        this.mistakeMemory = mistakeMemory;
         this.properties = properties;
         this.analysisProperties = analysisProperties;
     }
@@ -93,7 +95,11 @@ public class CommentaryWorker {
             try {
                 switch (runOnce()) {
                     case COMMENTED -> { }
-                    case IDLE -> await(properties.pollInterval());
+                    case IDLE -> {
+                        // Now, with no comment waiting for the chat model that this pushes out of Ollama.
+                        mistakeMemory.embedPending();
+                        await(properties.pollInterval());
+                    }
                     case LLM_UNAVAILABLE -> await(properties.retryInterval());
                 }
             } catch (InterruptedException e) {
@@ -157,6 +163,9 @@ public class CommentaryWorker {
             return;
         }
 
+        // All of the game's mistakes, not only the moves that get a comment.
+        mistakeMemory.record(gameId, game);
+
         Set<Integer> written = new HashSet<>(jdbcTemplate.queryForList(
                 "SELECT ply FROM move_comments WHERE game_id = ?", Integer.class, gameId));
         int added = 0;
@@ -177,6 +186,10 @@ public class CommentaryWorker {
         // time, so taking turns per move would reload the chat model for each comment.
         contexts = openingNotes.annotate(contexts);
         long withNote = contexts.stream().filter(context -> context.openingNote() != null).count();
+        contexts = contexts.stream()
+                .map(context -> mistakeMemory.recall(gameId, game, context).map(context::withHistory).orElse(context))
+                .toList();
+        long withHistory = contexts.stream().filter(context -> context.history() != null).count();
 
         for (MoveContext context : contexts) {
             String prompt = CommentaryPrompt.user(context);
@@ -192,10 +205,12 @@ public class CommentaryWorker {
                 }
             }
             if (comment.isPresent()) {
+                // The history is exact as it stands, so it is added here and not left to the LLM.
+                String text = context.history() == null ? comment.get() : comment.get() + " " + context.history();
                 jdbcTemplate.update("""
                         INSERT INTO move_comments (game_id, ply, comment) VALUES (?, ?, ?)
                         ON CONFLICT (game_id, ply) DO UPDATE SET comment = EXCLUDED.comment
-                        """, gameId, context.ply(), comment.get());
+                        """, gameId, context.ply(), text);
                 added++;
             } else {
                 dropped++;
@@ -205,8 +220,8 @@ public class CommentaryWorker {
 
         double seconds = llmTime.toMillis() / 1000.0;
         log.info("Commented game {} with {}: {} comment(s) written, {} dropped, {} with an opening note, "
-                        + "{} s total, {} s in the LLM, {} tokens/s",
-                gameId, llm.modelName(), added, dropped, withNote,
+                        + "{} with the player's history, {} s total, {} s in the LLM, {} tokens/s",
+                gameId, llm.modelName(), added, dropped, withNote, withHistory,
                 String.format("%.1f", (System.nanoTime() - start) / 1e9), String.format("%.1f", seconds),
                 seconds > 0 ? String.format("%.1f", tokens / seconds) : "-");
     }

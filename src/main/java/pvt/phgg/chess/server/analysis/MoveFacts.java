@@ -47,6 +47,8 @@ final class MoveFacts {
         List<String> facts = new ArrayList<>();
         List<String> lineMoves = new ArrayList<>();
         List<Motifs.Tag> motifs = new ArrayList<>();
+        // The mistake in a few sentences without squares or move numbers, for the mistake memory.
+        List<String> summary = new ArrayList<>();
         // A motif explains a mistake. In the lines around a good move it would only mislead.
         boolean error = classification.isError();
 
@@ -84,6 +86,7 @@ final class MoveFacts {
 
         if (mateAllowed != null) {
             facts.add(move + " allows " + opponent + " to force checkmate in " + mateAllowed + ".");
+            summary.add(mover + " allowed a forced checkmate in " + mateAllowed + ".");
         }
         if (evalAfter != null && evalAfter.pvUci() != null && !san.endsWith("#")) {
             List<String> reply = Arrays.asList(evalAfter.pvUci().split(" "));
@@ -103,6 +106,7 @@ final class MoveFacts {
                     if (net < 0) {
                         facts.add("Once the captures are over, " + mover + " ends up " + points(-net)
                                 + " of material behind where it was before " + move + ".");
+                        summary.add(mover + " ended up " + points(-net) + " of material behind.");
                     } else if (net > 0) {
                         // The engine still rates the move badly, so the material it wins doesn't make up
                         // for something else, typically an attack. Say so rather than let it read as a gain.
@@ -114,6 +118,7 @@ final class MoveFacts {
                     for (Motifs.Found found : Motifs.allowed(board, ucis, sans, index, aboutMaterial)) {
                         facts.add(found.fact());
                         motifs.add(found.tag());
+                        summary.add(found.gist());
                     }
                 }
             }
@@ -126,6 +131,7 @@ final class MoveFacts {
             if (best != null) {
                 if (mateMissed != null) {
                     facts.add(mover + " had a forced checkmate in " + mateMissed + " starting with " + best.san() + ".");
+                    summary.add(mover + " missed a forced checkmate in " + mateMissed + ".");
                 }
                 List<String> ucis = evalBefore.pvUci() == null ? List.of(bestUci)
                         : Arrays.asList(evalBefore.pvUci().split(" "));
@@ -138,19 +144,32 @@ final class MoveFacts {
                     if (outcome.net(white) > 0) {
                         outcome.describe("Along that line", white).ifPresent(facts::add);
                         facts.add("That line wins " + points(outcome.net(white)) + " of material for " + mover + ".");
+                        // Only when the move didn't lose anything itself: that is the bigger story.
+                        if (summary.isEmpty()) {
+                            summary.add(mover + " missed a line that wins " + points(outcome.net(white)) + " of material.");
+                        }
                     }
                 }
                 if (error) {
                     for (Motifs.Found found : Motifs.missed(board, ucis.subList(0, sans.size()), sans, index, aboutMaterial)) {
                         facts.add(found.fact());
                         motifs.add(found.tag());
+                        summary.add(found.gist());
                     }
                 }
             }
         }
 
-        return new MoveContext(index + 1, move, san, mover, classification, decisive, opening(replay, index), null,
-                evaluation(evalBefore, white), evaluation(evalAfter, !white), facts, lineMoves, motifs);
+        String opening = opening(replay, index);
+        if (summary.isEmpty() && error) {
+            summary.add(mover + " made " + verdict(classification) + " that fits none of the known patterns.");
+        }
+        if (opening != null) {
+            summary.add("Opening: " + opening + ".");
+        }
+        return new MoveContext(index + 1, move, san, mover, classification, decisive, opening, null,
+                evaluation(evalBefore, white), evaluation(evalAfter, !white), facts, lineMoves, motifs,
+                String.join(" ", summary), null);
     }
 
     // The opening the move was played in, counting the position the move itself reaches. Null when
@@ -160,6 +179,12 @@ final class MoveFacts {
         OpeningBook book = OpeningBook.standard();
         if (index >= book.lastNamedPly(epds) + OPENING_PLIES_AFTER_BOOK) return null;
         return book.at(epds, index + 1).map(o -> o.name() + " (" + o.eco() + ")").orElse(null);
+    }
+
+    // "a blunder", "an inaccuracy"
+    static String verdict(MoveClassification classification) {
+        String label = classification.name().toLowerCase(Locale.ROOT);
+        return (classification == MoveClassification.INACCURACY ? "an " : "a ") + label;
     }
 
     // "12...Nf6 Nxe5 13.Bc4", numbered from the position at `ply`.

@@ -75,7 +75,7 @@ class CommentaryEvalRun {
     record Case(String name, String moves, List<List<String>> expect) {
     }
 
-    record Prepared(Case evalCase, MoveClassification classification, String prompt) {
+    record Prepared(Case evalCase, MoveClassification classification, String prompt, String summary) {
     }
 
     record Result(String answer, boolean accepted, int attempts, Duration elapsed, int tokens, int keyPoints) {
@@ -128,8 +128,8 @@ class CommentaryEvalRun {
                         .append(", so it wouldn't get a comment.\n");
                 continue;
             }
-            report.append("Expected: ").append(p.evalCase().expect()).append("\n\n```\n")
-                    .append(p.prompt()).append("\n```\n\n");
+            report.append("Expected: ").append(p.evalCase().expect()).append("\n\nKept in the mistake memory as: ")
+                    .append(p.summary()).append("\n\n```\n").append(p.prompt()).append("\n```\n\n");
             for (String model : byModel.keySet().stream().sorted().toList()) {
                 Result r = byModel.get(model).get(i);
                 report.append(String.format(Locale.ROOT, "- **%s** (%s, %d/%d key points, %.1f s): %s%n", model,
@@ -178,7 +178,7 @@ class CommentaryEvalRun {
                 PositionEval evalBefore = stockfish.analyze(before.epd(), false);
                 PositionEval evalAfter = stockfish.analyze(after.epd(), false);
                 LoadedGame game = new LoadedGame(replay,
-                        Map.of(before.epd(), evalBefore, after.epd(), evalAfter), true, true);
+                        Map.of(before.epd(), evalBefore, after.epd(), evalAfter), 1L, 2L);
                 MoveClassification label = MoveClassifier.classify(evalBefore, evalAfter, index % 2 == 0, before.playedUci());
                 labels.add(label);
                 contexts.add(COMMENTED.contains(label) ? MoveFacts.describe(game, index, label, false) : null);
@@ -192,8 +192,12 @@ class CommentaryEvalRun {
         List<Prepared> prepared = new ArrayList<>();
         int next = 0;
         for (int i = 0; i < cases.size(); i++) {
-            String prompt = contexts.get(i) == null ? null : CommentaryPrompt.user(annotated.get(next++));
-            prepared.add(new Prepared(cases.get(i), labels.get(i), prompt));
+            if (contexts.get(i) == null) {
+                prepared.add(new Prepared(cases.get(i), labels.get(i), null, null));
+                continue;
+            }
+            MoveContext move = annotated.get(next++);
+            prepared.add(new Prepared(cases.get(i), labels.get(i), CommentaryPrompt.user(move), move.summary()));
         }
         return prepared;
     }
