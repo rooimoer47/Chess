@@ -12,8 +12,10 @@ import org.springframework.ai.ollama.OllamaEmbeddingModel;
 import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.ai.ollama.api.OllamaEmbeddingOptions;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.web.client.RestClient;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 import pvt.phgg.chess.GameEngine;
@@ -199,7 +201,7 @@ class CommentaryEvalRun {
     private static List<MoveContext> withNotes(List<MoveContext> moves) {
         String baseUrl = Optional.ofNullable(System.getenv("OLLAMA_BASE_URL")).orElse("http://localhost:11434");
         String model = Optional.ofNullable(System.getenv("CHESS_EMBEDDING_MODEL")).orElse("nomic-embed-text");
-        OllamaApi ollamaApi = OllamaApi.builder().baseUrl(baseUrl).build();
+        OllamaApi ollamaApi = ollamaApi(baseUrl);
         Embedder embedder = new SpringAiEmbedder(OllamaEmbeddingModel.builder().ollamaApi(ollamaApi)
                 .options(OllamaEmbeddingOptions.builder().model(model).build()).build(),
                 ollamaApi, model, Duration.ofMinutes(30));
@@ -258,7 +260,7 @@ class CommentaryEvalRun {
                     .build();
         } else {
             String baseUrl = Optional.ofNullable(System.getenv("OLLAMA_BASE_URL")).orElse("http://localhost:11434");
-            ollamaApi = OllamaApi.builder().baseUrl(baseUrl).build();
+            ollamaApi = ollamaApi(baseUrl);
             chatModel = OllamaChatModel.builder()
                     .ollamaApi(ollamaApi)
                     .options(OllamaChatOptions.builder()
@@ -274,5 +276,13 @@ class CommentaryEvalRun {
                     .build();
         }
         return new SpringAiLlmClient(chatModel, ollamaApi, Duration.ofMinutes(30));
+    }
+
+    // With the read timeout of application.properties (spring.http.clients.read-timeout). The default
+    // is 10 seconds: a slower comment is cut off and silently asked for again, which doubles its time.
+    private static OllamaApi ollamaApi(String baseUrl) {
+        JdkClientHttpRequestFactory requests = new JdkClientHttpRequestFactory();
+        requests.setReadTimeout(Duration.ofMinutes(3));
+        return OllamaApi.builder().baseUrl(baseUrl).restClientBuilder(RestClient.builder().requestFactory(requests)).build();
     }
 }
